@@ -29,7 +29,7 @@ bool testInject()
 
     {
 #ifdef _WIN32
-        shellCodeFile=".\calc.exe";
+        shellCodeFile=".\\calc.exe";
 
         int pid = launchProcess("C:\\Windows\\System32\\notepad.exe");
         std::cout << "notepad pid " << pid << std::endl;
