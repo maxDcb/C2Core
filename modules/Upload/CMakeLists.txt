@@ -1,0 +1,9 @@
+include_directories(../)
+add_library(Upload SHARED ../ModuleCmd/ModuleCmd.cpp Upload.cpp)
+add_custom_command(TARGET Upload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:Upload> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Upload>")
+
+add_executable(testsUpload tests/testsUpload.cpp ../ModuleCmd/ModuleCmd.cpp Upload.cpp)
+target_link_libraries(testsUpload)
+add_custom_command(TARGET testsUpload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:testsUpload> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsUpload>")
