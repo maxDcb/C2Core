@@ -43,6 +43,7 @@ std::string static inline creatShellCodeDonut(
 	c.format = DONUT_FORMAT_BINARY;		// default output format
 	c.compress = DONUT_COMPRESS_NONE;	// compression is disabled by default
 	c.entropy = DONUT_ENTROPY_DEFAULT;	// enable random names + symmetric encryption by default
+	c.headers = DONUT_HEADERS_OVERWRITE;
 	if(exitProcess)
 		c.exit_opt = DONUT_OPT_EXIT_PROCESS;// exit process
 	else
@@ -59,21 +60,19 @@ std::string static inline creatShellCodeDonut(
 
 	if(method.size() <= (DONUT_MAX_NAME - 1) && param.size() <= (DONUT_MAX_NAME - 1)) 
 	{	
-		memcpy(c.param, param.c_str(), param.size());
+		memcpy(c.args, param.c_str(), param.size());
 		memcpy(c.method, method.c_str(), method.size());
 	}
-	
+
 	// generate the shellcode
 	int err = DonutCreate(&c);
-	if (err != DONUT_ERROR_SUCCESS)
+	if (err != DONUT_ERROR_OK)
 	{
 		result += "Donut Error : ";
 		result += DonutError(err);
 		result += "\n";
 		return result;
 	}
-
-	DonutDelete(&c);
 
 	std::ifstream input(c.output, std::ios::binary);
 	std::string buffer(std::istreambuf_iterator<char>(input), {});
