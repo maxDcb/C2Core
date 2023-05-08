@@ -14,4 +14,5 @@ public:
 private:
 	void checkIn();
 
+	SocketHandler::Client* m_client;
 };

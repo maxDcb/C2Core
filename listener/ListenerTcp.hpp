@@ -14,7 +14,7 @@ public:
 private:
 	void lauchTcpServ();
 
-	std::vector<SocketHandler::Server*> m_serversTcp;
+	SocketHandler::Server* m_serverTcp;
 
 	bool m_stopThread;
 	std::unique_ptr<std::thread> m_tcpServ;

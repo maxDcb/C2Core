@@ -7,6 +7,7 @@ using namespace SocketHandler;
 BeaconTcp::BeaconTcp(std::string& ip, int port)
 	: Beacon(ip, port)
 {
+	m_client=new Client(m_ip, m_port);
 }
 
 
@@ -16,16 +17,14 @@ BeaconTcp::~BeaconTcp()
 
 
 void BeaconTcp::checkIn()
-{
-	Client clientsTcp(m_ip, m_port);
-	
+{	
 	std::string output;
 	taskResultsToCmd(output);
 
-	clientsTcp.sendData(output);
+	m_client->sendData(output);
 
 	string input;
-	clientsTcp.receive(input);
+	m_client->receive(input);
 
 	if(!input.empty())
 	{

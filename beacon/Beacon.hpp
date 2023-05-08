@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../listener/ListenerTcp.hpp"
+#include "../listener/ListenerSmb.hpp"
 
 #ifdef __linux__
 #elif _WIN32

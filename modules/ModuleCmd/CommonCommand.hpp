@@ -67,9 +67,10 @@ class CommonCommands
 		else if(cmd==ListenerCmd)
 		{
 			output = "listener: \n";
-			output += "Start a tcp listener on the beacon.\n";
+			output += "Start a tcp or smb listener on the beacon.\n";
 			output += "exemple:\n";
-			output += " - listener 0.0.0.0 4444\n";
+			output += " - listener tcp 0.0.0.0 4444\n";
+			output += " - listener smb 0.0.0.0 4444\n";
 			//output += "TODO add start / stop instruction \n";
 		}
 		else if(cmd==LoadC2Module)
@@ -130,15 +131,15 @@ class CommonCommands
 		{
 			if(splitedCmd.size()>=3)
 			{
-				if(splitedCmd[1]==StartCmd)
+				if(splitedCmd[1]==StartCmd && splitedCmd[2]=="tcp")
 				{
-					if(splitedCmd.size()>=4)
+					if(splitedCmd.size()>=5)
 					{
-						std::string host = splitedCmd[2];
+						std::string host = splitedCmd[3];
 						int port=4444;
 						try 
 						{
-							port = std::atoi(splitedCmd[3].c_str());
+							port = std::atoi(splitedCmd[4].c_str());
 						}
 						catch (const std::invalid_argument& ia) 
 						{
@@ -148,9 +149,31 @@ class CommonCommands
 
 						std::string cmd = splitedCmd[1];
 						cmd+=" ";
+						cmd+="tcp";
+						cmd+=" ";
 						cmd+=host;
 						cmd+=" ";
 						cmd+=std::to_string(port);
+						c2Message.set_instruction(instruction);
+						c2Message.set_cmd(cmd);	
+					}
+					else
+					{
+						std::string errorMsg = "listener start: not enough arguments";
+						c2Message.set_returnvalue(errorMsg);	
+						return -1;
+					}
+				}
+				else if(splitedCmd[1]==StartCmd && splitedCmd[2]=="smb")
+				{
+					if(splitedCmd.size()>=4)
+					{
+						std::string pipeName = splitedCmd[3];
+						std::string cmd = splitedCmd[1];
+						cmd+=" ";
+						cmd+="smb";
+						cmd+=" ";
+						cmd+=pipeName;
 						c2Message.set_instruction(instruction);
 						c2Message.set_cmd(cmd);	
 					}

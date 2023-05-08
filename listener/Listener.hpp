@@ -13,6 +13,7 @@
 const std::string ListenerHttpType = "http";
 const std::string ListenerHttpsType = "https";
 const std::string ListenerTcpType = "tcp";
+const std::string ListenerSmbType = "smb";
 
 
 class Listener

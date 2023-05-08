@@ -287,8 +287,6 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int AssemblyExec::createNewThread(const std::string& payload, std::string& result)
 {
-
-	std::cout << "payload.size() " << payload.size() << std::endl;
 	StdCapture stdCapture;
 	stdCapture.BeginCapture();
 
