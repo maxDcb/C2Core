@@ -35,15 +35,24 @@ void ListenerSmb::lauchSmbServ()
 			if(m_stopThread)
 				return;
 
+			DEBUG("receiving");
+
 			string input;
 			m_serverSmb->receiveData(input);
+
+			DEBUG("received input.size " << std::to_string(input.size()));
 
 			string output;
 			bool ret = handleMessages(input, output);
 
 			if (output.empty())
 				output = "{}";
+
+			DEBUG("sending output.size " << std::to_string(output.size()));
+
 			m_serverSmb->sendData(output);	
+
+			DEBUG("sent");
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}

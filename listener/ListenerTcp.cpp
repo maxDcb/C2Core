@@ -32,8 +32,12 @@ void ListenerTcp::lauchTcpServ()
 			if(m_stopThread)
 				return;
 
+			DEBUG("receiving");
+	
 			string input;
 			m_serverTcp->receive(input);
+
+			DEBUG("received input.size " << std::to_string(input.size()));
 
 			if(input.size()!=0)
 			{
@@ -44,7 +48,12 @@ void ListenerTcp::lauchTcpServ()
 				// we send one byte for the compatiblity windows/linux SocketHandler
 				if (output.empty())
 					output = "{}";
+
+				DEBUG("sending output.size " << std::to_string(output.size()));
+
 				m_serverTcp->sendData(output);	
+
+				DEBUG("sent");
 			}
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));

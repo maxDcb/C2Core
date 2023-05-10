@@ -10,6 +10,7 @@
 #include "Common.hpp"
 
 
+// TODO set an enum
 const std::string ListenerHttpType = "http";
 const std::string ListenerHttpsType = "https";
 const std::string ListenerTcpType = "tcp";

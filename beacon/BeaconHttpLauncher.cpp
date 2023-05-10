@@ -14,12 +14,14 @@ int main(int argc, char* argv[])
 	if (argc > 2)
 		port = atoi(argv[2]);
 
-	bool https = true;
+	bool https = false;
 	if (argc > 3)
 	{
 		std::string sHttps = argv[3];
 		if(sHttps=="https")
 			https=true;
+		else if(sHttps=="http")
+			https=false;
 	}
 
 	// std::cout << "ip " << ip << ", port " << std::to_string(port) << ", https " << https << std::endl;

@@ -68,6 +68,9 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 {
 	string input = req.body;
 
+	DEBUG("m_isHttps " << std::to_string(m_isHttps));
+	DEBUG("input.size " << std::to_string(input.size()));
+
 	string output;
 	bool ret = handleMessages(input, output);
 
@@ -75,6 +78,8 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 		res.headers = httpsServerHeaders;
 	else
 		res.headers = httpServerHeaders;
+
+	DEBUG("output.size " << std::to_string(output.size()));
 
 	if(ret)
 		res.body = output;
