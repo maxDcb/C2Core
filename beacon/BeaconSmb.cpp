@@ -47,9 +47,9 @@ void BeaconSmb::checkIn()
 			}
 		}
 		else
-			DEBUG("send failed");
+			DEBUG("Receive failed");
 	}
 	else
-		DEBUG("Receive failed");
+		DEBUG("Send failed");
 }
 
