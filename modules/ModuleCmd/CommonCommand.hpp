@@ -69,9 +69,9 @@ class CommonCommands
 			output = "listener: \n";
 			output += "Start a tcp or smb listener on the beacon.\n";
 			output += "exemple:\n";
-			output += " - listener tcp 0.0.0.0 4444\n";
-			output += " - listener smb 0.0.0.0 4444\n";
-			//output += "TODO add start / stop instruction \n";
+			output += " - listener start tcp 0.0.0.0 4444\n";
+			output += " - listener start smb pipename\n";
+			output += " - listener stop uAgXVQny0o1GVoIHf0Jaed4xl5lYpHKU\n";
 		}
 		else if(cmd==LoadC2Module)
 		{
@@ -136,7 +136,7 @@ class CommonCommands
 					if(splitedCmd.size()>=5)
 					{
 						std::string host = splitedCmd[3];
-						int port=4444;
+						int port=-1;
 						try 
 						{
 							port = std::atoi(splitedCmd[4].c_str());
