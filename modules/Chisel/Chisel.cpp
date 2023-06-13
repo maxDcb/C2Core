@@ -7,6 +7,8 @@
 using namespace std;
 
 const std::string moduleName = "chisel";
+const std::string ToolsDirectoryFromTeamServer = "../Tools/";
+
 
 #define BUFSIZE 512
 
@@ -117,6 +119,15 @@ int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		std::ifstream myfile;
 		myfile.open(inputFile);
+
+		if(!myfile)
+		{
+			std::string newInputFile=ToolsDirectoryFromTeamServer;
+			newInputFile+=inputFile;
+			myfile.open(newInputFile, std::ios::binary);
+			inputFile=newInputFile;
+		}
+
 		if(!myfile) 
 		{
 			std::string msg = "Couldn't open file.\n";

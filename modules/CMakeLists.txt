@@ -21,3 +21,6 @@ add_subdirectory(Script)
 add_subdirectory(SpawnAs)
 add_subdirectory(StealToken)
 add_subdirectory(Upload)
+add_subdirectory(Cat)
+add_subdirectory(Tree)
+

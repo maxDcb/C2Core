@@ -30,7 +30,7 @@ std::string Download::getInfo()
 {
 	std::string info;
 	info += "download:\n";
-	info += "Download a file from the attacker machine to the victime machine\n";
+	info += "Download a file from victime machine to the attacker machine\n";
 	info += "exemple:\n";
 	info += "- download c:\\temp\\toto.exe c:\\temp\\toto.exe\n";
 

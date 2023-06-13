@@ -15,6 +15,7 @@ using namespace std;
 
 
 const std::string moduleName = "powershell";
+const std::string ScriptsDirectoryFromTeamServer = "../Scripts/";
 
 
 #ifdef _WIN32
@@ -223,6 +224,15 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		std::ifstream myfile;
 		myfile.open(inputFile, std::ios::binary);
+
+		if(!myfile)
+		{
+			std::string newInputFile=ScriptsDirectoryFromTeamServer;
+			newInputFile+=inputFile;
+			myfile.open(newInputFile, std::ios::binary);
+			inputFile=newInputFile;
+		}
+
 		if(!myfile) 
 		{
 			std::string msg = "Couldn't open file.\n";
