@@ -193,7 +193,7 @@ std::string Powershell::getInfo()
 	info += "AMSI bypass by patching the amsi.dll will work once for all.\n";
 	info += "exemple:\n";
 	info += " - powershell whoami | write-output\n";
-	info += " - powershell import-module .\PowerUpSQL.ps1; Get-SQLConnectionObject\n";
+	info += " - powershell import-module PowerUpSQL.ps1; Get-SQLConnectionObject\n";
 	info += " - powershell -i /tmp/PowerUpSQL.ps1 \n";
 	info += " - powershell -s /tmp/script.ps1 \n";
 
