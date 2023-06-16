@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <psapi.h>
+#include <Winternl.h> 
+
+#pragma comment(lib, "ntdll.lib")
+#pragma comment(lib, "Advapi32.lib")
 
 #endif
 
@@ -95,92 +99,110 @@ std::string GetProcess()
 
 #elif _WIN32
 
-std::string getProcessInfos( DWORD processID )
+#define SystemProcessInformation 5
+
+typedef NTSTATUS (WINAPI * NtQuerySystemInformation_t)(
+    ULONG SystemInformationClass,
+    PVOID SystemInformation,
+    ULONG SystemInformationLength,
+    PULONG ReturnLength
+);
+
+std::string getProcessInfos(DWORD processID, std::string& processName)
 {
     std::string result;
-
-    TCHAR ProcessName[MAX_PATH] = TEXT("<unknown>");
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID );
-
+    
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, processID );
     if (hProcess)
     {
-        HMODULE hMod;
-        DWORD cbNeeded;
-        if ( EnumProcessModulesEx( hProcess, &hMod, sizeof(hMod), &cbNeeded, LIST_MODULES_ALL) )
+        std::string arch = "x64";
+        SYSTEM_INFO systemInfo = { 0 };
+        GetNativeSystemInfo(&systemInfo);
+
+        if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
+            arch = "x86";
+        else
         {
-            GetModuleBaseName(hProcess, hMod, ProcessName, sizeof(ProcessName)/sizeof(TCHAR) );
-
-            std::string arch = "x64";
-            SYSTEM_INFO systemInfo = { 0 };
-            GetNativeSystemInfo(&systemInfo);
-
-            if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
+            BOOL bIsWow64 = FALSE;
+            IsWow64Process(hProcess, &bIsWow64);
+            if (bIsWow64)
                 arch = "x86";
             else
-            {
-                BOOL bIsWow64 = FALSE;
-                IsWow64Process(hProcess, &bIsWow64);
-                if (bIsWow64)
-                    arch = "x86";
-                else
-                    arch = "x64";
-            }
-
-            std::string acctName;
-            std::string domainName;
-            DWORD dwAcctName = 1;
-            DWORD dwDomainName = 1;
-            HANDLE tokenHandle;
-
-            if (OpenProcessToken(hProcess, TOKEN_READ, &tokenHandle))
-            {
-                TOKEN_USER tokenUser;
-                ZeroMemory(&tokenUser, sizeof(TOKEN_USER));
-                DWORD tokenUserLength = 0;
-
-                PTOKEN_USER pTokenUser;
-                GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, NULL,      
-                0, &tokenUserLength);
-                pTokenUser = (PTOKEN_USER) new BYTE[tokenUserLength];
-
-                if (GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, pTokenUser, tokenUserLength, &tokenUserLength))
-                {
-                    TCHAR szUserName[_MAX_PATH];
-                    DWORD dwUserNameLength = _MAX_PATH;
-                    TCHAR szDomainName[_MAX_PATH];
-                    DWORD dwDomainNameLength = _MAX_PATH;
-                    SID_NAME_USE sidNameUse;
-                    LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
-                    acctName=szUserName;
-                    domainName=szDomainName;
-                    delete pTokenUser;
-                }
-            }
-
-            std::string processName = ProcessName;
-            std::string account;
-            if (!domainName.empty())
-            {
-                account += domainName;
-                account += "\\";
-            }
-            if (!acctName.empty())
-            {
-                account += acctName;
-                account += " ";
-            }
-            result += account;
-            int size = max(1, (int)(30 - account.size()));
-            result += std::string(size, ' ');
-            result += arch;
-            result += " ";
-            result += processName;
-            size = max(1, (int)(40 - processName.size()));
-            result += std::string(size, ' ');
-            result += std::to_string(processID);
-            result += "\n";
+                arch = "x64";
         }
+
+        std::string acctName;
+        std::string domainName;
+        DWORD dwAcctName = 1;
+        DWORD dwDomainName = 1;
+        HANDLE tokenHandle;
+
+        if (OpenProcessToken(hProcess, TOKEN_READ, &tokenHandle))
+        {
+            TOKEN_USER tokenUser;
+            ZeroMemory(&tokenUser, sizeof(TOKEN_USER));
+            DWORD tokenUserLength = 0;
+
+            PTOKEN_USER pTokenUser;
+            GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, NULL, 0, &tokenUserLength);
+            pTokenUser = (PTOKEN_USER) new BYTE[tokenUserLength];
+
+            if (GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, pTokenUser, tokenUserLength, &tokenUserLength))
+            {
+                TCHAR szUserName[_MAX_PATH];
+                DWORD dwUserNameLength = _MAX_PATH;
+                TCHAR szDomainName[_MAX_PATH];
+                DWORD dwDomainNameLength = _MAX_PATH;
+                SID_NAME_USE sidNameUse;
+                LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
+                acctName=szUserName;
+                domainName=szDomainName;
+                delete pTokenUser;
+
+                CloseHandle( tokenHandle );
+            }
+
+            CloseHandle( hProcess );
+        }
+
+        std::string account;
+        if (!domainName.empty())
+        {
+            account += domainName;
+            account += "\\";
+        }
+        if (!acctName.empty())
+        {
+            account += acctName;
+            account += " ";
+        }
+        result += account;
+        int size = max(1, (int)(30 - account.size()));
+        result += std::string(size, ' ');
+        result += arch;
+        result += " ";
+        result += processName;
+        size = max(1, (int)(40 - processName.size()));
+        result += std::string(size, ' ');
+        result += std::to_string(processID);
+        result += "\n";
     }
+    else
+	{
+		std::string account="";
+		std::string arch = "   ";
+		
+		result += account;
+		int size = max(1, (int)(30 - account.size()));
+		result += std::string(size, ' ');
+		result += arch;
+		result += " ";
+		result += processName;
+		size = max(1, (int)(40 - processName.size()));
+		result += std::string(size, ' ');
+		result += std::to_string(processID);
+		result += "\n";
+	}
 
     CloseHandle( hProcess );
 
@@ -192,18 +214,42 @@ std::string GetProcess()
 {
     std::string result;
 
-    DWORD aProcesses[1024], cbNeeded, cProcesses;
-    unsigned int i;
+    int pid = 0;
+	PVOID buffer = NULL;
+	DWORD bufSize = 0;
+	
+	NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
+	pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, 0, 0, &bufSize);
+	
+	if (bufSize == 0)
+		return "GetProcess Failed";
+	
+	buffer = VirtualAlloc(0, bufSize, MEM_COMMIT, PAGE_READWRITE);
+		
+	SYSTEM_PROCESS_INFORMATION * sysproc_info = (SYSTEM_PROCESS_INFORMATION *) buffer;
+	if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize)) 
+        return "pNtQuerySystemInformation Failed";
 
-    if (!EnumProcesses(aProcesses, sizeof(aProcesses), &cbNeeded))
-        return result;
 
-    cProcesses = cbNeeded / sizeof(DWORD);
-    for (i = 0; i < cProcesses; i++)
-    {
-        if (aProcesses[i] != 0)
-            result += getProcessInfos(aProcesses[i]);
-    }
+    while (TRUE) 
+	{		
+		std::string processName;
+		for(int i=0; i<sysproc_info->ImageName.Length; i++)
+		{
+			if((char)sysproc_info->ImageName.Buffer[i]=='\0')
+				break;
+			processName.push_back((char)sysproc_info->ImageName.Buffer[i]);
+		}
+		
+		result += getProcessInfos((DWORD)sysproc_info->UniqueProcessId, processName);
+				
+		if (!sysproc_info->NextEntryOffset)
+			break;
+		
+		sysproc_info = (SYSTEM_PROCESS_INFORMATION *)((ULONG_PTR) sysproc_info + sysproc_info->NextEntryOffset);
+	}
+	
+	VirtualFree(buffer, bufSize, MEM_RELEASE);
 
     return result;
 }
