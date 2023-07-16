@@ -43,6 +43,21 @@ bool testCat()
         output += "\n";
         std::cout << output << std::endl;
     }
+    {
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("cat");
+        splitedCmd.push_back(".\\test space folder\\test space.txt");
+
+        C2Message c2Message;
+        C2Message c2RetMessage;
+        cat->init(splitedCmd, c2Message);
+        cat->process(c2Message, c2RetMessage);
+
+        std::string output = "\n\noutput:\n";
+        output += c2RetMessage.returnvalue();
+        output += "\n";
+        std::cout << output << std::endl;
+    }
 
 
     return true;

