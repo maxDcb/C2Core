@@ -23,4 +23,5 @@ add_subdirectory(StealToken)
 add_subdirectory(Upload)
 add_subdirectory(Cat)
 add_subdirectory(Tree)
+add_subdirectory(WmiExec)
 

