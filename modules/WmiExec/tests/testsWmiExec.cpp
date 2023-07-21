@@ -29,7 +29,7 @@ bool testWmiExec()
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("wmiExec");
         splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back("c:\\windows\\system32\\notepad.exe");
+        splitedCmd.push_back("powershell.exe -NoP -NoL -sta -NonI -Exec Bypass C:\\windows\\system32\\notepad.exe");
         
         C2Message c2Message;
         C2Message c2RetMessage;

