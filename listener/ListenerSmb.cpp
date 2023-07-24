@@ -37,8 +37,13 @@ void ListenerSmb::lauchSmbServ()
 
 			DEBUG("receiving");
 	
+			bool res = false;
 			string input;
-			bool res = m_serverSmb->receiveData(input);
+			while(input.empty())
+			{
+				res = m_serverSmb->receiveData(input);
+				Sleep(50);
+			}
 
 			DEBUG("received input.size " << std::to_string(input.size()));
 

