@@ -383,7 +383,16 @@ bool Beacon::runTasks()
 
 void Beacon::sleep()
 {
-	std::this_thread::sleep_for(std::chrono::milliseconds(m_aliveTimerMs));
+	if(m_aliveTimerMs<=0)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+	else
+	{
+		int dela = rand()%(int(float(m_aliveTimerMs)/100.0*20.0))-int(float(m_aliveTimerMs)/100.0*10.0);
+		int timeToSleepMs = m_aliveTimerMs + dela;
+		std::this_thread::sleep_for(std::chrono::milliseconds(timeToSleepMs));
+	}
 }
 
 

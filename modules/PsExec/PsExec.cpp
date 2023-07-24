@@ -39,6 +39,7 @@ BOOL createServiceWithSCM(const std::string& scmServer, const std::string& servi
 PsExec::PsExec()
 	: ModuleCmd(moduleName)
 {
+    srand(time(NULL));
 }
 
 
@@ -104,7 +105,6 @@ int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 std::string randomName( size_t length )
 {
-    srand(time(NULL));
     auto randchar = []() -> char
     {
         const char charset[] =
