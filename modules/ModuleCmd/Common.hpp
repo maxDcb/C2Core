@@ -18,6 +18,20 @@ const int SizeListenerHash = 32;
 const int SizeBeaconHash = 32;
 
 
+void static inline XOR(std::string& data, const std::string& key) 
+{
+	int j = 0;
+	for (int i = 0; i < data.size(); i++) 
+	{
+		if (j == key.size()-1) 
+			j = 0;
+
+		data[i] = data[i] ^ key[j];
+		j++;
+	}
+}
+
+
 std::string static inline random_string(std::size_t length)
 {
     const std::string CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

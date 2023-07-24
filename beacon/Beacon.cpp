@@ -259,8 +259,12 @@ Beacon::Beacon(std::string& ip, int port)
 
 bool Beacon::cmdToTasks(const std::string& input)
 {
+	std::string key="dfsdgferhzdzxczevre5595485sdg";
+	std::string data = base64_decode(input);
+	XOR(data, key);
+
 	MultiBundleC2Message multiBundleC2Message;
-	multiBundleC2Message.ParseFromArray(input.data(), (int)input.size());
+	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
 
 	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
 	{
@@ -353,7 +357,12 @@ bool Beacon::taskResultsToCmd(std::string& output)
 		}
 	}
 
-	multiBundleC2Message.SerializeToString(&output);
+	std::string data;
+	multiBundleC2Message.SerializeToString(&data);
+
+	std::string key="dfsdgferhzdzxczevre5595485sdg";
+	XOR(data, key);
+	output = base64_encode(data);
 
 	return true;
 }
