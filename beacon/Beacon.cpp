@@ -91,7 +91,7 @@ Beacon::Beacon(std::string& ip, int port)
 	m_ip = ip;
 	m_port = port;
 	m_beaconHash = random_string(SizeBeaconHash);
-	m_aliveTimerMs = 5000;
+	m_aliveTimerMs = 1000;
 
 #ifdef __linux__
 
