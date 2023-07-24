@@ -107,25 +107,7 @@ void ListenerHttp::lauchHttpServ()
 
 		if ( (m_isHttps && isHttpsUri) ||  (!m_isHttps && isHttpUri) ) 
 		{
-			try 
-			{
-				DEBUG("Connection " << req.path);
-				this->HandleCheckIn(req, res);
-				res.status = 200;
-				return Server::HandlerResponse::Handled;
-			} 
-			catch(const std::exception& ex)
-			{
-				DEBUG("Execption " << ex.what());
-				res.status = 401;
-				return Server::HandlerResponse::Handled;
-			}
-			catch (...) 
-			{
-				DEBUG("Unknown failure occurred.");
-				res.status = 401;
-				return Server::HandlerResponse::Handled;
-			}
+				return Server::HandlerResponse::Unhandled;
 		}
 		else
 		{
@@ -134,6 +116,50 @@ void ListenerHttp::lauchHttpServ()
 			return Server::HandlerResponse::Handled;
 		}
 	});
+
+	for (json::iterator it = httpUri.begin(); it != httpUri.end(); ++it)
+		m_svr->Post(*it, [&](const auto& req, auto& res)
+		{
+			try 
+			{
+				DEBUG("Connection " << req.path);
+				this->HandleCheckIn(req, res);
+				DEBUG("OK " << req.path);
+				res.status = 200;
+			} 
+			catch(const std::exception& ex)
+			{
+				DEBUG("Execption " << ex.what());
+				res.status = 401;
+			}
+			catch (...) 
+			{
+				DEBUG("Unknown failure occurred.");
+				res.status = 401;
+			}
+		});
+
+	for (json::iterator it = httpsUri.begin(); it != httpsUri.end(); ++it)
+		m_svr->Post(*it, [&](const auto& req, auto& res)
+		{
+			try 
+			{
+				DEBUG("Connection " << req.path);
+				this->HandleCheckIn(req, res);
+				DEBUG("OK " << req.path);
+				res.status = 200;
+			} 
+			catch(const std::exception& ex)
+			{
+				DEBUG("Execption " << ex.what());
+				res.status = 401;
+			}
+			catch (...) 
+			{
+				DEBUG("Unknown failure occurred.");
+				res.status = 401;
+			}
+		});
 
 	m_svr->listen(m_host.c_str(), m_port);
 }
