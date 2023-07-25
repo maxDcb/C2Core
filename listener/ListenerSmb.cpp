@@ -4,10 +4,9 @@
 using namespace std;
 
 
-ListenerSmb::ListenerSmb(const std::string& ip, int localPort)
-	: Listener(ip, localPort, ListenerSmbType)
+ListenerSmb::ListenerSmb(const std::string& pipeName)
+	: Listener("127.0.0.1", 911, ListenerSmbType)
 {
-	std::string pipeName = "mynamedpipe";
 	m_serverSmb = new PipeHandler::Server(pipeName);
 
 	m_stopThread=false;

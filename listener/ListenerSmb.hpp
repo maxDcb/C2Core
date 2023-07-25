@@ -8,7 +8,7 @@ class ListenerSmb : public Listener
 {
 
 public:
-	ListenerSmb(const std::string& ip, int localport);
+	ListenerSmb(const std::string& pipeName);
 	~ListenerSmb();
 
 private:

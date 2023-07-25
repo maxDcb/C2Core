@@ -8,7 +8,7 @@ class BeaconSmb : public Beacon
 {
 
 public:
-	BeaconSmb(std::string& ip, int port);
+	BeaconSmb(const std::string& pipeName);
 	~BeaconSmb();
 
 private:

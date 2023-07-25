@@ -153,10 +153,10 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     // // Debug proxy configuration
     // // https://stackoverflow.com/questions/35082021/code-to-send-an-http-request-through-a-proxy-using-winhttp
     // // https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpsendrequest
-    // WINHTTP_PROXY_INFO proxy = { 0 };
-    // proxy.dwAccessType = WINHTTP_ACCESS_TYPE_NAMED_PROXY;
-    // proxy.lpszProxy = L"http://127.0.0.1:8080";
-    // WinHttpSetOption(hRequest, WINHTTP_OPTION_PROXY, &proxy, sizeof(proxy));
+    WINHTTP_PROXY_INFO proxy = { 0 };
+    proxy.dwAccessType = WINHTTP_ACCESS_TYPE_NAMED_PROXY;
+    proxy.lpszProxy = L"http://127.0.0.1:8080";
+    WinHttpSetOption(hRequest, WINHTTP_OPTION_PROXY, &proxy, sizeof(proxy));
 
     // Post data
     LPSTR pdata = const_cast<char*>(data.c_str());;

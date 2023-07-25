@@ -19,7 +19,7 @@
 class Beacon
 {
 public:
-	Beacon(std::string& ip, int port);
+	Beacon(const std::string& ip, int port);
 	virtual ~Beacon(){};
 
 	virtual void  checkIn() = 0;

@@ -6,16 +6,12 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {	
-	std::string ip = "127.0.0.1";
+	std::string pipeName = "mynamedpipe";
 	if(argc > 1)
-		ip = argv[1];
-
-	int port = 4444;
-	if (argc > 2)
-		port = atoi(argv[2]);
+		pipeName = argv[1];
 
 	std::unique_ptr<Beacon> beacon;
-	beacon = make_unique<BeaconSmb>(ip, port);
+	beacon = make_unique<BeaconSmb>(pipeName);
 
 	bool exit = false;
 	while (!exit)
