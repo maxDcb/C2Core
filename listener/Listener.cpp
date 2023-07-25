@@ -134,7 +134,6 @@ bool Listener::updateSessionPoofOfLife(std::string& beaconHash)
 		{
 			sessionExist=true;
 			(*it)->updatePoofOfLife();
-			(*it)->setSessionAlive();
 		}
 	}
 	return sessionExist;
@@ -182,7 +181,8 @@ std::vector<SessionListener> Listener::getSessionListenerInfos()
 	std::vector<SessionListener> sessionListenerList;
 	for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
 	{
-		sessionListenerList.insert(sessionListenerList.end(), (*it)->getListener().begin(), (*it)->getListener().end());
+		if(!(*it)->isSessionKilled())
+			sessionListenerList.insert(sessionListenerList.end(), (*it)->getListener().begin(), (*it)->getListener().end());
 	}
 	return sessionListenerList;
 }
