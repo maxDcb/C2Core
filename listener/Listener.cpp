@@ -403,6 +403,9 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 	if(isTaskToSend)
 		multiBundleC2MessageRet.SerializeToString(&data);
 
+	if (data.empty())
+		data = "{}";
+
 	XOR(data, key);
 	output = base64_encode(data);
 

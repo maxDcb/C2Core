@@ -46,9 +46,6 @@ void ListenerTcp::lauchTcpServ()
 				string output;
 				bool ret = handleMessages(input, output);
 
-				if (output.empty())
-					output = "{}";
-
 				DEBUG("sending output.size " << std::to_string(output.size()));
 
 				res = m_serverTcp->sendData(output);	
