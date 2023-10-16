@@ -123,7 +123,7 @@ bool Listener::isSessionExist(std::string& beaconHash)
 }
 
 
-bool Listener::updateSessionPoofOfLife(std::string& beaconHash)
+bool Listener::updateSessionPoofOfLife(std::string& beaconHash, std::string& lastProofOfLife)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -133,7 +133,7 @@ bool Listener::updateSessionPoofOfLife(std::string& beaconHash)
 		if (beaconHash == (*it)->getBeaconHash())
 		{
 			sessionExist=true;
-			(*it)->updatePoofOfLife();
+			(*it)->updatePoofOfLife(lastProofOfLife);
 		}
 	}
 	return sessionExist;
@@ -323,7 +323,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 			}
 			else
 			{
-				updateSessionPoofOfLife(beaconHash);
+				std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
+				updateSessionPoofOfLife(beaconHash, lastProofOfLife);
 			}
 
 			// For each message in this session

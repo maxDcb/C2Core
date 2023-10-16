@@ -202,6 +202,7 @@ public:
 		m_arch = bundleC2MessageJson["arch"].get<std::string>();
 		m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
 		m_os = bundleC2MessageJson["os"].get<std::string>();
+		m_lastProofOfLife = bundleC2MessageJson["lastProofOfLife"].get<std::string>();
 		auto sessions = bundleC2MessageJson["sessions"];
 		
 		for (json::iterator it = sessions.begin(); it != sessions.end(); ++it)
@@ -235,6 +236,7 @@ public:
 			{ "arch", m_arch },
 			{ "privilege", m_privilege },
 			{ "os", m_os},
+			{ "lastProofOfLife", m_lastProofOfLife},
 			{ "sessions", sessions},
 		};
 		*output = bundleC2MessageJson.dump();
@@ -294,6 +296,10 @@ public:
 	{
 		return m_os;
 	}
+	const std::string&  lastProofOfLife() const
+	{
+		return m_lastProofOfLife;
+	}
 
 	void set_beaconhash(const std::string& beaconHash)
 	{
@@ -323,6 +329,10 @@ public:
 	{
 		m_os = os;
 	}
+	void set_lastProofOfLife(const std::string& lastProofOfLife)
+	{
+		m_lastProofOfLife = lastProofOfLife;
+	}
 
 private:
 	std::vector<C2Message*> m_c2Messages;
@@ -334,6 +344,7 @@ private:
 	std::string m_arch;
 	std::string m_privilege;
 	std::string m_os;
+	std::string m_lastProofOfLife;
 };
 
 

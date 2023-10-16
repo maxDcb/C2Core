@@ -51,7 +51,7 @@ std::string AssemblyExec::getInfo()
 {
 	std::string info;
 	info += "assemblyExec:\n";
-	info += "Execute shellcode in a process (notepade.exe), wait for the end of execution or a timeout (120 sec). Retrieve the output.\n";
+	info += "Execute shellcode in a process (notepad.exe), wait for the end of execution or a timeout (120 sec). Retrieve the output.\n";
 	info += "Use -r to use a shellcode file.\n";
 	info += "If -e or -d are given, use donut to create the shellcode.\n";
 	info += "exemple:\n";

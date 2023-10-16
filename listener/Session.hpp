@@ -61,7 +61,9 @@ public:
 		m_os=os;
 		m_killed=false;
 
-		m_lastProofOfLife = std::chrono::system_clock::now();
+		auto current_time = std::chrono::system_clock::now();
+		auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
+		m_lastProofOfLifeSec = duration_in_seconds.count();
 	}
 
 	std::string getListenerHash()
@@ -99,9 +101,14 @@ public:
 		return m_os;
 	}
 
-	void updatePoofOfLife()
+	void updatePoofOfLife(std::string& lastProofOfLife)
 	{
-		m_lastProofOfLife = std::chrono::system_clock::now();
+		double lastProofOfLifeSec = std::stod(lastProofOfLife);
+
+		auto current_time = std::chrono::system_clock::now();
+		auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
+
+		m_lastProofOfLifeSec = duration_in_seconds.count()-lastProofOfLifeSec;
 	}
 
 	bool isSessionKilled()
@@ -121,10 +128,10 @@ public:
 
 	std::string getLastProofOfLife()
 	{
-		auto now = std::chrono::system_clock::now();
-		std::chrono::duration<double> elapsedSeconds = now-m_lastProofOfLife;
+		auto current_time = std::chrono::system_clock::now();
+		auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
 
-		std::string output = std::to_string(elapsedSeconds.count());
+		std::string output = std::to_string(duration_in_seconds.count()-m_lastProofOfLifeSec);
 		if(m_killed)
 			output="-1";
 
@@ -215,7 +222,7 @@ private:
 	std::queue<C2Message> m_messageToSend;
     std::queue<C2Message> m_messageSent;
 
-	std::chrono::time_point<std::chrono::system_clock> m_lastProofOfLife;
+	double m_lastProofOfLifeSec;
 
 	std::string m_listenerHash;
 	std::string m_beaconHash;
