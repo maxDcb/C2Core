@@ -49,6 +49,8 @@ void BeaconTcp::checkIn()
 	}
 	else
 		DEBUG("Send failed");
+
+	m_client->closeConnection();
 }
 
 	
