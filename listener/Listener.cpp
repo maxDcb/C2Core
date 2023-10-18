@@ -1,5 +1,13 @@
 #include "Listener.hpp"
 
+#ifdef __linux__
+#elif _WIN32
+#include <Windows.h>
+
+#define INFO_BUFFER_SIZE 32767
+#define  ENV_VAR_STRING_COUNT  (sizeof(envVarStrings)/sizeof(TCHAR*))
+
+#endif
 
 #ifdef __linux__
 
@@ -39,10 +47,29 @@ Listener::Listener(const std::string& host, int port, const std::string& type)
 #elif _WIN32
 #endif
 
+
+	// m_listenerHash is now composed of a UUID and information related to the machine and the listener
+#ifdef __linux__
+
+	char hostname[HOST_NAME_MAX];
+	gethostname(hostname, HOST_NAME_MAX);
+	m_hostname = hostname;
+
+#elif _WIN32
+
+	TCHAR  infoBuf[INFO_BUFFER_SIZE];
+	DWORD  bufCharCount = INFO_BUFFER_SIZE;
+
+	// Get and display the name of the computer.
+	m_hostname = "unknown";
+	if( GetComputerName( infoBuf, &bufCharCount ) )
+		m_hostname = infoBuf;
+
+#endif
+
 	m_host=host;
 	m_port = port;
 	m_type = type;
-	m_listenerHash = random_string(SizeListenerHash);
 }
 
 
@@ -90,14 +117,14 @@ std::shared_ptr<Session> Listener::getSessionPtr(int idxSession)
 }
 
 
-std::shared_ptr<Session> Listener::getSessionPtr(std::string& beaconHash)
+std::shared_ptr<Session> Listener::getSessionPtr(std::string& beaconHash, std::string& listenerHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 
 	for(int idxSession=0; idxSession<m_sessions.size(); idxSession++)
 	{
-		if (beaconHash == m_sessions[idxSession]->getBeaconHash())
+		if (beaconHash == m_sessions[idxSession]->getBeaconHash() && listenerHash == m_sessions[idxSession]->getListenerHash())
 		{
 			std::shared_ptr<Session> ptr = m_sessions[idxSession];
 			return ptr;
@@ -107,14 +134,14 @@ std::shared_ptr<Session> Listener::getSessionPtr(std::string& beaconHash)
 }
 
 
-bool Listener::isSessionExist(std::string& beaconHash)
+bool Listener::isSessionExist(std::string& beaconHash, std::string& listenerHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	bool sessionExist = false;
 	for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
 	{
-		if (beaconHash == (*it)->getBeaconHash())
+		if (beaconHash == (*it)->getBeaconHash() && listenerHash == (*it)->getListenerHash())
 		{
 			sessionExist=true;
 		}
@@ -157,7 +184,6 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
 }
 
 
-
 bool Listener::rmSessionListener(const std::string& beaconHash, const std::string& listenerHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -173,7 +199,6 @@ bool Listener::rmSessionListener(const std::string& beaconHash, const std::strin
 	}
 	return sessionExist;
 }
-
 
 
 std::vector<SessionListener> Listener::getSessionListenerInfos()
@@ -292,25 +317,27 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 	MultiBundleC2Message multiBundleC2Message;
 	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
 
-	bool isTaskToSend=false;
-	MultiBundleC2Message multiBundleC2MessageRet;
+	// Handle messages comming from beacons
+	// Create taksResult to be display by the TeamServer
 	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
 	{
 		// For each session (direct session and childs)
 		BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
 
+		// Sessions are unique and created from the pair beaconHash / listenerHash
+		// If listenerHash is already filled it means that the session was already handled by other listener befor this one
 		std::string beaconHash = bundleC2Message->beaconhash();
+		std::string listenerhash = bundleC2Message->listenerhash();
+		if(listenerhash.empty())
+			listenerhash = getListenerHash();
+		bundleC2Message->set_listenerhash(listenerhash);
+
 		if(beaconHash.size()==SizeBeaconHash)
 		{
-			bool SessionExis = isSessionExist(beaconHash);
-			if(SessionExis==false)
+			bool SessionExist = isSessionExist(beaconHash, listenerhash);
+			if(SessionExist==false)
 			{
-				// Create session with the pair beaconHash / listenerHash
-				// If listenerHash is already fill that mean the session is from an other listener originaly
-				// Else it's a "simple" session
-				std::string listenerhash = bundleC2Message->listenerhash();
-				if(listenerhash.empty())
-					listenerhash = getListenerHash();
+				DEBUG("beaconHash " << beaconHash << " listenerhash " << listenerhash);
 
 				std::string username = bundleC2Message->username();
 				std::string hostname = bundleC2Message->hostname();
@@ -332,11 +359,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 			{
 				const C2Message& c2Message = bundleC2Message->c2messages(j);
 
+				// TODO what happen to thos taskResult for listeners that are managed by beacons
 				if(!c2Message.returnvalue().empty())
 				{
 					addTaskResult(c2Message, beaconHash);
 				}
 
+				// Handle instruction that have impact on this Listener
 				if(c2Message.instruction()==EndCmd)
 				{
 					markSessionKilled(beaconHash);
@@ -355,7 +384,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						std::string type=ListenerSmbType;
 						std::string host="127.0.0.1";
 
-						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash);
+						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash, listenerhash);
 						if(ptr)
 							host = ptr->getHostname();
 
@@ -369,7 +398,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						std::string type=ListenerTcpType;
 						std::string host="127.0.0.1";
 
-						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash);
+						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash, listenerhash);
 						if(ptr)
 							host = ptr->getHostname();
 
@@ -379,9 +408,28 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 					{
 						rmSessionListener(beaconHash, c2Message.returnvalue());
 					}
-				}	
+				}
+				else if(c2Message.instruction()==ListenerPolCmd)
+				{
+					addSessionListener(beaconHash, c2Message.returnvalue(), "type", "host", 0);
+				}
 			}
+		}
+	}
 
+	// Handle commands to send to Beacons
+	// For every beacons contacting the listener, check if their are task to be sent and create a message to send it
+	bool isTaskToSend=false;
+	MultiBundleC2Message multiBundleC2MessageRet;
+	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
+	{
+		BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
+
+		// Sessions are unique and created from the pair beaconHash / listenerHash
+		// If listenerHash is already filled it means that the session was already handled by other listener befor this one
+		std::string beaconHash = bundleC2Message->beaconhash();
+		if(beaconHash.size()==SizeBeaconHash)
+		{
 			// Look for tasks in the queu for the this beacon
 			C2Message c2Message = getTask(beaconHash);
 			if(!c2Message.instruction().empty())
@@ -389,6 +437,10 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				isTaskToSend=true;
 				BundleC2Message *bundleC2Message = multiBundleC2MessageRet.add_bundlec2messages();
 				bundleC2Message->set_beaconhash(beaconHash);
+
+				// Not neaded
+				// std::string listenerhash = getListenerHash();
+				// bundleC2Message->set_listenerhash(listenerhash);
 
 				while(!c2Message.instruction().empty())
 				{

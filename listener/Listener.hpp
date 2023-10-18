@@ -32,8 +32,8 @@ public:
 
 	// Session
 	std::shared_ptr<Session> getSessionPtr(int idxSession);
-	std::shared_ptr<Session> getSessionPtr(std::string& beaconHash);
-	bool isSessionExist(std::string& beaconHash);
+	std::shared_ptr<Session> getSessionPtr(std::string& beaconHash, std::string& listenerHash);
+	bool isSessionExist(std::string& beaconHash, std::string& listenerHash);
 	bool updateSessionPoofOfLife(std::string& beaconHash, std::string& lastProofOfLife);
 	bool markSessionKilled(std::string& beaconhash);
 
@@ -52,6 +52,8 @@ public:
 protected:
 	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	bool handleMessages(const std::string& input, std::string& output);
+
+	std::string m_hostname;
 
 	int m_port;
 	std::string m_host;

@@ -68,7 +68,18 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, bool isHttps)
 	: Listener(ip, localPort, (isHttps==true) ? ListenerHttpsType : ListenerHttpType)
 	, m_isHttps(isHttps)
 {	
-
+	m_listenerHash = random_string(SizeListenerHash);
+	m_listenerHash += "-";
+	if(isHttps)
+		m_listenerHash += ListenerHttpsType;
+	else
+		m_listenerHash += ListenerHttpType;
+	m_listenerHash += "/";
+	m_listenerHash += m_hostname;
+	m_listenerHash += "/";
+	m_listenerHash += ip;
+	m_listenerHash += "/";
+	m_listenerHash += std::to_string(localPort);
 
 	if(m_isHttps)
 		m_svr = std::make_unique<httplib::SSLServer>("./cert.pem", "./key.pem");

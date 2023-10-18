@@ -11,6 +11,7 @@ const std::string HelpCmd = "help";
 const std::string SleepCmd = "sleep";
 const std::string EndCmd = "end";
 const std::string ListenerCmd = "listener";
+const std::string ListenerPolCmd = "listenerPol";
 const std::string LoadC2Module = "loadModule";
 const std::string UnloadC2Module = "unloadModule";
 const std::string ModulesDirectoryFromTeamServer = "../Modules/";

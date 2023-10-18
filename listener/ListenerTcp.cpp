@@ -7,6 +7,16 @@ using namespace std;
 ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	: Listener(ip, localPort, ListenerTcpType)
 {
+	m_listenerHash = random_string(SizeListenerHash);
+	m_listenerHash += "-";
+	m_listenerHash += ListenerTcpType;
+	m_listenerHash += "/";
+	m_listenerHash += m_hostname;
+	m_listenerHash += "/";
+	m_listenerHash += ip;
+	m_listenerHash += "/";
+	m_listenerHash += std::to_string(localPort);
+
 	m_serverTcp = new SocketHandler::Server(m_port);
 
 	m_stopThread=false;
