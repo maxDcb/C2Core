@@ -13,6 +13,7 @@ BeaconTcp::BeaconTcp(std::string& ip, int port)
 
 BeaconTcp::~BeaconTcp()
 {
+	delete m_client;
 }
 
 

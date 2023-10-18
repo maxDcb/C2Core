@@ -366,9 +366,23 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				}
 
 				// Handle instruction that have impact on this Listener
+
+				// Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
 				if(c2Message.instruction()==EndCmd)
 				{
 					markSessionKilled(beaconHash);
+					
+					int nbSession = getNumberOfSession();
+					for(int kk=0; kk<nbSession; kk++)
+					{
+						std::shared_ptr<Session> sessions = getSessionPtr(kk);
+						std::vector<SessionListener> sessionListenerList;
+						sessionListenerList.insert(sessionListenerList.end(), sessions->getListener().begin(), sessions->getListener().end());
+						for (int j = 0; j < sessionListenerList.size(); j++)
+						{
+							rmSessionListener(beaconHash, sessionListenerList[j].getListenerHash());
+						}
+					}
 				}	
 				else if(c2Message.instruction()==ListenerCmd)
 				{
@@ -377,27 +391,21 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 					std::string delimiter = " ";
 					splitList(cmd, delimiter, splitedCmd);
 
-					if(splitedCmd[0]==StartCmd && splitedCmd[1]=="smb")
+					if(splitedCmd[0]==StartCmd)
 					{
 						int localPort = 0;
-						
-						std::string type=ListenerSmbType;
+						std::string type="";
+						if(splitedCmd[1]=="smb")
+						{
+							type=ListenerSmbType;
+						}
+						else if(splitedCmd[1]=="tcp")
+						{
+							localPort = std::stoi(splitedCmd[3]);
+							type=ListenerTcpType;
+						}
+
 						std::string host="127.0.0.1";
-
-						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash, listenerhash);
-						if(ptr)
-							host = ptr->getHostname();
-
-						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
-					}
-					if(splitedCmd[0]==StartCmd && splitedCmd[1]=="tcp")
-					{
-						// TODO
-						int localPort = std::stoi(splitedCmd[3]);
-						
-						std::string type=ListenerTcpType;
-						std::string host="127.0.0.1";
-
 						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash, listenerhash);
 						if(ptr)
 							host = ptr->getHostname();
@@ -411,14 +419,43 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				}
 				else if(c2Message.instruction()==ListenerPolCmd)
 				{
-					addSessionListener(beaconHash, c2Message.returnvalue(), "type", "host", 0);
+					std::vector<std::string> splitedCmd;
+					std::string delimiter = "-";
+					splitList(c2Message.returnvalue(), delimiter, splitedCmd);
+					if(splitedCmd.size()==2)
+					{
+						std::string beaconParams=splitedCmd[1];
+						splitedCmd.clear();
+						delimiter = "/";
+						splitList(beaconParams, delimiter, splitedCmd);
+
+						int localPort = 0;
+						std::string type="";
+						if(splitedCmd[0]=="tcp")
+						{
+							localPort = std::stoi(splitedCmd[3]);
+							type=ListenerTcpType;
+						}
+						if(splitedCmd[0]=="smb")
+						{
+							type=ListenerSmbType;
+						}
+
+						std::string host="127.0.0.1";
+						std::shared_ptr<Session> ptr = getSessionPtr(beaconHash, listenerhash);
+						if(ptr)
+							host = ptr->getHostname();
+
+
+						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
+					}
 				}
 			}
 		}
 	}
 
 	// Handle commands to send to Beacons
-	// For every beacons contacting the listener, check if their are task to be sent and create a message to send it
+	// For every beacons contacting the listener, check if their are tasks to be sent and create a message to send it
 	bool isTaskToSend=false;
 	MultiBundleC2Message multiBundleC2MessageRet;
 	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 

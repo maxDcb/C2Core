@@ -21,6 +21,8 @@ int main(int argc, char* argv[])
 			beacon->checkIn();
 
 			exit = beacon->runTasks();
+
+			DEBUG("runTasks exit " << exit);
 			
 			beacon->sleep();
 		}
@@ -33,6 +35,8 @@ int main(int argc, char* argv[])
 			// std::cout << "Exeption" << std::endl;
 		}
 	}
+
+	DEBUG("last checkIn");
 
 	beacon->checkIn();
 }
