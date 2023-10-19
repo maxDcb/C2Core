@@ -21,14 +21,13 @@ public:
 
 private:
 #ifdef _WIN32
-	int createNewProcess(const std::string& payload, std::string& result);
+	int createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result);
 	int createNewThread(const std::string& payload, std::string& result);
 
 	bool m_isProcessRuning;
 	HANDLE m_processHandle;
 	int killProcess();
 #endif
-
 };
 
 #ifdef _WIN32

