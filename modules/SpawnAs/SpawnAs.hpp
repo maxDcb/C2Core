@@ -16,7 +16,7 @@ public:
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 
 private:
-	std::string spawn(const std::string& username, const std::string& domain, const std::string& password);
+
 };
 
 
