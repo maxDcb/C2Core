@@ -90,11 +90,11 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             }
 
             std::string cmd = domain;
-            cmd += "\0";
+            cmd += '\0';
             cmd += username;
-            cmd += "\0";
+            cmd += '\0';
             cmd += password;
-            cmd += "\0";
+            cmd += '\0';
             cmd += target;
 
             c2Message.set_cmd(cmd);
@@ -128,9 +128,9 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             }
 
             std::string cmd = domain;
-            cmd += "\0";
+            cmd += '\0';
             cmd += dc;
-            cmd += "\0";
+            cmd += '\0';
             cmd += target;
 
             c2Message.set_cmd(cmd);
@@ -176,7 +176,9 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 	std::string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedList;
-    splitList(cmd, "\0", splitedList);
+    std::string delimitator;
+    delimitator+='\0';
+    splitList(cmd, delimitator, splitedList);
     
     bool useToken=false;
     std::string authority="";
