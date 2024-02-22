@@ -66,3 +66,19 @@ target_link_libraries(BeaconSmb SocketHandler PipeHandler MemoryModule)
 add_custom_command(TARGET BeaconSmb POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:BeaconSmb> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconSmb>")
 
+
+set(SOURCES_BEACON_GITHUB_EXE
+	Beacon.cpp
+	BeaconGithub.cpp
+	BeaconGithubLauncher.cpp
+	../listener/Listener.cpp
+	../listener/ListenerTcp.cpp	
+	../listener/ListenerSmb.cpp	
+	../modules/ModuleCmd/ModuleCmd.cpp
+	../../thirdParty/base64/base64.cpp
+)
+
+add_executable(BeaconGithub ${SOURCES_BEACON_GITHUB_EXE})
+target_link_libraries(BeaconGithub SocketHandler PipeHandler MemoryModule)
+add_custom_command(TARGET BeaconGithub POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconGithub> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconGithub>")
