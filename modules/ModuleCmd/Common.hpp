@@ -23,7 +23,7 @@ void static inline XOR(std::string& data, const std::string& key)
 	int j = 0;
 	for (int i = 0; i < data.size(); i++) 
 	{
-		if (j == key.size()-1) 
+		if (j == key.size()) 
 			j = 0;
 
 		data[i] = data[i] ^ key[j];

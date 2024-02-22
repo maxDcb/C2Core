@@ -15,6 +15,7 @@
 using json = nlohmann::json;
 
 
+// TODO make it more robust to missing param and casting error
 class C2Message
 {
 public:
