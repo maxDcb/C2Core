@@ -17,8 +17,10 @@ private:
 	std::string m_token;
 
 #ifdef _WIN32
-	int GithubPost(const std::string& domain, const std::string& url, const std::string& data);
-	int GithubGet(const std::string& domain, const std::string& url);
+	int HandleRequest(const std::string& domain, const std::string& url);
+
+	int GithubPost(const std::string& domain, const std::string& url, const std::string& data, std::string &response);
+	int GithubGet(const std::string& domain, const std::string& url, std::string &response);
 #endif
 
 };

