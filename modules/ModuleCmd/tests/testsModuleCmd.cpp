@@ -265,6 +265,7 @@ int unitTests()
 
 int unitTestsC2Message()
 {
+	
 	{
 		C2Message c2Message;
 		c2Message.set_instruction("instruction");
@@ -290,9 +291,11 @@ int unitTestsC2Message()
 		c2Message.set_returnvalue(std::to_string(sleepTimeSec));	
 
 		std::string stringSerialized;
+		std::cout << "2" << std::endl;
 		c2Message.SerializeToString(&stringSerialized);
 
 		C2Message c2Message2;
+		std::cout << "3" << std::endl;
 		c2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size());
 
 		std::cout << stringSerialized << std::endl;
@@ -383,14 +386,14 @@ int unitTestsMultiBundleC2Message()
 			std::string json_str = (*it).dump();	
 
 			auto bundleC2MessageJson = json::parse(json_str);
-			std::string m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
-			std::string m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
-			std::string m_username = bundleC2MessageJson["username"].get<std::string>();
-			std::string m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
-			std::string m_arch = bundleC2MessageJson["arch"].get<std::string>();
-			std::string m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
-			std::string m_os = bundleC2MessageJson["os"].get<std::string>();
-			auto sessions = bundleC2MessageJson["sessions"];
+			// std::string m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
+			// std::string m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
+			// std::string m_username = bundleC2MessageJson["username"].get<std::string>();
+			// std::string m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
+			// std::string m_arch = bundleC2MessageJson["arch"].get<std::string>();
+			// std::string m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
+			// std::string m_os = bundleC2MessageJson["os"].get<std::string>();
+			// auto sessions = bundleC2MessageJson["sessions"];
 		}
 
 		std::cout << "For" << std::endl;
@@ -400,14 +403,14 @@ int unitTestsMultiBundleC2Message()
 			std::string json_str = my_json[i].dump();	
 			auto bundleC2MessageJson = json::parse(json_str);
 
-			std::string m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
-			std::string m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
-			std::string m_username = bundleC2MessageJson["username"].get<std::string>();
-			std::string m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
-			std::string m_arch = bundleC2MessageJson["arch"].get<std::string>();
-			std::string m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
-			std::string m_os = bundleC2MessageJson["os"].get<std::string>();
-			auto sessions = bundleC2MessageJson["sessions"];
+			// std::string m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
+			// std::string m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
+			// std::string m_username = bundleC2MessageJson["username"].get<std::string>();
+			// std::string m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
+			// std::string m_arch = bundleC2MessageJson["arch"].get<std::string>();
+			// std::string m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
+			// std::string m_os = bundleC2MessageJson["os"].get<std::string>();
+			// auto sessions = bundleC2MessageJson["sessions"];
 		}
 
 		std::cout << "ParseFromArray" << std::endl;
@@ -514,11 +517,15 @@ int unitTestsMultiBundleC2Message()
 
 int main()
 {
-	unitTestsC2Message();
+	std::cout << "unitTestsC2Message " << std::endl;
+	unitTestsC2Message(); 
 
+	std::cout << "unitTests " << std::endl;
 	unitTests();
 
+	std::cout << "unitTestsMultiBundleC2Message " << std::endl;
 	unitTestsMultiBundleC2Message();
 	
+	std::cout << "multiTests " << std::endl;
 	multiTests();
 }

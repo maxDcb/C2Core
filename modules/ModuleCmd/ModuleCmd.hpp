@@ -15,7 +15,6 @@
 using json = nlohmann::json;
 
 
-// TODO make it more robust to missing param and casting error
 class C2Message
 {
 public:
@@ -29,7 +28,7 @@ public:
 		m_outputFile = "";
 		m_data = "";	
 		m_args = "";
-		m_pid = -1;
+		m_pid = -100;
 	}
 
 	void CopyFrom(C2Message& c2Message)
@@ -61,18 +60,49 @@ public:
 		std::string input(data, size);
 		auto my_json = json::parse(input);
 
-		m_instruction = my_json["instruction"].get<std::string>();
-		m_cmd = my_json["cmd"].get<std::string>();
-		std::string returnValueB64 = my_json["returnValue"].get<std::string>();
-		m_returnValue = base64_decode(returnValueB64);
-		std::string inputFileB64 = my_json["inputFile"].get<std::string>();
-		m_inputFile = base64_decode(inputFileB64);
-		std::string outputFileB64 = my_json["outputFile"].get<std::string>();
-		m_outputFile = base64_decode(outputFileB64);
-		std::string dataB64 = my_json["data"].get<std::string>();
-		m_data = base64_decode(dataB64);
-		m_args = my_json["args"].get<std::string>();
-		m_pid = my_json["pid"].get<int>();
+		auto it = my_json.find("instruction");
+		if(it != my_json.end())
+			m_instruction = my_json["instruction"].get<std::string>();
+
+		it = my_json.find("cmd");
+		if(it != my_json.end())
+			m_cmd = my_json["cmd"].get<std::string>();
+		
+		it = my_json.find("returnValue");
+		if(it != my_json.end())
+		{
+			std::string returnValueB64 = my_json["returnValue"].get<std::string>();
+			m_returnValue = base64_decode(returnValueB64);
+		}
+		
+		it = my_json.find("inputFile");
+		if(it != my_json.end())
+		{
+			std::string inputFileB64 = my_json["inputFile"].get<std::string>();
+			m_inputFile = base64_decode(inputFileB64);
+		}
+		
+		it = my_json.find("outputFile");
+		if(it != my_json.end())
+		{
+			std::string outputFileB64 = my_json["outputFile"].get<std::string>();
+			m_outputFile = base64_decode(outputFileB64);
+		}
+		
+		it = my_json.find("data");
+		if(it != my_json.end())
+		{
+			std::string dataB64 = my_json["data"].get<std::string>();
+			m_data = base64_decode(dataB64);
+		}
+		
+		it = my_json.find("args");
+		if(it != my_json.end())
+			m_args = my_json["args"].get<std::string>();
+		
+		it = my_json.find("pid");
+		if(it != my_json.end())
+			m_pid = my_json["pid"].get<int>();
 	}
 	void SerializeToString(std::string* output)
 	{
@@ -81,18 +111,25 @@ public:
 		std::string outputFileB64 = base64_encode(m_outputFile);
 		std::string returnValueB64 = base64_encode(m_returnValue);
 
-		// TODO find a way to construct json with only necessary fields
-		json my_json = {
-			{ "instruction", m_instruction },
-			{ "cmd", m_cmd },
-			{ "returnValue", returnValueB64 },
-			{ "inputFile", inputFileB64 },
-			{ "outputFile", outputFileB64 },
-			{ "data", dataB64 },
-			{ "args", m_args},
-			{ "pid", m_pid },
-		};
-		std::string json_str = my_json.dump();
+		json finalJson;
+		if(!m_instruction.empty())
+			finalJson += json::object_t::value_type("instruction", m_instruction);
+		if(!m_cmd.empty())
+			finalJson += json::object_t::value_type("cmd", m_cmd);
+		if(!returnValueB64.empty())
+			finalJson += json::object_t::value_type("returnValue", returnValueB64);
+		if(!inputFileB64.empty())
+			finalJson += json::object_t::value_type("inputFile", inputFileB64);
+		if(!outputFileB64.empty())
+			finalJson += json::object_t::value_type("outputFile", outputFileB64);
+		if(!dataB64.empty())
+			finalJson += json::object_t::value_type("data", dataB64);
+		if(!m_args.empty())
+			finalJson += json::object_t::value_type("args", m_args);
+		if(m_pid!=-100)
+			finalJson += json::object_t::value_type("pid", m_pid);
+
+		std::string json_str = finalJson.dump();
 		*output = json_str;
 	}
 
@@ -196,16 +233,40 @@ public:
 		std::string input(data, size);
 		auto bundleC2MessageJson = json::parse(input);
 
-		m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
-		m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
-		m_username = bundleC2MessageJson["username"].get<std::string>();
-		m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
-		m_arch = bundleC2MessageJson["arch"].get<std::string>();
-		m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
-		m_os = bundleC2MessageJson["os"].get<std::string>();
-		m_lastProofOfLife = bundleC2MessageJson["lastProofOfLife"].get<std::string>();
+		auto it = bundleC2MessageJson.find("beaconHash");
+		if(it != bundleC2MessageJson.end())
+			m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
+
+		it = bundleC2MessageJson.find("listenerHash");
+		if(it != bundleC2MessageJson.end())
+			m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
+
+		it = bundleC2MessageJson.find("username");
+		if(it != bundleC2MessageJson.end())
+			m_username = bundleC2MessageJson["username"].get<std::string>();
+
+		it = bundleC2MessageJson.find("hostname");
+		if(it != bundleC2MessageJson.end())
+			m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
+
+		it = bundleC2MessageJson.find("arch");
+		if(it != bundleC2MessageJson.end())
+			m_arch = bundleC2MessageJson["arch"].get<std::string>();
+
+		it = bundleC2MessageJson.find("privilege");
+		if(it != bundleC2MessageJson.end())
+			m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
+
+		it = bundleC2MessageJson.find("os");
+		if(it != bundleC2MessageJson.end())
+			m_os = bundleC2MessageJson["os"].get<std::string>();
+
+		it = bundleC2MessageJson.find("lastProofOfLife");
+		if(it != bundleC2MessageJson.end())
+			m_lastProofOfLife = bundleC2MessageJson["lastProofOfLife"].get<std::string>();
+
 		auto sessions = bundleC2MessageJson["sessions"];
-		
+	
 		for (json::iterator it = sessions.begin(); it != sessions.end(); ++it)
 		{
 			C2Message* c2Message = new C2Message();
@@ -214,6 +275,7 @@ public:
 			std::string json_str = (*it).dump();
 			m_c2Messages.back()->ParseFromArray(json_str.data(), json_str.size());
 		}
+		
 	}
 	void SerializeToString(std::string* output)
 	{
@@ -228,18 +290,26 @@ public:
 			sessions.push_back(tmp);
 		}
 
-		// TODO find a way to construct json with only necessary fields
-		json bundleC2MessageJson = {
-			{ "beaconHash", m_beaconHash },
-			{ "listenerHash", m_listenerHash },
-			{ "username", m_username },
-			{ "hostname", m_hostname },
-			{ "arch", m_arch },
-			{ "privilege", m_privilege },
-			{ "os", m_os},
-			{ "lastProofOfLife", m_lastProofOfLife},
-			{ "sessions", sessions},
-		};
+		json bundleC2MessageJson ;
+		if(!m_beaconHash.empty())
+			bundleC2MessageJson += json::object_t::value_type("beaconHash", m_beaconHash);
+		if(!m_listenerHash.empty())
+			bundleC2MessageJson += json::object_t::value_type("listenerHash", m_listenerHash);
+		if(!m_username.empty())
+			bundleC2MessageJson += json::object_t::value_type("username", m_username);
+		if(!m_hostname.empty())
+			bundleC2MessageJson += json::object_t::value_type("hostname", m_hostname);
+		if(!m_arch.empty())
+			bundleC2MessageJson += json::object_t::value_type("arch", m_arch);
+		if(!m_privilege.empty())
+			bundleC2MessageJson += json::object_t::value_type("privilege", m_privilege);
+		if(!m_os.empty())
+			bundleC2MessageJson += json::object_t::value_type("os", m_os);
+		if(!m_lastProofOfLife.empty())
+			bundleC2MessageJson += json::object_t::value_type("lastProofOfLife", m_lastProofOfLife);
+		if(!sessions.empty())
+			bundleC2MessageJson += json::object_t::value_type("sessions", sessions);
+
 		*output = bundleC2MessageJson.dump();
 	}
 

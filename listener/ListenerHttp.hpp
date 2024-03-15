@@ -10,7 +10,7 @@ class ListenerHttp : public Listener
 {
 
 public:
-	ListenerHttp(const std::string& ip, int localport, bool isHttps=false);
+	ListenerHttp(const std::string& ip, int localport, const nlohmann::json& config, bool isHttps=false);
 	~ListenerHttp();
 
 private:
@@ -18,6 +18,7 @@ private:
 
 	int HandleCheckIn(const httplib::Request& req, httplib::Response& res);
 
+	nlohmann::json m_config;
 	bool m_isHttps;
 
 	std::unique_ptr<httplib::Server> m_svr;
