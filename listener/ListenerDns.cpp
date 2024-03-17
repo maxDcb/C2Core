@@ -48,13 +48,16 @@ void ListenerDns::lauchDnsListener()
 
 			DEBUG("received input.size " << std::to_string(input.size()));
 
-			string output;
-			bool ret = handleMessages(input, output);
+			if(!input.empty())
+			{
+				string output;
+				bool ret = handleMessages(input, output);
 
-			DEBUG("sending output.size " << std::to_string(output.size()));
+				DEBUG("sending output.size " << std::to_string(output.size()));
 
-			if(!output.empty())
-				m_serverDns.setMsg(output);
+				if(!output.empty())
+					m_serverDns.setMsg(output);
+			}
 			
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}
