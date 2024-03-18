@@ -7,3 +7,5 @@ add_executable(testsListProcesses tests/testsListProcesses.cpp ../ModuleCmd/Modu
 target_link_libraries(testsListProcesses)
 add_custom_command(TARGET testsListProcesses POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsListProcesses> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsListProcesses>")
+
+add_test(NAME testsListProcesses COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsListProcesses>")

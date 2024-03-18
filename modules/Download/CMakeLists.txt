@@ -7,3 +7,5 @@ add_executable(testsDownload tests/testsDownload.cpp ../ModuleCmd/ModuleCmd.cpp 
 target_link_libraries(testsDownload)
 add_custom_command(TARGET testsDownload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsDownload> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDownload>")
+
+add_test(NAME testsDownload COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDownload>")

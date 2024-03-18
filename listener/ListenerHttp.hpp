@@ -3,7 +3,7 @@
 #include "Listener.hpp"
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
-#include "../thirdParty/cpp-httplib/httplib.h"
+#include <httplib.h>
 
 
 class ListenerHttp : public Listener

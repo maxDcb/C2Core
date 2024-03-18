@@ -7,3 +7,5 @@ add_executable(testsMakeToken tests/testsMakeToken.cpp ../ModuleCmd/ModuleCmd.cp
 target_link_libraries(testsMakeToken)
 add_custom_command(TARGET testsMakeToken POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsMakeToken> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsMakeToken>")
+
+add_test(NAME testsMakeToken COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsMakeToken>")

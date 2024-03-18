@@ -5,6 +5,14 @@ add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")
 
 add_executable(testsInject tests/testsInject.cpp ../ModuleCmd/ModuleCmd.cpp Inject.cpp)
-target_link_libraries(testsInject ${Donut})
+
+if(WIN32)
+    target_link_libraries(testsInject ${Donut} )
+else()
+    target_link_libraries(testsInject ${Donut} ${aplib64} )
+endif()
+
 add_custom_command(TARGET testsInject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsInject> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsInject>")
+
+add_test(NAME testsInject COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsInject>")

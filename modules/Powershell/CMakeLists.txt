@@ -7,3 +7,5 @@ add_executable(testsPowershell tests/testsPowershell.cpp ../ModuleCmd/ModuleCmd.
 target_link_libraries(testsPowershell)
 add_custom_command(TARGET testsPowershell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsPowershell> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPowershell>")
+
+add_test(NAME testsPowershell COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPowershell>")

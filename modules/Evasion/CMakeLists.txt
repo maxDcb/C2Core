@@ -8,3 +8,5 @@ add_executable(testsEvasion tests/testsEvasion.cpp ../ModuleCmd/ModuleCmd.cpp Ev
 target_link_libraries(testsEvasion)
 add_custom_command(TARGET testsEvasion POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testsEvasion> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsEvasion>")
+
+add_test(NAME testsEvasion COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsEvasion>")
