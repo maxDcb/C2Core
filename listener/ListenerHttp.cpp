@@ -29,16 +29,16 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 	m_port=localPort;
 
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += "-";
+	m_listenerHash += '\x60';
 	if(isHttps)
 		m_listenerHash += ListenerHttpsType;
 	else
 		m_listenerHash += ListenerHttpType;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += m_hostname;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += ip;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += std::to_string(localPort);
 
 	if(m_isHttps)

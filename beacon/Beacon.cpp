@@ -472,7 +472,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
 					find_if(m_listeners.begin(), m_listeners.end(),
-							[&](unique_ptr<Listener> & obj){ return obj->getHost() == pipeName;}
+							[&](unique_ptr<Listener> & obj){ return obj->getParam1() == pipeName;}
 							);
 
 				if(object!=m_listeners.end())
@@ -500,7 +500,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
 					find_if(m_listeners.begin(), m_listeners.end(),
-							[&](unique_ptr<Listener> & obj){ return obj->getPort() == localPort;}
+							[&](unique_ptr<Listener> & obj){ return obj->getParam2() == splitedCmd[3];}
 							);
 
 				if(object!=m_listeners.end())

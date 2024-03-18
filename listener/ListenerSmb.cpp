@@ -8,11 +8,11 @@ ListenerSmb::ListenerSmb(const std::string& pipeName)
 	: Listener(pipeName, "", ListenerSmbType)
 {
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += "-";
+	m_listenerHash += '\x60';
 	m_listenerHash += ListenerSmbType;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += m_hostname;
-	m_listenerHash += "/";
+	m_listenerHash += "->";
 	m_listenerHash += pipeName;
 
 	m_serverSmb = new PipeHandler::Server(pipeName);

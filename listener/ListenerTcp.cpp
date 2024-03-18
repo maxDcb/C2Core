@@ -18,13 +18,13 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 
 
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += "-";
+	m_listenerHash += '\x60';
 	m_listenerHash += ListenerTcpType;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += m_hostname;
-	m_listenerHash += "/";
+	m_listenerHash += "->";
 	m_listenerHash += ip;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += std::to_string(localPort);
 
 	m_port = localPort;

@@ -18,22 +18,22 @@ public:
 			m_param2 = param2;
 		}
 
-		std::string getListenerHash()
+		const std::string& getListenerHash() const
 		{
 			return m_listenerHash;
 		}
 
-		std::string getType()
+		const std::string& getType() const
 		{
 			return m_type;
 		}
 
-		const std::string& getParam1()
+		const std::string& getParam1() const
 		{
 			return m_param1;
 		}
 
-		const std::string& getParam2()
+		const std::string& getParam2() const
 		{
 			return m_param2;
 		}

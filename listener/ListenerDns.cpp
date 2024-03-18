@@ -10,11 +10,11 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port)
 	, m_serverDns(port, domainToResolve)
 {
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += "-";
+	m_listenerHash += '\x60';
 	m_listenerHash += ListenerDnsType;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += domainToResolve;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += std::to_string(port);
 
 	m_serverDns.launch();

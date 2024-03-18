@@ -17,10 +17,12 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
 	, m_token(token)
 {	
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += "-";
+	m_listenerHash += '\x60';
 	m_listenerHash += ListenerGithubType;
-	m_listenerHash += "/";
+	m_listenerHash += '\x60';
 	m_listenerHash += project;
+	m_listenerHash += '\x60';
+	m_listenerHash += token.substr(0,10);
 
 	m_isRunning=true;
 	this->m_githubFetcher = std::make_unique<std::thread>(&ListenerGithub::checkGithubIssues, this);
