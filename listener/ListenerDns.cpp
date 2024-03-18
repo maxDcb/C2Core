@@ -6,7 +6,7 @@ using namespace std;
 
 
 ListenerDns::ListenerDns(const std::string& domainToResolve, int port)
-	: Listener("127.0.0.1", 911, ListenerDnsType)
+	: Listener(domainToResolve, std::to_string(port), ListenerDnsType)
 	, m_serverDns(port, domainToResolve)
 {
 	m_listenerHash = random_string(SizeListenerHash);

@@ -5,7 +5,7 @@ using namespace std;
 
 
 ListenerSmb::ListenerSmb(const std::string& pipeName)
-	: Listener("127.0.0.1", 911, ListenerSmbType)
+	: Listener(pipeName, "", ListenerSmbType)
 {
 	m_listenerHash = random_string(SizeListenerHash);
 	m_listenerHash += "-";

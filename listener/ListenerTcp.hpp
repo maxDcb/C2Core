@@ -16,6 +16,8 @@ private:
 
 	SocketHandler::Server* m_serverTcp;
 
+	int m_port;
+
 	bool m_stopThread;
 	std::unique_ptr<std::thread> m_tcpServ;
 };

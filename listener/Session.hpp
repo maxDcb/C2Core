@@ -10,12 +10,12 @@
 class SessionListener
 {
 public:
-		SessionListener(const std::string& listenerHash, const std::string& type, const std::string& host, int port)
+		SessionListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
 		{
 			m_listenerHash = listenerHash;
 			m_type = type;
-			m_host = host;
-			m_port = port;
+			m_param1 = param1;
+			m_param2 = param2;
 		}
 
 		std::string getListenerHash()
@@ -28,21 +28,21 @@ public:
 			return m_type;
 		}
 
-		std::string getHost()
+		const std::string& getParam1()
 		{
-			return m_host;
+			return m_param1;
 		}
 
-		int getPort()
+		const std::string& getParam2()
 		{
-			return m_port;
+			return m_param2;
 		}
 
 private:
 	std::string m_listenerHash;
 	std::string m_type;
-	std::string m_host;
-	int m_port;
+	std::string m_param1;
+	std::string m_param2;
 };
 
 
@@ -172,7 +172,7 @@ public:
 		return output;
 	}
 
-	bool addListener(const std::string& listenerHash, const std::string& type, const std::string& host, int port)
+	bool addListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
 	{
 		bool listenerAlreadyExist=false;
 		for(int i=0; i<m_sessionListener.size(); i++)
@@ -183,7 +183,7 @@ public:
 
 		if(listenerAlreadyExist==false)
 		{
-			SessionListener sessionListener(listenerHash, type, host, port);
+			SessionListener sessionListener(listenerHash, type, param1, param2);
 			m_sessionListener.push_back(sessionListener);
 			return true;
 		}	

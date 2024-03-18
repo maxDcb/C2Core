@@ -18,8 +18,10 @@ private:
 
 	int HandleCheckIn(const httplib::Request& req, httplib::Response& res);
 
-	nlohmann::json m_config;
+	std::string m_host;
+	int m_port;
 	bool m_isHttps;
+	nlohmann::json m_config;
 
 	std::unique_ptr<httplib::Server> m_svr;
 	std::unique_ptr<std::thread> m_httpServ;

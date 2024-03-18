@@ -10,6 +10,31 @@
 #include "Common.hpp"
 
 
+#ifdef __linux__
+
+#include <boost/asio.hpp>
+#include <boost/bind/bind.hpp>
+#include <boost/shared_ptr.hpp>
+
+inline bool port_in_use(unsigned short port) 
+{
+    using namespace boost::asio;
+    using ip::tcp;
+
+    io_service svc;
+    tcp::acceptor a(svc);
+
+    boost::system::error_code ec;
+    a.open(tcp::v4(), ec) || a.bind({ tcp::v4(), port }, ec);
+
+    return ec == error::address_in_use;
+}
+
+#elif _WIN32
+#endif
+
+
+
 // TODO set an enum
 const std::string ListenerHttpType = "http";
 const std::string ListenerHttpsType = "https";
@@ -23,11 +48,11 @@ class Listener
 {
 
 public:
-	Listener(const std::string& host, int port, const std::string& type);
+	Listener(const std::string& param1, const std::string& param2, const std::string& type);
 	virtual ~Listener(){};
 
-	const std::string & getHost();
-	int getPort();
+	const std::string & getParam1();
+	const std::string & getParam2();
 	const std::string & getType();
 	const std::string & getListenerHash();
 	int getNumberOfSession();
@@ -40,7 +65,7 @@ public:
 	bool markSessionKilled(std::string& beaconhash);
 
 	// Session Listener
-	bool addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& host, int port);
+	bool addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2);
 	bool rmSessionListener(const std::string& beaconHash, const std::string& listenerHash);
 	std::vector<SessionListener> getSessionListenerInfos();
 
@@ -55,12 +80,12 @@ protected:
 	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	bool handleMessages(const std::string& input, std::string& output);
 
-	std::string m_hostname;
-
-	int m_port;
-	std::string m_host;
+	std::string m_param1;
+	std::string m_param2;
 	std::string m_type;
+
 	std::string m_listenerHash;
+	std::string m_hostname;
 
 	std::vector<std::shared_ptr<Session>> m_sessions;
 

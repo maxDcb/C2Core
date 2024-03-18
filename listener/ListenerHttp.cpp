@@ -12,10 +12,22 @@ using namespace httplib;
 
 
 ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann::json& config, bool isHttps)
-	: Listener(ip, localPort, (isHttps==true) ? ListenerHttpsType : ListenerHttpType)
+	: Listener(ip, std::to_string(localPort), (isHttps==true) ? ListenerHttpsType : ListenerHttpType)
 	, m_isHttps(isHttps)
 	, m_config(config)
 {	
+#ifdef __linux__
+
+	bool isPortInUse = port_in_use(localPort);
+	if(isPortInUse)
+		throw std::runtime_error("Port Already Used.");
+		
+#elif _WIN32
+#endif
+
+	m_host=ip;
+	m_port=localPort;
+
 	m_listenerHash = random_string(SizeListenerHash);
 	m_listenerHash += "-";
 	if(isHttps)

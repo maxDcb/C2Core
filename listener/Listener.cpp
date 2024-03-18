@@ -9,40 +9,21 @@
 
 #endif
 
-#ifdef __linux__
-
-#include <boost/asio.hpp>
-#include <boost/bind/bind.hpp>
-#include <boost/shared_ptr.hpp>
-
-bool port_in_use(unsigned short port) 
-{
-    using namespace boost::asio;
-    using ip::tcp;
-
-    io_service svc;
-    tcp::acceptor a(svc);
-
-    boost::system::error_code ec;
-    a.open(tcp::v4(), ec) || a.bind({ tcp::v4(), port }, ec);
-
-    return ec == error::address_in_use;
-}
-
-#elif _WIN32
-#endif
-
-
 using namespace std;
 
 
-Listener::Listener(const std::string& host, int port, const std::string& type)
+Listener::Listener(const std::string& param1, const std::string& param2, const std::string& type)
 {
+	m_param1 = param1;
+	m_param2 = param2;
+	m_type = type;
+
 #ifdef __linux__
 
-	bool isPortInUse = port_in_use(port);
-	if(isPortInUse)
-		throw std::runtime_error("Port Already Used.");
+	// TODO at child lvl
+	// bool isPortInUse = port_in_use(port);
+	// if(isPortInUse)
+	// 	throw std::runtime_error("Port Already Used.");
 		
 #elif _WIN32
 #endif
@@ -67,21 +48,19 @@ Listener::Listener(const std::string& host, int port, const std::string& type)
 
 #endif
 
-	m_host=host;
-	m_port = port;
-	m_type = type;
+
 }
 
 
-const std::string & Listener::getHost()
+const std::string & Listener::getParam1()
 {
-	return m_host;
+	return m_param1;
 }
 
 
-int Listener::getPort()
+const std::string & Listener::getParam2()
 {
-	return m_port;
+	return m_param2;
 }
 
 
@@ -167,7 +146,7 @@ bool Listener::updateSessionPoofOfLife(std::string& beaconHash, std::string& las
 }
 
 
-bool Listener::addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& host, int port)
+bool Listener::addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -177,7 +156,7 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
 		if (beaconHash == (*it)->getBeaconHash())
 		{
 			sessionExist=true;
-			(*it)->addListener(listenerHash, type, host, port);
+			(*it)->addListener(listenerHash, type, param1, param2);
 		}
 	}
 	return sessionExist;
@@ -410,7 +389,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						if(ptr)
 							host = ptr->getHostname();
 
-						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
+						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, std::to_string(localPort));
 					}
 					else if(splitedCmd[0]==StopCmd)
 					{
@@ -447,7 +426,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 							host = ptr->getHostname();
 
 
-						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, localPort);
+						addSessionListener(beaconHash, c2Message.returnvalue(), type, host, std::to_string(localPort));
 					}
 				}
 			}

@@ -1,12 +1,18 @@
 #include "ListenerGithub.hpp"
 
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
+
+namespace logging = boost::log;
+
 
 using namespace std;
 using namespace httplib;
 
 
 ListenerGithub::ListenerGithub(const std::string& project, const std::string& token)
-	: Listener("127.0.0.1", 911, ListenerGithubType)
+	: Listener(project, token, ListenerGithubType)
 	, m_project(project)
 	, m_token(token)
 {	
@@ -50,11 +56,16 @@ void ListenerGithub::checkGithubIssues()
 		endpoint += "/issues";	
 		auto response = cli.Get(endpoint, headers);
 
-		std::cout << "response->status " << response->status << std::endl;
+		auto err = response.error();
+		if(err!=httplib::Error::Success)
+		{
+			BOOST_LOG_TRIVIAL(error) << "Http client Get " << httplib::to_string(err);
+			continue;
+		}
 
 		if(response->status!=200 && response->status!=201)
 		{
-			DEBUG("Error with the ListenerGithub: " << response->body);
+			BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
 			continue;
 		}
 
@@ -70,13 +81,12 @@ void ListenerGithub::checkGithubIssues()
 				int number = (*it)["number"];
 				int nbComments = (*it)["comments"];
 
-				// TODO handle big response with multiple comments
 				if(nbComments!=0)
 				{
-					std::cout << "Issue with comments: " << std::to_string(number) << std::endl;;
+					BOOST_LOG_TRIVIAL(debug) << "Issue with comments: " << std::to_string(number) << std::endl;;
 				}
 
-				DEBUG("[+] handle issue: " << std::to_string(number));
+				BOOST_LOG_TRIVIAL(trace) << "[+] handle issue: " << std::to_string(number);
 
 				if(title.rfind("ResponseC2: ", 0) == 0)
 				{	
@@ -109,7 +119,7 @@ void ListenerGithub::checkGithubIssues()
 								chunks.push_back(res.substr(i, maxChunkSize));
 							}
 
-							std::cout << "Split response of " << chunks.size() << " chunks" << std::endl;
+							BOOST_LOG_TRIVIAL(debug) << "Split response of " << chunks.size() << " chunks" << std::endl;
 
 							json responseData = {
 							{"title", reponseTitle},
@@ -121,11 +131,18 @@ void ListenerGithub::checkGithubIssues()
 							std::string contentType = "application/json";
 							auto response = cli.Post(endpoint, headers, data, contentType);
 
-							std::cout << "Issue created " << response->status << std::endl;
+							err = response.error();
+							if(err!=httplib::Error::Success)
+							{
+								BOOST_LOG_TRIVIAL(error) << "Http client Post Issue " << httplib::to_string(err);
+								continue;
+							}
+
+							BOOST_LOG_TRIVIAL(trace) << "Issue created " << response->status << std::endl;
 							
 							if(response->status!=200 && response->status!=201)
 							{
-								DEBUG("Error with the ListenerGithub: " << response->body);
+								BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
 								continue;
 							}
 
@@ -148,13 +165,16 @@ void ListenerGithub::checkGithubIssues()
 								issueEndpoint += "/comments";
 								auto response = cli.Post(issueEndpoint, headers, data, contentType);
 
-								std::cout << "Comments created " << response->status << std::endl;
+								err = response.error();
+								if(err!=httplib::Error::Success)
+								{
+									BOOST_LOG_TRIVIAL(error) << "Http client Post Comments" << httplib::to_string(err);
+									continue;
+								}
 
 								if(response->status!=200 && response->status!=201)
 								{
-									std::cout << "Comments error " << response->body << std::endl;
-
-									DEBUG("Error with the ListenerGithub: " << response->body);
+									BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
 									continue;
 								}
 							}
@@ -173,9 +193,16 @@ void ListenerGithub::checkGithubIssues()
 							std::string contentType = "application/json";
 							auto response = cli.Post(endpoint, headers, data, contentType);
 
+							err = response.error();
+							if(err!=httplib::Error::Success)
+							{
+								BOOST_LOG_TRIVIAL(error) << "Http client Post " << httplib::to_string(err);
+								continue;
+							}
+
 							if(response->status!=200 && response->status!=201)
 							{
-								DEBUG("Error with the ListenerGithub: " << response->body);
+								BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
 								continue;
 							}
 						}
@@ -190,6 +217,13 @@ void ListenerGithub::checkGithubIssues()
 					issueEndpoint += "/issues/";
 					issueEndpoint += std::to_string(number);	
 					auto response = cli.Post(issueEndpoint, headers, data, contentType);
+
+					err = response.error();
+					if(err!=httplib::Error::Success)
+					{
+						BOOST_LOG_TRIVIAL(error) << "Http client Post close " << httplib::to_string(err);
+						continue;
+					}
 				}
 			}
 		}	
@@ -201,9 +235,22 @@ void ListenerGithub::checkGithubIssues()
 
 int ListenerGithub::HandleCheckIn(const std::string& req, std::string& output)
 {
-	bool ret = handleMessages(req, output);
+	BOOST_LOG_TRIVIAL(trace) << "HandleCheckIn";
 
-	DEBUG("output.size " << std::to_string(output.size()));
+	try
+	{
+    	bool ret = handleMessages(req, output);
+	} 
+	catch (const std::exception& ex) 
+	{
+		BOOST_LOG_TRIVIAL(error) << "HandleCheckIn catch exception";
+	} 
+	catch (...) 
+	{
+		BOOST_LOG_TRIVIAL(error) << "HandleCheckIn catch...";
+	}
+
+	
 
 	return 0;
 }

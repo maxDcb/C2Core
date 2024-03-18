@@ -5,8 +5,18 @@ using namespace std;
 
 
 ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
-	: Listener(ip, localPort, ListenerTcpType)
+	: Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
 {
+#ifdef __linux__
+
+	bool isPortInUse = port_in_use(localPort);
+	if(isPortInUse)
+		throw std::runtime_error("Port Already Used.");
+		
+#elif _WIN32
+#endif
+
+
 	m_listenerHash = random_string(SizeListenerHash);
 	m_listenerHash += "-";
 	m_listenerHash += ListenerTcpType;
@@ -16,6 +26,8 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	m_listenerHash += ip;
 	m_listenerHash += "/";
 	m_listenerHash += std::to_string(localPort);
+
+	m_port = localPort;
 
 	m_serverTcp = new SocketHandler::Server(m_port);
 
