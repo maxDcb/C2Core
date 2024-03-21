@@ -49,7 +49,7 @@ void ListenerSmb::lauchSmbServ()
 			while(input.empty())
 			{
 				res = m_serverSmb->receiveData(input);
-				Sleep(50);
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));		
 			}
 
 			DEBUG("received input.size " << std::to_string(input.size()));

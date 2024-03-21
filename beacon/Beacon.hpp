@@ -47,8 +47,8 @@ protected:
 	std::queue<C2Message> m_taskResult;
 
 private:
+	std::string m_key;
 	std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
-
 	std::vector<std::unique_ptr<Listener>> m_listeners;
 
 };

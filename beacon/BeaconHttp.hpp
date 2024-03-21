@@ -13,6 +13,7 @@ public:
 	void checkIn();
 
 private:
+	nlohmann::json m_beaconHttpConfig;
 	bool m_isHttps;
 
 };

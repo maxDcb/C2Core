@@ -1,10 +1,10 @@
 include_directories(../)
-add_library(Inject SHARED ../ModuleCmd/ModuleCmd.cpp Inject.cpp)
+add_library(Inject SHARED Inject.cpp)
 target_link_libraries(Inject ${Donut})
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")
 
-add_executable(testsInject tests/testsInject.cpp ../ModuleCmd/ModuleCmd.cpp Inject.cpp)
+add_executable(testsInject tests/testsInject.cpp Inject.cpp)
 
 if(WIN32)
     target_link_libraries(testsInject ${Donut} )

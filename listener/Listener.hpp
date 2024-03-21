@@ -80,6 +80,7 @@ protected:
 	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	bool handleMessages(const std::string& input, std::string& output);
 
+	std::string m_key;
 	std::string m_param1;
 	std::string m_param2;
 	std::string m_type;

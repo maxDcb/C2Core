@@ -22,7 +22,7 @@ void BeaconTcp::checkIn()
 	DEBUG("initConnection");
 	while(!m_client->initConnection())
 	{
-		Sleep(333);
+		std::this_thread::sleep_for(std::chrono::milliseconds(333));
 		DEBUG("initConnection");
 	}
 

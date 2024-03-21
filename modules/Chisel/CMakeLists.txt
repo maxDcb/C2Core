@@ -1,10 +1,10 @@
 include_directories(../)
-add_library(Chisel SHARED ../ModuleCmd/ModuleCmd.cpp Chisel.cpp)
+add_library(Chisel SHARED Chisel.cpp)
 target_link_libraries(Chisel ${Donut})
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")
 
-add_executable(testsChisel tests/testsChisel.cpp ../ModuleCmd/ModuleCmd.cpp Chisel.cpp)
+add_executable(testsChisel tests/testsChisel.cpp Chisel.cpp)
 
 if(WIN32)
     target_link_libraries(testsChisel ${Donut} )

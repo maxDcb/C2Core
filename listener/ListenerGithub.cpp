@@ -9,6 +9,7 @@ namespace logging = boost::log;
 
 using namespace std;
 using namespace httplib;
+using json = nlohmann::json;
 
 
 ListenerGithub::ListenerGithub(const std::string& project, const std::string& token)
@@ -73,10 +74,10 @@ void ListenerGithub::checkGithubIssues()
 
 		if(!response->body.empty())
 		{
-			json my_json = json::parse(response->body);
+			nlohmann::json my_json = json::parse(response->body);
 
 			// for every issue in the list
-			for (json::iterator it = my_json.begin(); it != my_json.end(); ++it)
+			for (nlohmann::json::iterator it = my_json.begin(); it != my_json.end(); ++it)
 			{				
 				std::string title = (*it)["title"];
 				std::string body = (*it)["body"];
@@ -123,7 +124,7 @@ void ListenerGithub::checkGithubIssues()
 
 							BOOST_LOG_TRIVIAL(debug) << "Split response of " << chunks.size() << " chunks" << std::endl;
 
-							json responseData = {
+							nlohmann::json responseData = {
 							{"title", reponseTitle},
 							{"body", chunks[0]},
 							};
@@ -148,12 +149,12 @@ void ListenerGithub::checkGithubIssues()
 								continue;
 							}
 
-							json my_json = json::parse(response->body);
+							nlohmann::json my_json = nlohmann::json::parse(response->body);
 							int number = my_json["number"];
 		
 							for (std::size_t i = 1; i < chunks.size(); i++) 
 							{
-								json responseData = {
+								nlohmann::json responseData = {
 									{"body", chunks[i]},
 									};
 
@@ -185,7 +186,7 @@ void ListenerGithub::checkGithubIssues()
 						{
 							DEBUG("Simple reponse");
 
-							json responseData = {
+							nlohmann::json responseData = {
 							{"title", reponseTitle},
 							{"body", res},
 							};

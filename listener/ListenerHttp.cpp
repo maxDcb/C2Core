@@ -9,6 +9,7 @@ namespace logging = boost::log;
 
 using namespace std;
 using namespace httplib;
+using json = nlohmann::json;
 
 
 ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann::json& config, bool isHttps)

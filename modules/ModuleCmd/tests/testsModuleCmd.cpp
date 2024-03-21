@@ -2,6 +2,13 @@
 
 #include <queue>
 
+#include <base64.h>
+#include <json.hpp>
+
+using json = nlohmann::json;
+using namespace std;
+
+
 int multiTests()
 {
 	std::queue<C2Message> m_tasks;
@@ -513,10 +520,78 @@ int unitTestsMultiBundleC2Message()
 
 	return 0;
 }
-	
+
+
+int malformedInputTests()
+{
+	std::cout << " - MultiBundleC2Message" << std::endl;
+	{
+		MultiBundleC2Message multiBundleC2Message;
+
+		std::string test = "[{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
+		multiBundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		MultiBundleC2Message multiBundleC2Message;
+
+		std::string test = "[{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"o\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
+		multiBundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		MultiBundleC2Message multiBundleC2Message;
+
+		std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
+		multiBundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+
+	std::cout << " - BundleC2Message" << std::endl;
+	{
+		BundleC2Message bundleC2Message;
+
+		std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
+		bundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		BundleC2Message bundleC2Message;
+
+		std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessigs\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
+		bundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		BundleC2Message bundleC2Message;
+
+		std::string test = "{\"arch\":\"x64\",\"beaconHash\3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
+		bundleC2Message.ParseFromArray(test.data(), test.size());
+	}
+
+	std::cout << " - C2Message" << std::endl;
+	{
+		C2Message c2Message;
+
+		std::string test = "{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}";
+		c2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		C2Message c2Message;
+
+		std::string test = "{\"args\e\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}";
+		c2Message.ParseFromArray(test.data(), test.size());
+	}
+	{
+		C2Message c2Message;
+
+		std::string test = "{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue";
+		c2Message.ParseFromArray(test.data(), test.size());
+	}
+
+
+	return 0;
+}
+
 
 int main()
 {
+
 	std::cout << "unitTestsC2Message " << std::endl;
 	unitTestsC2Message(); 
 
@@ -528,4 +603,8 @@ int main()
 	
 	std::cout << "multiTests " << std::endl;
 	multiTests();
+
+	std::cout << "malformed input " << std::endl;
+	malformedInputTests();
+
 }

