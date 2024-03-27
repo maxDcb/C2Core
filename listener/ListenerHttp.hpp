@@ -17,6 +17,7 @@ private:
 	void lauchHttpServ();
 
 	int HandleCheckIn(const httplib::Request& req, httplib::Response& res);
+	int HandleCheckIn(const std::string& requestData, httplib::Response& res);
 
 	std::string m_host;
 	int m_port;

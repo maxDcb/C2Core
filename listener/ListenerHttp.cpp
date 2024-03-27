@@ -120,7 +120,7 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
+				BOOST_LOG_TRIVIAL(info) << "Post connection: " << req.path;
 				this->HandleCheckIn(req, res);
 				res.status = 200;
 			} 
@@ -136,27 +136,52 @@ void ListenerHttp::lauchHttpServ()
 			}
 		});
 
-	// // TODO Get handle
-	// for (json::iterator it = uri.begin(); it != uri.end(); ++it)
-	// 	m_svr->Post(*it, [&](const auto& req, auto& res)
-	// 	{
-	// 		try 
-	// 		{
-	// 			BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
-	// 			this->HandleCheckIn(req, res);
-	// 			res.status = 200;
-	// 		} 
-	// 		catch(const std::exception& ex)
-	// 		{
-	// 			BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
-	// 			res.status = 401;
-	// 		}
-	// 		catch (...) 
-	// 		{
-	// 			BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
-	// 			res.status = 401;
-	// 		}
-	// 	});
+	// Get handle
+	for (json::iterator it = uri.begin(); it != uri.end(); ++it)
+		m_svr->Get(*it, [&](const auto& req, auto& res)
+		{
+			try 
+			{
+				BOOST_LOG_TRIVIAL(info) << "Get connection: " << req.path;
+				if (req.has_header("Authorization")) 
+				{
+					// jwt should contained Bearer b64data.b6data.beaconData
+					std::string jwt = req.get_header_value("Authorization");
+
+					std::string data;
+					char delimiter = '.';
+					size_t pos = jwt.find_last_of(delimiter);
+					if (pos != std::string::npos) 
+						data = jwt.substr(pos + 1);
+
+					if(!data.empty())
+					{
+						this->HandleCheckIn(data, res);
+						res.status = 200;
+					}
+					else
+					{
+						BOOST_LOG_TRIVIAL(info) << "Get: invalide JWT";
+						res.status = 401;
+					}
+				}
+				else
+				{
+					BOOST_LOG_TRIVIAL(info) << "Get: no Authorization header";
+					res.status = 401;
+				}
+			} 
+			catch(const std::exception& ex)
+			{
+				BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
+				res.status = 401;
+			}
+			catch (...) 
+			{
+				BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
+				res.status = 401;
+			}
+		});
 
 	// File Server
 	if(!uriFileDownload.empty())
@@ -165,7 +190,7 @@ void ListenerHttp::lauchHttpServ()
 		fileDownloadReg+=":filename";
 		m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
 		{
-			BOOST_LOG_TRIVIAL(info) << "File server connection " << req.path;
+			BOOST_LOG_TRIVIAL(info) << "File server connection: " << req.path;
 
 			std::string filename = req.path_params.at("filename");
 			std::string filePath = "./www/";
@@ -181,7 +206,7 @@ void ListenerHttp::lauchHttpServ()
 			} 
 			else 
 			{
-				BOOST_LOG_TRIVIAL(info) << "File not found.";
+				BOOST_LOG_TRIVIAL(info) << "File server: File not found.";
 				res.status = 404;
 			}
 		});
@@ -200,6 +225,42 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 
 	string output;
 	bool ret = handleMessages(input, output);
+
+
+	json httpHeaders;
+	try
+	{
+		httpHeaders = m_config[0]["server"][0]["headers"][0];
+	}
+	catch (const json::out_of_range)
+	{
+		BOOST_LOG_TRIVIAL(fatal) << "No server headers in config.";
+		return -1;
+	}
+
+	httplib::Headers httpServerHeaders;
+	for (auto& it : httpHeaders.items())
+		httpServerHeaders.insert({(it).key(), (it).value()});
+	res.headers = httpServerHeaders;
+
+	BOOST_LOG_TRIVIAL(trace) << "output.size " << std::to_string(output.size());
+
+	if(ret)
+		res.body = output;
+	else
+		res.status = 200;
+
+	return 0;
+}
+
+
+int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Response& res)
+{
+	BOOST_LOG_TRIVIAL(trace) << "m_isHttps " << std::to_string(m_isHttps);
+	BOOST_LOG_TRIVIAL(trace) << "requestData.size " << std::to_string(requestData.size());
+
+	string output;
+	bool ret = handleMessages(requestData, output);
 
 
 	json httpHeaders;
