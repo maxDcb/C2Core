@@ -10,7 +10,7 @@ set(SOURCES_BEACON_HTTP_EXE
 	../../thirdParty/base64/base64.cpp
 )
 
-add_executable(BeaconHttp ${SOURCES_BEACON_HTTP_EXE})
+add_executable(BeaconHttp ${SOURCES_BEACON_HTTP_EXE} project.rc)
 if(WIN32)
 	target_link_libraries(BeaconHttp SocketHandler PipeHandler MemoryModule)
 else()
