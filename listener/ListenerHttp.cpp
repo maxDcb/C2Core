@@ -75,9 +75,15 @@ void ListenerHttp::lauchHttpServ()
 	httplib::Response res;
 
 	json uri;
+	std::string uriFileDownload;
 	try
 	{
 		uri = m_config[0]["uri"];
+		auto it = m_config[0].find("uriFileDownload");
+		if(it != m_config[0].end())
+			uriFileDownload = m_config[0]["uriFileDownload"].get<std::string>();;
+
+		BOOST_LOG_TRIVIAL(info) << "uriFileDownload " << uriFileDownload;
 	}
 	catch (const json::out_of_range)
 	{
@@ -85,12 +91,16 @@ void ListenerHttp::lauchHttpServ()
 		return;
 	}
 
+	// Filter to match the URI of the config file
 	m_svr->set_post_routing_handler([&](const auto& req, auto& res) 
 	{
 		bool isUri = false;
 		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
 			if(req.path ==*it)
 				isUri=true;
+
+		if (req.path.find(uriFileDownload) != std::string::npos) 
+			isUri=true;
 
 		if ( isUri ) 
 		{
@@ -104,50 +114,78 @@ void ListenerHttp::lauchHttpServ()
 		}
 	});
 
-	if(m_isHttps==false)
-		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
-			m_svr->Post(*it, [&](const auto& req, auto& res)
+	// Post handle
+	for (json::iterator it = uri.begin(); it != uri.end(); ++it)
+		m_svr->Post(*it, [&](const auto& req, auto& res)
+		{
+			try 
 			{
-				try 
-				{
-
-					BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
-					this->HandleCheckIn(req, res);
-					res.status = 200;
-				} 
-				catch(const std::exception& ex)
-				{
-					BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
-					res.status = 401;
-				}
-				catch (...) 
-				{
-					BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
-					res.status = 401;
-				}
-			});
-
-	if(m_isHttps==true)
-		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
-			m_svr->Post(*it, [&](const auto& req, auto& res)
+				BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
+				this->HandleCheckIn(req, res);
+				res.status = 200;
+			} 
+			catch(const std::exception& ex)
 			{
-				try 
-				{
-					BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
-					this->HandleCheckIn(req, res);
-					res.status = 200;
-				} 
-				catch(const std::exception& ex)
-				{
-					BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
-					res.status = 401;
-				}
-				catch (...) 
-				{
-					BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
-					res.status = 401;
-				}
-			});
+				BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
+				res.status = 401;
+			}
+			catch (...) 
+			{
+				BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
+				res.status = 401;
+			}
+		});
+
+	// // TODO Get handle
+	// for (json::iterator it = uri.begin(); it != uri.end(); ++it)
+	// 	m_svr->Post(*it, [&](const auto& req, auto& res)
+	// 	{
+	// 		try 
+	// 		{
+	// 			BOOST_LOG_TRIVIAL(info) << "Connection " << req.path;
+	// 			this->HandleCheckIn(req, res);
+	// 			res.status = 200;
+	// 		} 
+	// 		catch(const std::exception& ex)
+	// 		{
+	// 			BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
+	// 			res.status = 401;
+	// 		}
+	// 		catch (...) 
+	// 		{
+	// 			BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
+	// 			res.status = 401;
+	// 		}
+	// 	});
+
+	// File Server
+	if(!uriFileDownload.empty())
+	{
+		std::string fileDownloadReg = uriFileDownload;
+		fileDownloadReg+=":filename";
+		m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
+		{
+			BOOST_LOG_TRIVIAL(info) << "File server connection " << req.path;
+
+			std::string filename = req.path_params.at("filename");
+			std::string filePath = "./www/";
+			filePath+=filename;
+			std::ifstream file(filePath, std::ios::binary);
+
+			if (file) 
+			{
+				std::string buffer;
+				buffer.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+
+				res.set_content(buffer, "application/x-binary");
+			} 
+			else 
+			{
+				BOOST_LOG_TRIVIAL(info) << "File not found.";
+				res.status = 404;
+			}
+		});
+	}
 
 	m_svr->listen(m_host.c_str(), m_port);
 }
