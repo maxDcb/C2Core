@@ -76,14 +76,23 @@ void ListenerHttp::lauchHttpServ()
 
 	json uri;
 	std::string uriFileDownload;
+	std::string downloadFolder;
 	try
 	{
 		uri = m_config[0]["uri"];
+
 		auto it = m_config[0].find("uriFileDownload");
 		if(it != m_config[0].end())
 			uriFileDownload = m_config[0]["uriFileDownload"].get<std::string>();;
 
+		it = m_config[0].find("downloadFolder");
+		if(it != m_config[0].end())
+			downloadFolder = m_config[0]["downloadFolder"].get<std::string>();;
+
 		BOOST_LOG_TRIVIAL(info) << "uriFileDownload " << uriFileDownload;
+		BOOST_LOG_TRIVIAL(info) << "downloadFolder " << downloadFolder;
+		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
+			BOOST_LOG_TRIVIAL(info) << "uri " << *it;
 	}
 	catch (const json::out_of_range)
 	{
@@ -193,7 +202,8 @@ void ListenerHttp::lauchHttpServ()
 			BOOST_LOG_TRIVIAL(info) << "File server connection: " << req.path;
 
 			std::string filename = req.path_params.at("filename");
-			std::string filePath = "./www/";
+			std::string filePath = downloadFolder;
+			filePath+="/";
 			filePath+=filename;
 			std::ifstream file(filePath, std::ios::binary);
 
