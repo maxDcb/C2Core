@@ -1,6 +1,11 @@
 include_directories(..)
 include_directories(../../modules/ModuleCmd)
 
+IF (WIN32)
+ELSE()
+    include_directories(${Boost_INCLUDE_DIRS})
+ENDIF()
+
 add_executable(testListener testListener.cpp)
 add_custom_command(TARGET testListener POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testListener> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testListener>")
