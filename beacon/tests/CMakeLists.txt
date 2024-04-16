@@ -14,9 +14,9 @@ testBeacon.cpp
 ../../listener/ListenerSmb.cpp	
 ../../../thirdParty/base64/base64.cpp)
 IF (WIN32)
-    target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule boost::boost)
-ELSE()
     target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule)
+ELSE()
+    target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule boost::boost)
 ENDIF()
 add_custom_command(TARGET testBeacon POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testBeacon> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testBeacon>")
