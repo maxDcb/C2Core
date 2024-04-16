@@ -1,6 +1,11 @@
 include_directories(..)
 include_directories(../../modules/ModuleCmd)
 
+IF (WIN32)
+ELSE()
+    include_directories(${Boost_INCLUDE_DIRS})
+ENDIF()
+
 add_executable(testBeacon 
 testBeacon.cpp 
 ../Beacon.cpp
@@ -8,7 +13,11 @@ testBeacon.cpp
 ../../listener/ListenerTcp.cpp	
 ../../listener/ListenerSmb.cpp	
 ../../../thirdParty/base64/base64.cpp)
-target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule)
+IF (WIN32)
+    target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule boost::boost)
+ELSE()
+    target_link_libraries(testBeacon SocketHandler PipeHandler MemoryModule)
+ENDIF()
 add_custom_command(TARGET testBeacon POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testBeacon> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testBeacon>")
 add_test(NAME testBeacon COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testBeacon>")
