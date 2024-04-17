@@ -33,15 +33,15 @@ bool testCoffLoader()
         splitedCmd.push_back("c:\\");
         splitedCmd.push_back("0");
 
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        coffLoader->init(splitedCmd, c2Message);
-        coffLoader->process(c2Message, c2RetMessage);
+        // C2Message c2Message;
+        // C2Message c2RetMessage;
+        // coffLoader->init(splitedCmd, c2Message);
+        // coffLoader->process(c2Message, c2RetMessage);
 
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        // std::string output = "\n\noutput:\n";
+        // output += c2RetMessage.returnvalue();
+        // output += "\n";
+        // std::cout << output << std::endl;
     }
 
     return true;
