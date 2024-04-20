@@ -50,6 +50,7 @@ class CommonCommands
 
 	std::string getHelp(std::string cmd)
 	{
+		// OPSEC remove getHelp and getInfo strings from the beacon compilation
 		std::string output;
 		if(cmd==SleepCmd)
 		{

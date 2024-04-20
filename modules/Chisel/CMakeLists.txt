@@ -4,6 +4,7 @@ target_link_libraries(Chisel ${Donut})
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")
 
+if(WITH_TESTS)
 add_executable(testsChisel tests/testsChisel.cpp Chisel.cpp)
 
 if(WIN32)
@@ -16,3 +17,4 @@ add_custom_command(TARGET testsChisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E cop
 $<TARGET_FILE:testsChisel> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
 
 add_test(NAME testsChisel COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
+endif()
