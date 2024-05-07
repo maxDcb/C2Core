@@ -19,6 +19,9 @@
 // #include <altstr.h>
 #endif
 
+
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+
 #include <donut.h>
 
 // create the shellcode from exe, unmanaged DLL/EXE or .NET DLL/EXE
@@ -85,6 +88,7 @@ std::string static inline creatShellCodeDonut(
 	return result;
 }
 
+#endif
 
 #ifdef __linux__
 

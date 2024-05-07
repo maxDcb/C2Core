@@ -5,10 +5,13 @@
 #include <filesystem>
 #include <sstream>
 
+#include "Common.hpp"
+
+
 using namespace std;
 
-
-const std::string moduleName = "ls";
+constexpr std::string_view moduleName = "ls";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -21,7 +24,11 @@ __declspec(dllexport) ListDirectory* ListDirectoryConstructor()
 #endif
 
 ListDirectory::ListDirectory()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -32,11 +39,12 @@ ListDirectory::~ListDirectory()
 std::string ListDirectory::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "ls:\n";
 	info += "ListDirectory\n";
 	info += "exemple:\n";
 	info += "- ls /tmp\n";
-
+#endif
 	return info;
 }
 
@@ -61,7 +69,7 @@ int ListDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 	string path = c2Message.cmd();
 	std::string outCmd = listDirectory(path);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(path);
 	c2RetMessage.set_returnvalue(outCmd);
 

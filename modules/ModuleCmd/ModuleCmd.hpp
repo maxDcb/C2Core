@@ -545,9 +545,10 @@ class ModuleCmd
 {
 	
 public:
-	ModuleCmd(const std::string& name)
+	ModuleCmd(const std::string& name, unsigned long hash=0)
 	{
 		m_name=name;
+		m_hash=hash;
 	}
 
 	~ModuleCmd()
@@ -560,6 +561,11 @@ public:
 		return m_name;
 	}
 
+	unsigned long getHash()
+	{
+		return m_hash;
+	}
+
 	virtual std::string getInfo() = 0;
 
 	// if an error ocurre:
@@ -570,6 +576,7 @@ public:
 
 protected:
 	std::string m_name;
+	unsigned long m_hash;
 
 private:
 	

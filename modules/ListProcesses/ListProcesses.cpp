@@ -33,6 +33,9 @@
 
 #endif
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
@@ -258,9 +261,8 @@ std::string GetProcess()
 #endif
 
 
-
-const std::string moduleName = "ps";
-
+constexpr std::string_view moduleName = "ps";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 #ifdef _WIN32
 
@@ -272,7 +274,11 @@ __declspec(dllexport) ListProcesses* ListProcessesConstructor()
 #endif
 
 ListProcesses::ListProcesses()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -283,11 +289,12 @@ ListProcesses::~ListProcesses()
 std::string ListProcesses::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "ps:\n";
 	info += "ListProcesses\n";
 	info += "exemple:\n";
 	info += "- ps\n";
-
+#endif
 	return info;
 }
 
@@ -303,7 +310,7 @@ int ListProcesses::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	std::string outCmd = listProcesses();
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd("");
 	c2RetMessage.set_returnvalue(outCmd);
 

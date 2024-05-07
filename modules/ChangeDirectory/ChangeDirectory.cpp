@@ -1,5 +1,7 @@
 #include "ChangeDirectory.hpp"
 
+#include "Common.hpp"
+
 #include <cstring>
 #include <array>
 #include <filesystem>
@@ -7,7 +9,8 @@
 using namespace std;
 
 
-const std::string moduleName = "cd";
+constexpr std::string_view moduleName = "cd";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -20,7 +23,11 @@ __declspec(dllexport) ChangeDirectory* ChangeDirectoryConstructor()
 #endif
 
 ChangeDirectory::ChangeDirectory()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -31,16 +38,18 @@ ChangeDirectory::~ChangeDirectory()
 std::string ChangeDirectory::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "cd:\n";
 	info += "ChangeDirectory\n";
 	info += "exemple:\n";
 	info += "- cd /tmp\n";
-
+#endif
 	return info;
 }
 
 int ChangeDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
     string path;
     for (int idx = 1; idx < splitedCmd.size(); idx++) 
     {
@@ -51,7 +60,7 @@ int ChangeDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Mes
 
 	c2Message.set_instruction(splitedCmd[0]);
 	c2Message.set_cmd(path);
-
+#endif
 	return 0;
 }
 
@@ -61,7 +70,7 @@ int ChangeDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 	string path = c2Message.cmd();
 	std::string outCmd = changeDirectory(path);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(path);
 	c2RetMessage.set_returnvalue(outCmd);
 

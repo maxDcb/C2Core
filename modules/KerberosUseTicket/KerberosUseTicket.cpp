@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "Common.hpp"
 #include "Tools.hpp"
 
 #ifdef __linux__
@@ -31,8 +32,8 @@ typedef std::vector<unsigned char> TicketData;
 
 #endif
 
-// TODO set kerberosUseTicket
-const std::string moduleName = "kerberosUseTicket";
+constexpr std::string_view moduleName = "kerberosUseTicket";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -46,7 +47,11 @@ __declspec(dllexport) KerberosUseTicket* KerberosUseTicketConstructor()
 
 
 KerberosUseTicket::KerberosUseTicket()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -57,11 +62,12 @@ KerberosUseTicket::~KerberosUseTicket()
 std::string KerberosUseTicket::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "KerberosUseTicket:\n";
 	info += "Import a kerberos ticket from a file to the curent LUID. \n";
 	info += "exemple:\n";
 	info += "- KerberosUseTicket /tmp/ticket.kirbi\n";
-
+#endif
 	return info;
 }
 
@@ -103,7 +109,7 @@ int KerberosUseTicket::process(C2Message &c2Message, C2Message &c2RetMessage)
 
    std::string out = importTicket(buffer);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(cmd);
 	c2RetMessage.set_returnvalue(out);
 	return 0;

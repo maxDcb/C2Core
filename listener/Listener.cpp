@@ -12,6 +12,14 @@
 using namespace std;
 
 
+// XOR encrypted at compile time, so don't appear in string
+constexpr std::string_view _KeyTraficEncryption_ = "dfsdgferhzdzxczevre5595485sdg";
+constexpr std::string_view mainKeyConfig = ".CRT$XCL";
+
+// compile time encryption
+constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
+
+
 Listener::Listener(const std::string& param1, const std::string& param2, const std::string& type)
 {
 	m_param1 = param1;
@@ -47,9 +55,13 @@ Listener::Listener(const std::string& param1, const std::string& param2, const s
 		m_hostname = infoBuf;
 
 #endif
-	// TODO put as a param comming from conf
-	m_key="dfsdgferhzdzxczevre5595485sdg";
+	// TODO take from config ???
+	// decrypt key
+    std::string keyDecrypted(std::begin(_EncryptedKeyTraficEncryption_), std::end(_EncryptedKeyTraficEncryption_));
+    std::string key(mainKeyConfig);
+    XOR(keyDecrypted, key);
 
+	m_key=keyDecrypted;
 }
 
 

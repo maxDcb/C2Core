@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <random>
+#include <string_view>
 
 #undef DEBUG_BUILD
 
@@ -16,6 +17,31 @@
 
 const int SizeListenerHash = 32;
 const int SizeBeaconHash = 32;
+
+
+constexpr unsigned long djb2(std::string_view str, unsigned long hash = 5381, std::size_t index = 0) 
+{
+    return (index == str.size()) ? hash : djb2(str, ((hash << 5) + hash) + str[index], index + 1);
+}
+
+template<std::size_t N, std::size_t M>
+inline constexpr std::array<char, N> compileTimeXOR(const std::string_view data, const std::string_view key) 
+{
+    std::array<char, N> result{};
+    std::size_t key_size = key.size();
+    std::size_t j = 0;
+
+    for (std::size_t i = 0; i < data.size(); ++i) {
+        if (j == key_size) {
+            j = 0;
+        }
+
+        result[i] = data[i] ^ key[j];
+        ++j;
+    }
+
+    return result;
+}
 
 
 void static inline XOR(std::string& data, const std::string& key) 
