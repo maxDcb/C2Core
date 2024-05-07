@@ -14,7 +14,10 @@ const std::string ListenerCmd = "listener";
 const std::string ListenerPolCmd = "listenerPol";
 const std::string LoadC2Module = "loadModule";
 const std::string UnloadC2Module = "unloadModule";
+
+#ifdef BUILD_TEAMSERVER
 const std::string ModulesDirectoryFromTeamServer = "../Modules/";
+#endif
 
 const std::string StartCmd = "start";
 const std::string StopCmd = "stop";
@@ -52,6 +55,7 @@ class CommonCommands
 	{
 		// OPSEC remove getHelp and getInfo strings from the beacon compilation
 		std::string output;
+#ifdef BUILD_TEAMSERVER
 		if(cmd==SleepCmd)
 		{
 			output = "sleep: \n";
@@ -90,7 +94,7 @@ class CommonCommands
 			output += "exemple:\n";
 			output += " - unloadModule assemblyExec \n";
 		}
-
+#endif
 		return output;
 	}
 
@@ -98,6 +102,7 @@ class CommonCommands
 	// set_returnvalue(errorMsg) && return -1
 	int init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 	{
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 		std::string instruction = splitedCmd[0];
 
 		if(instruction==SleepCmd)
@@ -255,7 +260,7 @@ class CommonCommands
 				return -1;
 			}
 		}
-
+#endif
 		return 0;
 	}
 
