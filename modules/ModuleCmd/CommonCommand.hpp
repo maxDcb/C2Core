@@ -15,7 +15,7 @@ const std::string ListenerPolCmd = "listenerPol";
 const std::string LoadC2Module = "loadModule";
 const std::string UnloadC2Module = "unloadModule";
 
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 const std::string ModulesDirectoryFromTeamServer = "../Modules/";
 #endif
 
