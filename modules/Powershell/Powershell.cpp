@@ -20,7 +20,7 @@ using namespace std;
 constexpr std::string_view moduleName = "powershell";
 constexpr unsigned long moduleHash = djb2(moduleName);
 
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 const std::string ScriptsDirectoryFromTeamServer = "../Scripts/";
 #endif
 
