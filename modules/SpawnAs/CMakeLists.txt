@@ -1,6 +1,6 @@
 include_directories(../)
 add_library(SpawnAs SHARED SpawnAs.cpp)
-target_link_libraries(SpawnAs ${Donut})
+target_link_libraries(SpawnAs ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
 add_custom_command(TARGET SpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:SpawnAs> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:SpawnAs>")
 
@@ -8,9 +8,9 @@ if(WITH_TESTS)
 add_executable(testsSpawnAs tests/testsSpawnAs.cpp SpawnAs.cpp)
 
 if(WIN32)
-    target_link_libraries(testsSpawnAs ${Donut} )
+    target_link_libraries(testsSpawnAs ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
 else()
-    target_link_libraries(testsSpawnAs ${Donut} ${aplib64} )
+    target_link_libraries(testsSpawnAs ${Donut} ${aplib64} spdlog::spdlog nlohmann_json::nlohmann_json)
 endif()
 
 add_custom_command(TARGET testsSpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

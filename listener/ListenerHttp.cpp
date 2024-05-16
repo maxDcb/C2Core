@@ -1,12 +1,5 @@
 #include "ListenerHttp.hpp"
 
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-
-namespace logging = boost::log;
-
-
 using namespace std;
 using namespace httplib;
 using json = nlohmann::json;
@@ -52,7 +45,7 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 		}
 		catch (const json::out_of_range)
 		{
-			BOOST_LOG_TRIVIAL(fatal) << "No ServHttpsListenerCrtFile or ServHttpsListenerKeyFile in config.";
+			SPDLOG_CRITICAL("No ServHttpsListenerCrtFile or ServHttpsListenerKeyFile in config.");
 			return;
 		}		
 	}
@@ -89,14 +82,17 @@ void ListenerHttp::lauchHttpServ()
 		if(it != m_config[0].end())
 			downloadFolder = m_config[0]["downloadFolder"].get<std::string>();;
 
-		BOOST_LOG_TRIVIAL(info) << "uriFileDownload " << uriFileDownload;
-		BOOST_LOG_TRIVIAL(info) << "downloadFolder " << downloadFolder;
+		SPDLOG_INFO("uriFileDownload {0}", uriFileDownload);
+		SPDLOG_INFO("downloadFolder {0}", downloadFolder);
 		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
-			BOOST_LOG_TRIVIAL(info) << "uri " << *it;
+		{
+			std::string uriTmp = *it;
+			SPDLOG_INFO("uri {0}", uriTmp);
+		}
 	}
 	catch (const json::out_of_range)
 	{
-		BOOST_LOG_TRIVIAL(fatal) << "No uri in config.";
+		SPDLOG_CRITICAL("No uri in config.");
 		return;
 	}
 
@@ -117,7 +113,7 @@ void ListenerHttp::lauchHttpServ()
 		}
 		else
 		{
-			BOOST_LOG_TRIVIAL(info) << "Unauthorized connection " << req.path;
+			SPDLOG_INFO("Unauthorized connection {0}", req.path);
 			res.status = 401;
 			return Server::HandlerResponse::Handled;
 		}
@@ -129,18 +125,18 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				BOOST_LOG_TRIVIAL(info) << "Post connection: " << req.path;
+				SPDLOG_INFO("Post connection: {0}", req.path);
 				this->HandleCheckIn(req, res);
 				res.status = 200;
 			} 
 			catch(const std::exception& ex)
 			{
-				BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
+				SPDLOG_INFO("Execption {0}", ex.what());
 				res.status = 401;
 			}
 			catch (...) 
 			{
-				BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
+				SPDLOG_INFO("Unknown failure occurred.");
 				res.status = 401;
 			}
 		});
@@ -151,7 +147,7 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				BOOST_LOG_TRIVIAL(info) << "Get connection: " << req.path;
+				SPDLOG_INFO("Get connection: {0}", req.path);
 				if (req.has_header("Authorization")) 
 				{
 					// jwt should contained Bearer b64data.b6data.beaconData
@@ -170,24 +166,24 @@ void ListenerHttp::lauchHttpServ()
 					}
 					else
 					{
-						BOOST_LOG_TRIVIAL(info) << "Get: invalide JWT";
+						SPDLOG_INFO("Get: invalide JWT");
 						res.status = 401;
 					}
 				}
 				else
 				{
-					BOOST_LOG_TRIVIAL(info) << "Get: no Authorization header";
+					SPDLOG_INFO("Get: no Authorization header");
 					res.status = 401;
 				}
 			} 
 			catch(const std::exception& ex)
 			{
-				BOOST_LOG_TRIVIAL(info) << "Execption " << ex.what();
+				SPDLOG_INFO("Execption {0}", ex.what());
 				res.status = 401;
 			}
 			catch (...) 
 			{
-				BOOST_LOG_TRIVIAL(info) << "Unknown failure occurred.";
+				SPDLOG_INFO("Unknown failure occurred.");
 				res.status = 401;
 			}
 		});
@@ -199,7 +195,7 @@ void ListenerHttp::lauchHttpServ()
 		fileDownloadReg+=":filename";
 		m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
 		{
-			BOOST_LOG_TRIVIAL(info) << "File server connection: " << req.path;
+			SPDLOG_INFO("File server connection: {0}", req.path);
 
 			std::string filename = req.path_params.at("filename");
 			std::string filePath = downloadFolder;
@@ -216,7 +212,7 @@ void ListenerHttp::lauchHttpServ()
 			} 
 			else 
 			{
-				BOOST_LOG_TRIVIAL(info) << "File server: File not found.";
+				SPDLOG_INFO("File server: File not found.");
 				res.status = 404;
 			}
 		});
@@ -230,8 +226,8 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 {
 	string input = req.body;
 
-	BOOST_LOG_TRIVIAL(trace) << "m_isHttps " << std::to_string(m_isHttps);
-	BOOST_LOG_TRIVIAL(trace) << "input.size " << std::to_string(input.size());
+	SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
+	SPDLOG_TRACE("input.size {0}", std::to_string(input.size()));
 
 	string output;
 	bool ret = handleMessages(input, output);
@@ -244,7 +240,7 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 	}
 	catch (const json::out_of_range)
 	{
-		BOOST_LOG_TRIVIAL(fatal) << "No server headers in config.";
+		SPDLOG_CRITICAL("No server headers in config.");
 		return -1;
 	}
 
@@ -253,7 +249,7 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	BOOST_LOG_TRIVIAL(trace) << "output.size " << std::to_string(output.size());
+	SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
 
 	if(ret)
 		res.body = output;
@@ -266,8 +262,8 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 
 int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Response& res)
 {
-	BOOST_LOG_TRIVIAL(trace) << "m_isHttps " << std::to_string(m_isHttps);
-	BOOST_LOG_TRIVIAL(trace) << "requestData.size " << std::to_string(requestData.size());
+	SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
+	SPDLOG_TRACE("requestData.size {0}", std::to_string(requestData.size()));
 
 	string output;
 	bool ret = handleMessages(requestData, output);
@@ -280,7 +276,7 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 	}
 	catch (const json::out_of_range)
 	{
-		BOOST_LOG_TRIVIAL(fatal) << "No server headers in config.";
+		SPDLOG_CRITICAL("No server headers in config.");
 		return -1;
 	}
 
@@ -289,7 +285,7 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	BOOST_LOG_TRIVIAL(trace) << "output.size " << std::to_string(output.size());
+	SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
 
 	if(ret)
 		res.body = output;

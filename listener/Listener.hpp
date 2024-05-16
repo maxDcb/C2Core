@@ -9,6 +9,12 @@
 #include "Session.hpp"
 #include "Common.hpp"
 
+#ifdef BUILD_TEAMSERVER
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/basic_file_sink.h"
+#endif
 
 #ifdef __linux__
 
@@ -91,6 +97,5 @@ protected:
 	std::vector<std::shared_ptr<Session>> m_sessions;
 
 private:
-	std::mutex m_mutex;
-	
+	std::mutex m_mutex;	
 };

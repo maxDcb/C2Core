@@ -1,12 +1,5 @@
 #include "ListenerGithub.hpp"
 
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-
-namespace logging = boost::log;
-
-
 using namespace std;
 using namespace httplib;
 using json = nlohmann::json;
@@ -62,13 +55,13 @@ void ListenerGithub::checkGithubIssues()
 		auto err = response.error();
 		if(err!=httplib::Error::Success)
 		{
-			BOOST_LOG_TRIVIAL(error) << "Http client Get " << httplib::to_string(err);
+			SPDLOG_ERROR("Http client Get {0}", httplib::to_string(err));
 			continue;
 		}
 
 		if(response->status!=200 && response->status!=201)
 		{
-			BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
+			SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
 			continue;
 		}
 
@@ -86,10 +79,10 @@ void ListenerGithub::checkGithubIssues()
 
 				if(nbComments!=0)
 				{
-					BOOST_LOG_TRIVIAL(debug) << "Issue with comments: " << std::to_string(number) << std::endl;;
+					SPDLOG_DEBUG("Issue with comments: {0}", std::to_string(number));
 				}
 
-				BOOST_LOG_TRIVIAL(trace) << "[+] handle issue: " << std::to_string(number);
+				SPDLOG_TRACE("[+] handle issue: {0}", std::to_string(number));
 
 				if(title.rfind("ResponseC2: ", 0) == 0)
 				{	
@@ -122,7 +115,7 @@ void ListenerGithub::checkGithubIssues()
 								chunks.push_back(res.substr(i, maxChunkSize));
 							}
 
-							BOOST_LOG_TRIVIAL(debug) << "Split response of " << chunks.size() << " chunks" << std::endl;
+							SPDLOG_DEBUG("Split response of {0} chunks", chunks.size());
 
 							nlohmann::json responseData = {
 							{"title", reponseTitle},
@@ -137,15 +130,15 @@ void ListenerGithub::checkGithubIssues()
 							err = response.error();
 							if(err!=httplib::Error::Success)
 							{
-								BOOST_LOG_TRIVIAL(error) << "Http client Post Issue " << httplib::to_string(err);
+								SPDLOG_ERROR("Http client Post Issue {0}", httplib::to_string(err));
 								continue;
 							}
 
-							BOOST_LOG_TRIVIAL(trace) << "Issue created " << response->status << std::endl;
+							SPDLOG_TRACE("Issue created {0}", response->status);
 							
 							if(response->status!=200 && response->status!=201)
 							{
-								BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
+								SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
 								continue;
 							}
 
@@ -171,13 +164,13 @@ void ListenerGithub::checkGithubIssues()
 								err = response.error();
 								if(err!=httplib::Error::Success)
 								{
-									BOOST_LOG_TRIVIAL(error) << "Http client Post Comments" << httplib::to_string(err);
+									SPDLOG_ERROR("Http client Post Comments {0}", httplib::to_string(err));
 									continue;
 								}
 
 								if(response->status!=200 && response->status!=201)
 								{
-									BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
+									SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
 									continue;
 								}
 							}
@@ -199,13 +192,13 @@ void ListenerGithub::checkGithubIssues()
 							err = response.error();
 							if(err!=httplib::Error::Success)
 							{
-								BOOST_LOG_TRIVIAL(error) << "Http client Post " << httplib::to_string(err);
+								SPDLOG_ERROR("Http client Post {0}", httplib::to_string(err));
 								continue;
 							}
 
 							if(response->status!=200 && response->status!=201)
 							{
-								BOOST_LOG_TRIVIAL(error) << "Error with the ListenerGithub: " << response->body;
+								SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
 								continue;
 							}
 						}
@@ -224,7 +217,7 @@ void ListenerGithub::checkGithubIssues()
 					err = response.error();
 					if(err!=httplib::Error::Success)
 					{
-						BOOST_LOG_TRIVIAL(error) << "Http client Post close " << httplib::to_string(err);
+						SPDLOG_ERROR("Http client Post close {0}", httplib::to_string(err));
 						continue;
 					}
 				}
@@ -238,7 +231,7 @@ void ListenerGithub::checkGithubIssues()
 
 int ListenerGithub::HandleCheckIn(const std::string& req, std::string& output)
 {
-	BOOST_LOG_TRIVIAL(trace) << "HandleCheckIn";
+	SPDLOG_TRACE("HandleCheckIn");
 
 	try
 	{
@@ -246,11 +239,11 @@ int ListenerGithub::HandleCheckIn(const std::string& req, std::string& output)
 	} 
 	catch (const std::exception& ex) 
 	{
-		BOOST_LOG_TRIVIAL(error) << "HandleCheckIn catch exception";
+		SPDLOG_ERROR("HandleCheckIn catch exception");
 	} 
 	catch (...) 
 	{
-		BOOST_LOG_TRIVIAL(error) << "HandleCheckIn catch...";
+		SPDLOG_ERROR("HandleCheckIn catch...");
 	}
 
 	
