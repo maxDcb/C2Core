@@ -1,5 +1,7 @@
 #include "Listener.hpp"
 
+#include "spdlog/spdlog.h"
+
 #ifdef __linux__
 #elif _WIN32
 #include <Windows.h>

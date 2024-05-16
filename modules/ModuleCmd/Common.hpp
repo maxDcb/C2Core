@@ -8,16 +8,6 @@
 
 #include "spdlog/spdlog.h"
 
-// TODO remplace!!!
-#undef DEBUG_BUILD
-
-#ifdef DEBUG_BUILD
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define DEBUG(x) do { std::cout << __FILENAME__ << " - " << __func__ << ": " << x << std::endl; } while (0)
-#else
-#define DEBUG(x) do {} while (0)
-#endif
-
 
 const int SizeListenerHash = 32;
 const int SizeBeaconHash = 32;

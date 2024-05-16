@@ -108,7 +108,7 @@ void ListenerGithub::checkGithubIssues()
 						int maxChunkSize = 65000;
 						if(res.size()>=maxChunkSize)
 						{
-							DEBUG("Split response");
+							SPDLOG_DEBUG("Split response");
 							std::vector<std::string> chunks;
 							for (std::size_t i = 0; i < res.size(); i += maxChunkSize) 
 							{
@@ -177,7 +177,7 @@ void ListenerGithub::checkGithubIssues()
 						}
 						else
 						{
-							DEBUG("Simple reponse");
+							SPDLOG_DEBUG("Simple reponse");
 
 							nlohmann::json responseData = {
 							{"title", reponseTitle},

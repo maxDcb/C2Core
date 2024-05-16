@@ -42,18 +42,18 @@ void ListenerDns::lauchDnsListener()
 			if(m_stopThread)
 				return;
 
-			DEBUG("receiving");
+			SPDLOG_DEBUG("receiving");
 	
 			string input = m_serverDns.getMsg();
 
-			DEBUG("received input.size " << std::to_string(input.size()));
+			SPDLOG_DEBUG("received input.size {0}",std::to_string(input.size()));
 
 			if(!input.empty())
 			{
 				string output;
 				bool ret = handleMessages(input, output);
 
-				DEBUG("sending output.size " << std::to_string(output.size()));
+				SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 				if(!output.empty())
 					m_serverDns.setMsg(output);

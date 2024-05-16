@@ -56,24 +56,24 @@ void ListenerTcp::lauchTcpServ()
 
 			m_serverTcp->initServer();
 
-			DEBUG("receiving");
+			SPDLOG_DEBUG("receiving");
 	
 			string input;
 			bool res = m_serverTcp->receive(input);
 
-			DEBUG("received input.size " << std::to_string(input.size()));
+			SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 
 			if(res && !input.empty())
 			{
 				string output;
 				bool ret = handleMessages(input, output);
 
-				DEBUG("sending output.size " << std::to_string(output.size()));
+				SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 				res = m_serverTcp->sendData(output);	
 				if(res)
 				{
-					DEBUG("sent");
+					SPDLOG_DEBUG("sent");
 				}
 			}
 

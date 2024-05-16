@@ -9,8 +9,6 @@
 #include "Session.hpp"
 #include "Common.hpp"
 
-#include "spdlog/spdlog.h"
-
 #ifdef __linux__
 
 #include <boost/asio.hpp>

@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 
 			exit = beacon->runTasks();
 
-			DEBUG("runTasks exit " << exit);
+			SPDLOG_DEBUG("runTasks exit {0}", exit);
 			
 			beacon->sleep();
 		}
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	DEBUG("last checkIn");
+	SPDLOG_DEBUG("last checkIn");
 
 	beacon->checkIn();
 }

