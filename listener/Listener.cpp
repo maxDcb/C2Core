@@ -328,10 +328,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 			bool SessionExist = isSessionExist(beaconHash, listenerhash);
 			if(SessionExist==false)
 			{
-
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 				SPDLOG_DEBUG("beaconHash {0}, listenerhash {0}", beaconHash, listenerhash);
-#endif
 
 				std::string username = bundleC2Message->username();
 				std::string hostname = bundleC2Message->hostname();

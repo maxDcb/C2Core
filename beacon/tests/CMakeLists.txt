@@ -30,7 +30,7 @@ testBeaconDns.cpp
 ../../listener/ListenerSmb.cpp	
 ../../../thirdParty/base64/base64.cpp)
 IF (WIN32)
-    target_link_libraries(testBeaconDns SocketHandler PipeHandler MemoryModule spdlog::spdlog nlohmann_json::nlohmann_json)
+    target_link_libraries(testBeaconDns SocketHandler Dnscommunication PipeHandler MemoryModule spdlog::spdlog nlohmann_json::nlohmann_json)
 ELSE()
     target_link_libraries(testBeaconDns SocketHandler Dnscommunication PipeHandler MemoryModule boost::boost spdlog::spdlog nlohmann_json::nlohmann_json)
 ENDIF()

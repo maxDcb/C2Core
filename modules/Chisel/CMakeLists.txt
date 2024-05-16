@@ -5,22 +5,23 @@ if(WITH_TESTS)
     target_link_libraries(Chisel ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
 else()
     message(STATUS "[-] Chisel Tests are disable.")    
+    target_link_libraries(Chisel spdlog::spdlog nlohmann_json::nlohmann_json)
 endif()
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")
 
 if(WITH_TESTS)
-add_executable(testsChisel tests/testsChisel.cpp Chisel.cpp)
+    add_executable(testsChisel tests/testsChisel.cpp Chisel.cpp)
 
-if(WIN32)
-    target_link_libraries(testsChisel ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
-else()
-    target_link_libraries(testsChisel ${Donut} ${aplib64} spdlog::spdlog nlohmann_json::nlohmann_json)
-endif()
+    if(WIN32)
+        target_link_libraries(testsChisel ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
+    else()
+        target_link_libraries(testsChisel ${Donut} ${aplib64} spdlog::spdlog nlohmann_json::nlohmann_json)
+    endif()
 
-add_custom_command(TARGET testsChisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:testsChisel> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
+    add_custom_command(TARGET testsChisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+    $<TARGET_FILE:testsChisel> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
 
-add_test(NAME testsChisel COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
+    add_test(NAME testsChisel COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsChisel>")
 endif()
 

@@ -8,7 +8,7 @@ ENDIF()
 
 add_executable(testListener testListener.cpp)
 if(WIN32)
-	
+    target_link_libraries(testListener spdlog::spdlog nlohmann_json::nlohmann_json)
 else()
 	target_link_libraries(testListener spdlog::spdlog nlohmann_json::nlohmann_json)
 endif()

@@ -5,6 +5,10 @@
 #include <random>
 #include <string_view>
 
+
+#include "spdlog/spdlog.h"
+
+// TODO remplace!!!
 #undef DEBUG_BUILD
 
 #ifdef DEBUG_BUILD

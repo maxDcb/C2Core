@@ -5,6 +5,7 @@ if(WITH_TESTS)
     target_link_libraries(AssemblyExec ${Donut} spdlog::spdlog nlohmann_json::nlohmann_json)
 else()
     message(STATUS "[-] AssemblyExec Tests are disable.")    
+    target_link_libraries(AssemblyExec spdlog::spdlog nlohmann_json::nlohmann_json)
 endif()
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")
