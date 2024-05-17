@@ -5,7 +5,7 @@
 #ifdef __linux__
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
-#include <httplib.h>
+#include "httplib.h"
 
 #elif _WIN32
 

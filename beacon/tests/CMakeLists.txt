@@ -48,7 +48,7 @@ testBeaconGithub.cpp
 IF (WIN32)
     target_link_libraries(testBeaconGithub SocketHandler PipeHandler MemoryModule spdlog::spdlog nlohmann_json::nlohmann_json)
 ELSE()
-    target_link_libraries(testBeaconGithub SocketHandler PipeHandler MemoryModule boost::boost spdlog::spdlog nlohmann_json::nlohmann_json)
+    target_link_libraries(testBeaconGithub SocketHandler PipeHandler MemoryModule boost::boost spdlog::spdlog nlohmann_json::nlohmann_json httplib::httplib)
 ENDIF()
 add_custom_command(TARGET testBeaconGithub POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testBeaconGithub> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testBeaconGithub>")
@@ -64,7 +64,7 @@ testBeaconHttp.cpp
 IF (WIN32)
     target_link_libraries(testBeaconHttp SocketHandler PipeHandler MemoryModule spdlog::spdlog nlohmann_json::nlohmann_json)
 ELSE()
-    target_link_libraries(testBeaconHttp SocketHandler PipeHandler MemoryModule boost::boost spdlog::spdlog nlohmann_json::nlohmann_json)
+    target_link_libraries(testBeaconHttp SocketHandler PipeHandler MemoryModule boost::boost spdlog::spdlog nlohmann_json::nlohmann_json httplib::httplib)
 ENDIF()
 add_custom_command(TARGET testBeaconHttp POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:testBeaconHttp> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testBeaconHttp>")
