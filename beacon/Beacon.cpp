@@ -103,6 +103,8 @@ IntegrityLevel GetCurrentProcessIntegrityLevel()
 
 Beacon::Beacon(const std::string& ip, int port)
 {
+	spdlog::set_level(spdlog::level::trace);
+	
 	m_ip = ip;
 	m_port = port;
 	m_beaconHash = random_string(SizeBeaconHash);

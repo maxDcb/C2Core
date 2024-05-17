@@ -5,6 +5,11 @@
 #include <random>
 #include <string_view>
 
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#else
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_OFF
+#endif
 
 #include "spdlog/spdlog.h"
 

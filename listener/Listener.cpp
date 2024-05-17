@@ -1,5 +1,11 @@
 #include "Listener.hpp"
 
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#else
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_OFF
+#endif
+
 #include "spdlog/spdlog.h"
 
 #ifdef __linux__
@@ -24,6 +30,8 @@ constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<2
 
 Listener::Listener(const std::string& param1, const std::string& param2, const std::string& type)
 {
+	spdlog::set_level(spdlog::level::trace);
+	
 	m_param1 = param1;
 	m_param2 = param2;
 	m_type = type;
