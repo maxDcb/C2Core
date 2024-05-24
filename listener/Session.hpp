@@ -237,3 +237,71 @@ private:
 	bool m_killed;
 };
 
+
+// Represente a Socks tunnel from the TeamServer to a beacon
+// Tasks are configuration informations on what ip/port to target and tcp traffic that is tunneled
+// In C2Message we use instruction/cmd/data
+class SocksSession
+{
+public:
+	SocksSession(const std::string& listenerHash, const std::string& beaconHash)
+	{
+		m_listenerHash=listenerHash;
+		m_beaconHash=beaconHash;
+	}
+
+	std::string getListenerHash()
+	{
+		return m_listenerHash;
+	}
+
+	std::string getBeaconHash()
+	{
+		return m_beaconHash;
+	}
+
+	int addTask(const C2Message& task)
+	{
+		m_messageToSend.push(task);	
+		return m_messageToSend.size();
+	}
+
+	C2Message getTask()
+	{
+		C2Message output;
+		if(!m_messageToSend.empty())
+		{
+			output.CopyFrom(m_messageToSend.front());
+			m_messageToSend.pop();
+		}
+		return output;
+	}
+
+	int addTaskResult(const C2Message& taskResult)
+	{
+		m_messageToRead.push(taskResult);	
+		return m_messageToRead.size();
+	}
+
+	C2Message getTaskResult()
+	{
+		C2Message output;
+		if(!m_messageToRead.empty())
+		{
+			output.CopyFrom(m_messageToRead.front());
+			m_messageToRead.pop();
+		}
+		return output;
+	}
+
+
+private:
+	std::queue<C2Message> m_messageToRead;
+    std::queue<C2Message> m_messageRead;
+
+	std::queue<C2Message> m_messageToSend;
+    std::queue<C2Message> m_messageSent;
+
+	std::string m_listenerHash;
+	std::string m_beaconHash;
+};

@@ -136,7 +136,7 @@ std::shared_ptr<Session> Listener::getSessionPtr(std::string& beaconHash, std::s
 }
 
 
-bool Listener::isSessionExist(std::string& beaconHash, std::string& listenerHash)
+bool Listener::isSessionExist(const std::string& beaconHash, const std::string& listenerHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -289,12 +289,67 @@ bool Listener::addTaskResult(const C2Message& taskResult, std::string& beaconHas
 }
 
 
-C2Message Listener::getTaskResult(std::string& beaconHash)
+C2Message Listener::getTaskResult(const std::string& beaconHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	C2Message output;
 	for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
+	{
+		if (beaconHash == (*it)->getBeaconHash())
+		{
+			output = (*it)->getTaskResult();
+		}
+	}
+
+	return output;
+}
+
+
+//
+// SocksSession
+// TODO could we do a Templat ?
+//
+
+bool Listener::isSocksSessionExist(std::string& beaconHash, std::string& listenerHash)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	bool isSessionExist = false;
+	for(auto it = m_socksSessions.begin() ; it != m_socksSessions.end(); ++it )
+	{
+		if (beaconHash == (*it)->getBeaconHash() && listenerHash == (*it)->getListenerHash())
+		{
+			isSessionExist=true;
+		}
+	}
+	return isSessionExist;
+}
+
+
+bool Listener::addSocksTaskResult(const C2Message& taskResult, std::string& beaconHash)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	bool sessionExist = false;
+	for(auto it = m_socksSessions.begin() ; it != m_socksSessions.end(); ++it )
+	{
+		if (beaconHash == (*it)->getBeaconHash())
+		{
+			sessionExist=true;
+			(*it)->addTaskResult(taskResult);
+		}
+	}
+	return sessionExist;
+}
+
+
+C2Message Listener::getSocksTaskResult(const std::string& beaconHash)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	C2Message output;
+	for(auto it = m_socksSessions.begin() ; it != m_socksSessions.end(); ++it )
 	{
 		if (beaconHash == (*it)->getBeaconHash())
 		{
@@ -325,18 +380,20 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 		// For each session (direct session and childs)
 		BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
 
-		// Sessions are unique and created from the pair beaconHash / listenerHash
-		// If listenerHash is already filled it means that the session was already handled by other listener befor this one
+		// Sessions are unique and created from the pair beaconHash / first listenerHash handling the request
+		// If listenerHash is already filled it means that the session was already handled by an other listener befor this one
 		std::string beaconHash = bundleC2Message->beaconhash();
 		std::string listenerhash = bundleC2Message->listenerhash();
 		if(listenerhash.empty())
 			listenerhash = getListenerHash();
 		bundleC2Message->set_listenerhash(listenerhash);
 
+		// TODO env information shouln't be mandatory and should be check
+		// we shoul be able to set information like hostname/username and such upon requesting
 		if(beaconHash.size()==SizeBeaconHash)
 		{
-			bool SessionExist = isSessionExist(beaconHash, listenerhash);
-			if(SessionExist==false)
+			bool isExist = isSessionExist(beaconHash, listenerhash);
+			if(isExist==false)
 			{
 				SPDLOG_DEBUG("beaconHash {0}, listenerhash {0}", beaconHash, listenerhash);
 
@@ -385,6 +442,18 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						}
 					}
 				}	
+				// TODO socks5 handle with socks sessions link to this listener
+				if(c2Message.instruction()==Socks5)
+				{
+					bool isExist = isSocksSessionExist(beaconHash, listenerhash);
+					if(isExist==false)
+					{
+						std::shared_ptr<SocksSession> session = make_shared<SocksSession>(listenerhash, beaconHash);
+						m_socksSessions.push_back(std::move(session));
+					}
+
+					addSocksTaskResult(c2Message, beaconHash);
+				}
 				else if(c2Message.instruction()==ListenerCmd)
 				{
 					std::string cmd = c2Message.cmd();

@@ -125,7 +125,7 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				SPDLOG_INFO("Post connection: {0}", req.path);
+				// SPDLOG_INFO("Post connection: {0}", req.path);
 				this->HandleCheckIn(req, res);
 				res.status = 200;
 			} 
@@ -226,8 +226,8 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 {
 	string input = req.body;
 
-	SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
-	SPDLOG_TRACE("input.size {0}", std::to_string(input.size()));
+	// SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
+	// SPDLOG_TRACE("input.size {0}", std::to_string(input.size()));
 
 	string output;
 	bool ret = handleMessages(input, output);
@@ -249,7 +249,7 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
+	// SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
 
 	if(ret)
 		res.body = output;
@@ -262,8 +262,8 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 
 int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Response& res)
 {
-	SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
-	SPDLOG_TRACE("requestData.size {0}", std::to_string(requestData.size()));
+	// SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
+	// SPDLOG_TRACE("requestData.size {0}", std::to_string(requestData.size()));
 
 	string output;
 	bool ret = handleMessages(requestData, output);
@@ -285,7 +285,7 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
+	// SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
 
 	if(ret)
 		res.body = output;

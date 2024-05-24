@@ -203,6 +203,10 @@ public:
 	{
 		m_data.assign(data, size);
 	};
+	void set_data(const std::string& data)
+	{
+		m_data.assign(data);
+	};
 	void set_pid(int pid)
 	{
 		m_pid = pid;

