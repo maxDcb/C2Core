@@ -22,7 +22,15 @@ __declspec(dllexport) Tree* TreeConstructor()
     return new Tree();
 }
 
+#else
+
+__attribute__((visibility("default"))) Tree * TreeConstructor()
+{
+    return new Tree();
+}
+
 #endif
+
 
 Tree::Tree()
 #ifdef BUILD_TEAMSERVER

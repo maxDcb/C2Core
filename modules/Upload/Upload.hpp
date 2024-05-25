@@ -24,5 +24,9 @@ private:
 
 extern "C" __declspec(dllexport) Upload * UploadConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Upload * UploadConstructor();
+
 #endif
 

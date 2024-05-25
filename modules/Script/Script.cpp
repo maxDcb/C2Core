@@ -20,7 +20,15 @@ __declspec(dllexport) Script* ScriptConstructor()
     return new Script();
 }
 
+#else
+
+__attribute__((visibility("default"))) Script * ScriptConstructor()
+{
+    return new Script();
+}
+
 #endif
+
 
 Script::Script()
 #ifdef BUILD_TEAMSERVER

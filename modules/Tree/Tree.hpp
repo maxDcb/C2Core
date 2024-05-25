@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) Tree * TreeConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Tree * TreeConstructor();
+
 #endif

@@ -20,7 +20,15 @@ __declspec(dllexport) ChangeDirectory* ChangeDirectoryConstructor()
     return new ChangeDirectory();
 }
 
+#else
+
+__attribute__((visibility("default"))) ChangeDirectory* ChangeDirectoryConstructor() 
+{
+    return new ChangeDirectory();
+}
+
 #endif
+
 
 ChangeDirectory::ChangeDirectory()
 #ifdef BUILD_TEAMSERVER

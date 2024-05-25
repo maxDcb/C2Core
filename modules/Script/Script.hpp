@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) Script * ScriptConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Script * ScriptConstructor();
+
 #endif

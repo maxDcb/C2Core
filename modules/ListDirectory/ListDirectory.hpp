@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) ListDirectory * ListDirectoryConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) ListDirectory * ListDirectoryConstructor();
+
 #endif

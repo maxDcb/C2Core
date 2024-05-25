@@ -21,7 +21,15 @@ __declspec(dllexport) ListDirectory* ListDirectoryConstructor()
     return new ListDirectory();
 }
 
+#else
+
+__attribute__((visibility("default"))) ListDirectory * ListDirectoryConstructor()
+{
+    return new ListDirectory();
+}
+
 #endif
+
 
 ListDirectory::ListDirectory()
 #ifdef BUILD_TEAMSERVER

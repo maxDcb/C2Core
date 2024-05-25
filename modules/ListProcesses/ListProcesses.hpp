@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) ListProcesses * ListProcessesConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) ListProcesses * ListProcessesConstructor();
+
 #endif

@@ -18,6 +18,13 @@ __declspec(dllexport) Cat* CatConstructor()
     return new Cat();
 }
 
+#else
+
+__attribute__((visibility("default"))) Cat* CatConstructor() 
+{
+    return new Cat();
+}
+
 #endif
 
 Cat::Cat()

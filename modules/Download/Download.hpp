@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) Download * DownloadConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Download * DownloadConstructor();
+
 #endif

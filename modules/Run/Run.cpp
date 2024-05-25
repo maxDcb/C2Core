@@ -28,7 +28,15 @@ __declspec(dllexport) Run* RunConstructor()
     return new Run();
 }
 
+#else
+
+__attribute__((visibility("default"))) Run* RunConstructor() 
+{
+    return new Run();
+}
+
 #endif
+
 
 Run::Run()
 #ifdef BUILD_TEAMSERVER

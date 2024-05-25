@@ -26,7 +26,15 @@ __declspec(dllexport) Inject* A_InjectConstructor()
     return new Inject();
 }
 
+#else
+
+__attribute__((visibility("default"))) Inject* InjectConstructor() 
+{
+    return new Inject();
+}
+
 #endif
+
 
 Inject::Inject()
 #ifdef BUILD_TEAMSERVER

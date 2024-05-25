@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) PrintWorkingDirectory * PrintWorkingDirectoryConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) PrintWorkingDirectory * PrintWorkingDirectoryConstructor();
+
 #endif

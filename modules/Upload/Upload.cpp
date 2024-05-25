@@ -19,7 +19,15 @@ __declspec(dllexport) Upload* UploadConstructor()
     return new Upload();
 }
 
+#else
+
+__attribute__((visibility("default"))) Upload* UploadConstructor() 
+{
+    return new Upload();
+}
+
 #endif
+
 
 Upload::Upload()
 #ifdef BUILD_TEAMSERVER

@@ -21,7 +21,15 @@ __declspec(dllexport) PrintWorkingDirectory* PrintWorkingDirectoryConstructor()
     return new PrintWorkingDirectory();
 }
 
+#else
+
+__attribute__((visibility("default"))) PrintWorkingDirectory* PrintWorkingDirectoryConstructor() 
+{
+    return new PrintWorkingDirectory();
+}
+
 #endif
+
 
 PrintWorkingDirectory::PrintWorkingDirectory()
 #ifdef BUILD_TEAMSERVER

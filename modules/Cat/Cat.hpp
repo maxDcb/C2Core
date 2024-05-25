@@ -24,5 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) Cat * CatConstructor();
 
-#endif
+#else
 
+extern "C"  __attribute__((visibility("default"))) Cat * CatConstructor();
+
+#endif

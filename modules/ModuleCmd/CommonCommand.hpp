@@ -102,7 +102,7 @@ class CommonCommands
 			output += "start socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
 			output += "exemple:\n";
 			output += " - socks start 1080 \n";
-			output += " - socks stop 1080 \n";
+			output += " - socks stop \n";
 		}
 #endif
 		return output;
@@ -272,9 +272,9 @@ class CommonCommands
 		}
 		else if(instruction==Socks5)
 		{
-			if(splitedCmd.size()>=3)
+			if(splitedCmd.size()>=2)
 			{
-				if(splitedCmd[1]==StartCmd || splitedCmd[1]==StopCmd)
+				if(splitedCmd[1]==StartCmd)
 				{
 					if(splitedCmd.size()>=3)
 					{
@@ -295,11 +295,23 @@ class CommonCommands
 					}
 					else
 					{
-						std::string errorMsg = "socks start/stop: not enough arguments";
+						std::string errorMsg = "socks start: not enough arguments";
 						c2Message.set_returnvalue(errorMsg);	
 						return -1;
 					}
-				}			
+				}
+				else if(splitedCmd[1]==StopCmd)
+				{
+					c2Message.set_instruction(instruction);
+					c2Message.set_cmd("stopSocks");	
+				}		
+				else
+				{
+					std::string errorMsg = getHelp(instruction);
+					c2Message.set_returnvalue(errorMsg);
+					return -1;
+				}
+
 			}
 			else
 			{

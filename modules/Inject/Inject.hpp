@@ -27,4 +27,8 @@ private:
 
 extern "C" __declspec(dllexport) Inject * A_InjectConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Inject * InjectConstructor();
+
 #endif

@@ -34,4 +34,8 @@ private:
 
 extern "C" __declspec(dllexport) Run * RunConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Run * RunConstructor();
+
 #endif

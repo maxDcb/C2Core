@@ -19,7 +19,15 @@ __declspec(dllexport) Download* DownloadConstructor()
     return new Download();
 }
 
+#else
+
+__attribute__((visibility("default"))) Download* DownloadConstructor() 
+{
+    return new Download();
+}
+
 #endif
+
 
 Download::Download()
 #ifdef BUILD_TEAMSERVER

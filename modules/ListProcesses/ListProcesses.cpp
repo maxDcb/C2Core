@@ -271,7 +271,15 @@ __declspec(dllexport) ListProcesses* ListProcessesConstructor()
     return new ListProcesses();
 }
 
+#else
+
+__attribute__((visibility("default")))  ListProcesses* ListProcessesConstructor() 
+{
+    return new ListProcesses();
+}
+
 #endif
+
 
 ListProcesses::ListProcesses()
 #ifdef BUILD_TEAMSERVER

@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) ChangeDirectory * ChangeDirectoryConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) ChangeDirectory * ChangeDirectoryConstructor();
+
 #endif
