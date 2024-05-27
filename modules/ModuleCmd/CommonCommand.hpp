@@ -99,7 +99,9 @@ class CommonCommands
 		else if(cmd==Socks5)
 		{
 			output = "socks: \n";
-			output += "start socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
+			output += "Start a socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
+			output += "The tunneling is done using the communication protocol of the beacon.\n";
+			output += "Only one socks5 server can be opened at a time.\n";
 			output += "exemple:\n";
 			output += " - socks start 1080 \n";
 			output += " - socks stop \n";

