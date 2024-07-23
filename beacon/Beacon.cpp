@@ -305,6 +305,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	MultiBundleC2Message multiBundleC2Message;
 	BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
 
+	// TODO check of m_taskResult contain a getInfo cmd and add context info if it does
 	bundleC2Message->set_beaconhash(m_beaconHash);
 	bundleC2Message->set_hostname(m_hostname);
 	bundleC2Message->set_username(m_username);
@@ -330,6 +331,7 @@ bool Beacon::taskResultsToCmd(std::string& output)
 
 			BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
 			
+			// TODO check of m_taskResult contain a getInfo cmd and add context info if it does
 			bundleC2Message->set_beaconhash(ptr->getBeaconHash());
 			bundleC2Message->set_listenerhash(ptr->getListenerHash());
 			bundleC2Message->set_hostname(ptr->getHostname());
@@ -387,7 +389,7 @@ bool Beacon::runTasks()
 		C2Message listenerProofOfLife;
 
 		std::string listenerHash = m_listeners[i]->getListenerHash();
-		listenerProofOfLife.set_instruction(ListenerPolCmd);
+		listenerProofOfLife.set_instruction(ListenerPollCmd);
 		listenerProofOfLife.set_returnvalue(listenerHash);
 
 		m_taskResult.push(listenerProofOfLife);
@@ -552,7 +554,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	//
 	// Socks5 cmd
 	//
-	else if(instruction == Socks5)
+	else if(instruction == Socks5Cmd)
 	{
 		SPDLOG_TRACE("Socks5 {} {} {}", c2Message.instruction(), c2Message.cmd(), c2Message.pid());
 
@@ -667,7 +669,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 	//
 	// Load memory module cmd
 	//
-	else if(instruction == LoadC2Module)
+	else if(instruction == LoadC2ModuleCmd)
 	{
 #ifdef __linux__
 
@@ -775,7 +777,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 #endif
 	}
-	else if(instruction == UnloadC2Module)
+	else if(instruction == UnloadC2ModuleCmd)
 	{
 		// TODO should be able to close the handle to the dll/so
 		// clean the memory

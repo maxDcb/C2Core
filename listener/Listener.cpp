@@ -395,6 +395,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 			bool isExist = isSessionExist(beaconHash, listenerhash);
 			if(isExist==false)
 			{
+				// TODO if no info are provided, queu a getInfo cmd
 				SPDLOG_DEBUG("beaconHash {0}, listenerhash {0}", beaconHash, listenerhash);
 
 				std::string username = bundleC2Message->username();
@@ -443,7 +444,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 					}
 				}	
 				// TODO socks5 handle with socks sessions link to this listener
-				if(c2Message.instruction()==Socks5)
+				if(c2Message.instruction()==Socks5Cmd)
 				{
 					bool isExist = isSocksSessionExist(beaconHash, listenerhash);
 					if(isExist==false)
@@ -493,7 +494,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						}
 					}
 				}
-				else if(c2Message.instruction()==ListenerPolCmd)
+				else if(c2Message.instruction()==ListenerPollCmd)
 				{					
 					std::vector<std::string> splitedRes;
 					std::string delimiter = " ";
