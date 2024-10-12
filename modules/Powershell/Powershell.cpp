@@ -169,6 +169,13 @@ HRESULT createHost(const wchar_t* version, ICorRuntimeHost** ppCorRuntimeHost)
 	return hostCreated;
 }
 
+#else
+
+__attribute__((visibility("default"))) Powershell* PowershellConstructor() 
+{
+    return new Powershell();
+}
+
 #endif
 
 Powershell::Powershell()

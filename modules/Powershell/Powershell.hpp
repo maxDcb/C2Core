@@ -55,6 +55,10 @@ private:
 
 extern "C" __declspec(dllexport) Powershell * PowershellConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Powershell * PowershellConstructor();
+
 #endif
 
 

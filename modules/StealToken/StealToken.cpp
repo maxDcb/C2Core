@@ -30,6 +30,13 @@ __declspec(dllexport) StealToken* StealTokenConstructor()
     return new StealToken();
 }
 
+#else
+
+__attribute__((visibility("default"))) StealToken* StealTokenConstructor() 
+{
+    return new StealToken();
+}
+
 #endif
 
 StealToken::StealToken()

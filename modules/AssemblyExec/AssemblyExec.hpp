@@ -34,4 +34,9 @@ private:
 
 extern "C" __declspec(dllexport) AssemblyExec * A_AssemblyExecConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) AssemblyExec * AssemblyExecConstructor();
+
 #endif
+

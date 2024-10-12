@@ -44,6 +44,13 @@ __declspec(dllexport) AssemblyExec* A_AssemblyExecConstructor()
     return new AssemblyExec();
 }
 
+#else
+
+__attribute__((visibility("default"))) AssemblyExec* AssemblyExecConstructor() 
+{
+    return new AssemblyExec();
+}
+
 #endif
 
 AssemblyExec::AssemblyExec()

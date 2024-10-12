@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) SpawnAs * A_SpawnAsConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) SpawnAs * SpawnAsConstructor();
+
 #endif

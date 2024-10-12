@@ -24,6 +24,13 @@ __declspec(dllexport) Chisel* A_ChiselConstructor()
     return new Chisel();
 }
 
+#else
+
+__attribute__((visibility("default"))) Chisel* ChiselConstructor() 
+{
+    return new Chisel();
+}
+
 #endif
 
 Chisel::Chisel()

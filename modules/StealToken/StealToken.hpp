@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) StealToken * StealTokenConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) StealToken * StealTokenConstructor();
+
 #endif

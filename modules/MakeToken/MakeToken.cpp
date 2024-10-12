@@ -33,6 +33,13 @@ __declspec(dllexport) MakeToken* MakeTokenConstructor()
     return new MakeToken();
 }
 
+#else
+
+__attribute__((visibility("default"))) MakeToken* MakeTokenConstructor() 
+{
+    return new MakeToken();
+}
+
 #endif
 
 MakeToken::MakeToken()

@@ -24,6 +24,13 @@ __declspec(dllexport) Rev2self* Rev2selfConstructor()
     return new Rev2self();
 }
 
+#else
+
+__attribute__((visibility("default"))) Rev2self* Rev2selfConstructor() 
+{
+    return new Rev2self();
+}
+
 #endif
 
 Rev2self::Rev2self()

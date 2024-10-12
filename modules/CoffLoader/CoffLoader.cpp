@@ -33,6 +33,13 @@ __declspec(dllexport) CoffLoader* A_CoffLoaderConstructor()
     return new CoffLoader();
 }
 
+#else
+
+__attribute__((visibility("default"))) CoffLoader* CoffConstructor() 
+{
+    return new CoffLoader();
+}
+
 #endif
 
 CoffLoader::CoffLoader()

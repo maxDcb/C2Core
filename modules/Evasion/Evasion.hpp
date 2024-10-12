@@ -30,4 +30,8 @@ private:
 
 extern "C" __declspec(dllexport) Evasion * A_EvasionConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Evasion * EvasionConstructor();
+
 #endif

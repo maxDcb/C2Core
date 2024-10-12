@@ -25,4 +25,8 @@ private:
 
 extern "C" __declspec(dllexport) CoffLoader * A_CoffLoaderConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) CoffLoader * CoffConstructor();
+
 #endif

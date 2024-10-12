@@ -33,6 +33,13 @@ static int UnhookDll(const HMODULE hHookedDll, const LPVOID pMapping);
 
 int disableETW(void);
 
+#else
+
+__attribute__((visibility("default"))) Evasion* EvasionConstructor() 
+{
+    return new Evasion();
+}
+
 #endif
 
 

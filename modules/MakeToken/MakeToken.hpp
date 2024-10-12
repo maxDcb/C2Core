@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) MakeToken * MakeTokenConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) MakeToken * MakeTokenConstructor();
+
 #endif

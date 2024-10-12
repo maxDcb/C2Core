@@ -43,6 +43,13 @@ __declspec(dllexport) KerberosUseTicket* KerberosUseTicketConstructor()
     return new KerberosUseTicket();
 }
 
+#else
+
+__attribute__((visibility("default"))) KerberosUseTicket* KerberosUseTicketConstructor() 
+{
+    return new KerberosUseTicket();
+}
+
 #endif
 
 

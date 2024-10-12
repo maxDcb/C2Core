@@ -32,6 +32,13 @@ __declspec(dllexport) SpawnAs* A_SpawnAsConstructor()
     return new SpawnAs();
 }
 
+#else
+
+__attribute__((visibility("default"))) SpawnAs* SpawnAsConstructor() 
+{
+    return new SpawnAs();
+}
+
 #endif
 
 SpawnAs::SpawnAs()

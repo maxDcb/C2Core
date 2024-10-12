@@ -26,4 +26,9 @@ private:
 
 extern "C" __declspec(dllexport) Chisel * A_ChiselConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Chisel * ChiselConstructor();
+
 #endif
+

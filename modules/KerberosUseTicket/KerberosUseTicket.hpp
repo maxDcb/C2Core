@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) KerberosUseTicket * KerberosUseTicketConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) KerberosUseTicket * KerberosUseTicketConstructor();
+
 #endif

@@ -24,4 +24,9 @@ private:
 
 extern "C" __declspec(dllexport) PsExec * PsExecConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) PsExec * PsExecConstructor();
+
 #endif
+

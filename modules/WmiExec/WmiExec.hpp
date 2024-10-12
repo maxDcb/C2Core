@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) WmiExec * WmiExecConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) WmiExec * WmiExecConstructor();
+
 #endif

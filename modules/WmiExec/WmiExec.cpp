@@ -38,6 +38,13 @@ __declspec(dllexport) WmiExec* WmiExecConstructor()
     return new WmiExec();
 }
 
+#else
+
+__attribute__((visibility("default"))) WmiExec* WmiExecConstructor() 
+{
+    return new WmiExec();
+}
+
 #endif
 
 

@@ -37,6 +37,13 @@ __declspec(dllexport) PsExec* PsExecConstructor()
 BOOL createFileSMB(const std::string& dstPath, const std::string& data, std::string& result);
 BOOL createServiceWithSCM(const std::string& scmServer, const std::string& serviceName, const std::string& servicePath, std::string& result);
 
+#else
+
+__attribute__((visibility("default"))) PsExec* PsExecConstructor() 
+{
+    return new PsExec();
+}
+
 #endif
 
 

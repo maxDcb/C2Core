@@ -24,4 +24,8 @@ private:
 
 extern "C" __declspec(dllexport) Rev2self * Rev2selfConstructor();
 
+#else
+
+extern "C"  __attribute__((visibility("default"))) Rev2self * Rev2selfConstructor();
+
 #endif
