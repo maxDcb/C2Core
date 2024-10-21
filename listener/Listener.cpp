@@ -409,7 +409,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				const C2Message& c2Message = bundleC2Message->c2messages(j);
 
 				// TODO what happen to thos taskResult for listeners that are managed by beacons
-				if(!c2Message.returnvalue().empty())
+				if(!c2Message.returnvalue().empty() || c2Message.errorCode()>0)
 				{
 					addTaskResult(c2Message, beaconHash);
 				}

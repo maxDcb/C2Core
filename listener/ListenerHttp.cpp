@@ -101,7 +101,7 @@ void ListenerHttp::lauchHttpServ()
 	{
 		bool isUri = false;
 		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
-			if(req.path ==*it)
+			if(req.path ==std::string(*it))
 				isUri=true;
 
 		if (req.path.find(uriFileDownload) != std::string::npos) 

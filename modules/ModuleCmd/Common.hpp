@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <string_view>
+#include <format>
 
 #define SPDLOG_LEVEL_TRACE 0
 #define SPDLOG_LEVEL_DEBUG 1
@@ -18,37 +19,61 @@
     #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_TRACE
-        #define SPDLOG_TRACE(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_TRACE(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_TRACE(...) (void)0
     #endif
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_DEBUG
-        #define SPDLOG_DEBUG(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_DEBUG(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_DEBUG(...) (void)0
     #endif
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_INFO
-        #define SPDLOG_INFO(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_INFO(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_INFO(...) (void)0
     #endif
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_WARN
-        #define SPDLOG_WARN(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_WARN(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_WARN(...) (void)0
     #endif
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_ERROR
-        #define SPDLOG_ERROR(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_ERROR(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_ERROR(...) (void)0
     #endif
 
     #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_CRITICAL
-        #define SPDLOG_CRITICAL(...) printf(__VA_ARGS__)
+        template<typename... Args>
+        inline void SPDLOG_CRITICAL(const std::format_string<Args...> fmt, Args&&... args)
+        {
+            std::cout << std::vformat(fmt.get(), std::make_format_args(args...)) << '\n';
+        }
     #else
         #define SPDLOG_CRITICAL(...) (void)0
     #endif

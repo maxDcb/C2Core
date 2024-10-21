@@ -29,6 +29,7 @@ public:
 		m_data = "";	
 		m_args = "";
 		m_pid = -100;
+		m_errorCode = -1;
 	}
 
 	~C2Message()
@@ -45,6 +46,7 @@ public:
 		m_data = c2Message.data();
 		m_args = c2Message.args();
 		m_pid = c2Message.pid();
+		m_errorCode = c2Message.errorCode();
 	}
 
 	void operator=(const C2Message& c2Message)
@@ -57,6 +59,7 @@ public:
 		m_data = c2Message.data();
 		m_args = c2Message.args();
 		m_pid = c2Message.pid();
+		m_errorCode = c2Message.errorCode();
 	}
 
 	void ParseFromArray(const char* data, int size)
@@ -115,6 +118,10 @@ public:
 		it = my_json.find("pid");
 		if(it != my_json.end())
 			m_pid = my_json["pid"].get<int>();
+
+		it = my_json.find("errorCode");
+		if(it != my_json.end())
+			m_errorCode = my_json["errorCode"].get<int>();
 	}
 
 	void SerializeToString(std::string* output)
@@ -141,6 +148,8 @@ public:
 			finalJson += nlohmann::json::object_t::value_type("args", m_args);
 		if(m_pid!=-100)
 			finalJson += nlohmann::json::object_t::value_type("pid", m_pid);
+		if(m_errorCode!=-1)
+			finalJson += nlohmann::json::object_t::value_type("errorCode", m_errorCode);
 
 		std::string json_str = finalJson.dump();
 		*output = json_str;
@@ -173,6 +182,10 @@ public:
 	int pid() const
 	{
 		return m_pid;
+	}
+	int errorCode() const
+	{
+		return m_errorCode;
 	}
 	const std::string& args() const
 	{
@@ -211,6 +224,10 @@ public:
 	{
 		m_pid = pid;
 	}; 
+	void set_errorCode(int errorCode)
+	{
+		m_errorCode = errorCode;
+	}; 
 	void set_args(const std::string& args)
 	{
 		m_args = args;
@@ -226,6 +243,7 @@ private:
 	std::string m_data;	
 	std::string m_args;
 	int m_pid;
+	int m_errorCode;
 };
 
 
@@ -577,6 +595,7 @@ public:
 	virtual int init(std::vector<std::string>& splitedCmd, C2Message& c2Message) = 0;
 	virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
 	virtual int followUp(const C2Message &c2RetMessage) {return 0;};
+	virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};
 
 protected:
 	std::string m_name;
