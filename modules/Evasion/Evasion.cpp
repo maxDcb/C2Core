@@ -410,8 +410,10 @@ std::string hookChecker(const HMODULE hHookedDll, const LPVOID pMapping)
 	PIMAGE_DOS_HEADER pImgDOSHead = (PIMAGE_DOS_HEADER) pMapping;
 	PIMAGE_NT_HEADERS pImgNTHead = (PIMAGE_NT_HEADERS)((DWORD_PTR) pMapping + pImgDOSHead->e_lfanew);
 
-	if (pImgNTHead->Signature != IMAGE_NT_SIGNATURE) {
-		return FALSE;
+	std::string hookedFunctions;
+	if (pImgNTHead->Signature != IMAGE_NT_SIGNATURE) 
+	{
+		return hookedFunctions;
 	}
 
 	PIMAGE_EXPORT_DIRECTORY pImageExportDirectory = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)pMapping + pImgNTHead->OptionalHeader.DataDirectory[0].VirtualAddress);	
@@ -420,7 +422,6 @@ std::string hookChecker(const HMODULE hHookedDll, const LPVOID pMapping)
 	PDWORD pdwAddressOfNames = (PDWORD)((PBYTE)pMapping + pImageExportDirectory->AddressOfNames);
 	PWORD pwAddressOfNameOrdinales = (PWORD)((PBYTE)pMapping + pImageExportDirectory->AddressOfNameOrdinals);
 
-	std::string hookedFunctions;
 	for (WORD cx = 0; cx < pImageExportDirectory->NumberOfNames; cx++) 
 	{
 		PCHAR pczFunctionName = (PCHAR)((PBYTE)pMapping + pdwAddressOfNames[cx]);

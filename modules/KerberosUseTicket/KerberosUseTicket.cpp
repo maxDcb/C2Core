@@ -146,7 +146,7 @@ std::string KerberosUseTicket::importTicket(const std::string& ticket)
     LSA_STRING lsaStrAuthPkg;
     lsaStrAuthPkg.Length = static_cast<USHORT>(strlen(MICROSOFT_KERBEROS_NAME_A));
     lsaStrAuthPkg.MaximumLength = static_cast<USHORT>(strlen(MICROSOFT_KERBEROS_NAME_A));
-    lsaStrAuthPkg.Buffer = MICROSOFT_KERBEROS_NAME_A;
+    lsaStrAuthPkg.Buffer = const_cast<char*>(MICROSOFT_KERBEROS_NAME_A);
     ULONG authenticationPackage;
     ntstatus = LsaLookupAuthenticationPackage(lsaHandle, (PLSA_STRING)&lsaStrAuthPkg, &authenticationPackage);
     if (ntstatus != 0)
