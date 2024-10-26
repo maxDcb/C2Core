@@ -596,6 +596,7 @@ public:
 	virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
 	virtual int followUp(const C2Message &c2RetMessage) {return 0;};
 	virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};
+	virtual int recurringExec (C2Message& c2RetMessage) {return 0;};
 
 protected:
 	std::string m_name;
