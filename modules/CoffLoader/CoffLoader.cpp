@@ -6,15 +6,15 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include "CoffPacker.hpp"
 #endif
 
-#include "CoffPacker.hpp"
 #include "Common.hpp"
 
 extern "C" 
 {
-#include "COFFLoader.h"
 #ifdef _WIN32
+#include "COFFLoader.h"
 #include "beacon_compatibility.h"
 #endif
 }
@@ -139,6 +139,7 @@ std::string CoffLoader::coffLoader(std::string& payload, std::string& functionNa
 {
     std::string result;
 
+#ifdef _WIN32
     char* coff_data = payload.data();
     uint32_t filesize = payload.size();
     char* functionname = functionName.data();
@@ -175,8 +176,6 @@ std::string CoffLoader::coffLoader(std::string& payload, std::string& functionNa
     int checkcode = RunCOFF(functionname, (unsigned char*)coff_data, filesize, arguments, argumentSize);
     if (checkcode == 0) 
     {
-#ifdef _WIN32
-
         char* outdata = NULL;
         int outdataSize = 0;
 
@@ -185,13 +184,12 @@ std::string CoffLoader::coffLoader(std::string& payload, std::string& functionNa
         {
             result += outdata;
         }
-#endif
     }
     else 
     {
         result += "Failed to run/parse the COFF file\n";
     }
-
+#endif
 
 	return result;
 }
