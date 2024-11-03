@@ -675,7 +675,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 #ifdef __linux__
 
 		const std::string inputfile = c2Message.inputfile();
-		std::string baseFilename = inputfile.substr(inputfile.find_last_of("/\\") + 1)
+		std::string baseFilename = inputfile.substr(inputfile.find_last_of("/\\") + 1);
 		const std::string buffer = c2Message.data();
 
 		SPDLOG_DEBUG("LoadC2Module inputfile {}, buffer {}", baseFilename, buffer.size());
