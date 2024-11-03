@@ -44,7 +44,6 @@ typedef HRESULT (WINAPI *funcCorBindToRuntime)(
 
 extern const unsigned int PowerShellRunner_dll_len;
 extern unsigned char PowerShellRunner_dll[];
-void InvokeMethod(_TypePtr spType, wchar_t* method, wchar_t* command);
 
 
 bool createDotNetFourHost(HMODULE* hMscoree, const wchar_t* version, ICorRuntimeHost** ppCorRuntimeHost)
@@ -455,7 +454,7 @@ std::string Powershell::execPowershell(const std::string& cmd)
 
 #ifdef _WIN32
 
-void Powershell::InvokeMethod(_TypePtr spType, wchar_t* method, wchar_t* command, std::string& result)
+void Powershell::InvokeMethod(_TypePtr spType, const wchar_t* method, wchar_t* command, std::string& result)
 {
 	HRESULT hr;
 	bstr_t bstrStaticMethodName(method);

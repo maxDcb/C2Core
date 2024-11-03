@@ -13,9 +13,9 @@
 #include <metahost.h>
 
 // Import mscorlib.tlb (Microsoft Common Language Runtime Class Library).
-#import "mscorlib.tlb" raw_interfaces_only				\
-    high_property_prefixes("_get","_put","_putref")		\
-    rename("ReportEvent", "InteropServices_ReportEvent")
+#import "mscorlib.tlb" auto_rename raw_interfaces_only				
+    // high_property_prefixes("_get","_put","_putref")		
+    // rename("ReportEvent", "InteropServices_ReportEvent")
 
 #endif
 
@@ -44,7 +44,7 @@ private:
 	mscorlib::_TypePtr spType = NULL;
 
 	int initCLR(std::string& result);
-	void InvokeMethod(mscorlib::_TypePtr spType, wchar_t* method, wchar_t* command, std::string& result);
+	void InvokeMethod(mscorlib::_TypePtr spType, const wchar_t* method, wchar_t* command, std::string& result);
 
 #endif
 
