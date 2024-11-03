@@ -10,11 +10,6 @@ using namespace std;
 constexpr std::string_view moduleName = "chisel";
 constexpr unsigned long moduleHash = djb2(moduleName);
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-const std::string ToolsDirectoryFromTeamServer = "../Tools/";
-#endif
-
-
 #define BUFSIZE 512
 
 #ifdef _WIN32
@@ -140,7 +135,7 @@ int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		if(!myfile)
 		{
-			std::string newInputFile=ToolsDirectoryFromTeamServer;
+			std::string newInputFile=m_toolsDirectoryPath;
 			newInputFile+=inputFile;
 			myfile.open(newInputFile, std::ios::binary);
 			inputFile=newInputFile;

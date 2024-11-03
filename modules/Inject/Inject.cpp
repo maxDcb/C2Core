@@ -11,11 +11,6 @@ using namespace std;
 constexpr std::string_view moduleName = "inject";
 constexpr unsigned long moduleHash = djb2(moduleName);
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-const std::string ToolsDirectoryFromTeamServer = "../Tools/";
-const std::string BeaconsDirectoryFromTeamServer = "../Beacons/";
-#endif
-
 #ifdef _WIN32
 
 #include <tlhelp32.h>
@@ -139,7 +134,7 @@ int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		if(!myfile)
 		{
-			std::string newInputFile=ToolsDirectoryFromTeamServer;
+			std::string newInputFile=m_toolsDirectoryPath;
 			newInputFile+=inputFile;
 			myfile.open(newInputFile, std::ios::binary);
 			inputFile=newInputFile;
@@ -147,7 +142,7 @@ int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		if(!myfile)
 		{
-			std::string newInputFile=BeaconsDirectoryFromTeamServer;
+			std::string newInputFile=m_windowsBeaconsDirectoryPath;
 			newInputFile+=inputFile;
 			myfile.open(newInputFile, std::ios::binary);
 			inputFile=newInputFile;

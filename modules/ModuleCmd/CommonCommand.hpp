@@ -25,11 +25,6 @@ const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
 
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-const std::string ModulesDirectoryFromTeamServer = "../Modules/";
-#endif
-
-
 class CommonCommands
 {
 	public:
@@ -257,7 +252,13 @@ class CommonCommands
 				input.open(inputFile, std::ios::binary);
 				if(!input)
 				{
-					std::string newInputFile = ModulesDirectoryFromTeamServer;
+					std::string newInputFile = m_linuxModulesDirectoryPath;
+					newInputFile+=inputFile;
+					input.open(newInputFile, std::ios::binary);
+				}
+				if(!input)
+				{
+					std::string newInputFile = m_windowsModulesDirectoryPath;
 					newInputFile+=inputFile;
 					input.open(newInputFile, std::ios::binary);
 				}
@@ -357,8 +358,35 @@ class CommonCommands
 		return 0;
 	}
 
+	int setDirectories( const std::string& teamServerModulesDirectoryPath,
+						const std::string& linuxModulesDirectoryPath,
+						const std::string& windowsModulesDirectoryPath,
+						const std::string& linuxBeaconsDirectoryPath,
+						const std::string& windowsBeaconsDirectoryPath,
+						const std::string& toolsDirectoryPath,
+						const std::string& scriptsDirectoryPath)
+	{
+		m_teamServerModulesDirectoryPath=teamServerModulesDirectoryPath;
+		m_linuxModulesDirectoryPath=linuxModulesDirectoryPath;
+		m_windowsModulesDirectoryPath=windowsModulesDirectoryPath;
+		m_linuxBeaconsDirectoryPath=linuxBeaconsDirectoryPath;
+		m_windowsBeaconsDirectoryPath=windowsBeaconsDirectoryPath;
+		m_toolsDirectoryPath=toolsDirectoryPath;
+		m_scriptsDirectoryPath=scriptsDirectoryPath;
+
+		return 0;
+	};
+
 private:
 	std::vector<std::string> m_commonCommands;
+
+	std::string m_teamServerModulesDirectoryPath;
+    std::string m_linuxModulesDirectoryPath;
+    std::string m_windowsModulesDirectoryPath;
+    std::string m_linuxBeaconsDirectoryPath;
+    std::string m_windowsBeaconsDirectoryPath;
+    std::string m_toolsDirectoryPath;
+    std::string m_scriptsDirectoryPath;
 };
 
 

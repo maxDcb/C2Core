@@ -20,10 +20,6 @@ using namespace std;
 constexpr std::string_view moduleName = "powershell";
 constexpr unsigned long moduleHash = djb2(moduleName);
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-const std::string ScriptsDirectoryFromTeamServer = "../Scripts/";
-#endif
-
 #ifdef _WIN32
 
 __declspec(dllexport) Powershell* PowershellConstructor() 
@@ -246,7 +242,7 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 		if(!myfile)
 		{
-			std::string newInputFile=ScriptsDirectoryFromTeamServer;
+			std::string newInputFile=m_scriptsDirectoryPath;
 			newInputFile+=inputFile;
 			myfile.open(newInputFile, std::ios::binary);
 			inputFile=newInputFile;

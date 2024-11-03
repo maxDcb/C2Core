@@ -588,6 +588,25 @@ public:
 		return m_hash;
 	}
 
+	int setDirectories( const std::string& teamServerModulesDirectoryPath,
+						const std::string& linuxModulesDirectoryPath,
+						const std::string& windowsModulesDirectoryPath,
+						const std::string& linuxBeaconsDirectoryPath,
+						const std::string& windowsBeaconsDirectoryPath,
+						const std::string& toolsDirectoryPath,
+						const std::string& scriptsDirectoryPath)
+	{
+		m_teamServerModulesDirectoryPath=teamServerModulesDirectoryPath;
+		m_linuxModulesDirectoryPath=linuxModulesDirectoryPath;
+		m_windowsModulesDirectoryPath=windowsModulesDirectoryPath;
+		m_linuxBeaconsDirectoryPath=linuxBeaconsDirectoryPath;
+		m_windowsBeaconsDirectoryPath=windowsBeaconsDirectoryPath;
+		m_toolsDirectoryPath=toolsDirectoryPath;
+		m_scriptsDirectoryPath=scriptsDirectoryPath;
+
+		return 0;
+	};
+
 	virtual std::string getInfo() = 0;
 
 	// if an error ocurre:
@@ -601,6 +620,14 @@ public:
 protected:
 	std::string m_name;
 	unsigned long m_hash;
+
+	std::string m_teamServerModulesDirectoryPath;
+    std::string m_linuxModulesDirectoryPath;
+    std::string m_windowsModulesDirectoryPath;
+    std::string m_linuxBeaconsDirectoryPath;
+    std::string m_windowsBeaconsDirectoryPath;
+    std::string m_toolsDirectoryPath;
+    std::string m_scriptsDirectoryPath;
 
 private:
 	
