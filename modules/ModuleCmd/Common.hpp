@@ -4,7 +4,11 @@
 #include <vector>
 #include <random>
 #include <string_view>
-#include <format>
+
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 202302L) || __cplusplus >= 202302L)
+    #include <format>
+#endif
+
 
 #define SPDLOG_LEVEL_TRACE 0
 #define SPDLOG_LEVEL_DEBUG 1
@@ -14,7 +18,7 @@
 #define SPDLOG_LEVEL_CRITICAL 5
 #define SPDLOG_LEVEL_OFF 6
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if (defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)) && ((defined(_MSVC_LANG) && _MSVC_LANG >= 202302L) || __cplusplus >= 202302L)
 
     #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
 
