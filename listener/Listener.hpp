@@ -80,6 +80,12 @@ public:
 	bool addSocksTaskResult(const C2Message& taskResult, std::string& beaconHash);
 	C2Message getSocksTaskResult(const std::string& beaconHash);
 
+	// set the listener as primary (meaning launch from the teamserver)
+	void setIsPrimary()
+	{
+		m_isPrimary=true;
+	}
+
 protected:
 	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	bool handleMessages(const std::string& input, std::string& output);
@@ -88,6 +94,7 @@ protected:
 	std::string m_param1;
 	std::string m_param2;
 	std::string m_type;
+	bool m_isPrimary;
 
 	std::string m_listenerHash;
 	std::string m_hostname;

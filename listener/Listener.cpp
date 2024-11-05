@@ -25,6 +25,7 @@ Listener::Listener(const std::string& param1, const std::string& param2, const s
 	m_param1 = param1;
 	m_param2 = param2;
 	m_type = type;
+	m_isPrimary = false;
 
 #ifdef __linux__
 
@@ -433,8 +434,9 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						}
 					}
 				}	
-				// TODO socks5 handle with socks sessions link to this listener
-				if(c2Message.instruction()==Socks5Cmd)
+				// TODO socks5 handle with socks sessions link to this listener - to test
+				// check if the listener is primary (meaning launched by the teamserver, otherwise don't do this) and just relay the task to the next listener
+				else if(c2Message.instruction()==Socks5Cmd && m_isPrimary)
 				{
 					bool isExist = isSocksSessionExist(beaconHash, listenerhash);
 					if(isExist==false)
