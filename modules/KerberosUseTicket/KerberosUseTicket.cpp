@@ -33,7 +33,7 @@ typedef std::vector<unsigned char> TicketData;
 #endif
 
 constexpr std::string_view moduleName = "kerberosUseTicket";
-constexpr unsigned long moduleHash = djb2(moduleName);
+constexpr unsigned long long moduleHash = djb2(moduleName);
 
 
 #ifdef _WIN32

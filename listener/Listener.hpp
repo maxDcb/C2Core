@@ -33,16 +33,6 @@ inline bool port_in_use(unsigned short port)
 #endif
 
 
-
-// TODO set an enum
-const std::string ListenerHttpType = "http";
-const std::string ListenerHttpsType = "https";
-const std::string ListenerTcpType = "tcp";
-const std::string ListenerSmbType = "smb";
-const std::string ListenerGithubType = "github";
-const std::string ListenerDnsType = "dns";
-
-
 class Listener
 {
 

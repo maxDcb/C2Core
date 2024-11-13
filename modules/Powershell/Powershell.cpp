@@ -18,7 +18,7 @@ using namespace std;
 
 
 constexpr std::string_view moduleName = "powershell";
-constexpr unsigned long moduleHash = djb2(moduleName);
+constexpr unsigned long long moduleHash = djb2(moduleName);
 
 #ifdef _WIN32
 

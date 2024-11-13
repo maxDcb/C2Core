@@ -464,13 +464,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 							std::string param1="";
 							std::string param2="";
 							std::string type="";
-							if(splitedRes[1]=="smb")
+							if(splitedRes[1]==ListenerSmbType)
 							{
 								param1 = splitedRes[2];
 
 								type=ListenerSmbType;
 							}
-							else if(splitedRes[1]=="tcp")
+							else if(splitedRes[1]==ListenerTcpType)
 							{
 								param1 = splitedRes[2];
 								param2 = splitedRes[3];
@@ -497,13 +497,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						std::string param1="";
 						std::string param2="";
 						std::string type="";
-						if(splitedRes[1]=="smb")
+						if(splitedRes[1]==ListenerSmbType)
 						{
 							param1 = splitedRes[2];
 
 							type=ListenerSmbType;
 						}
-						else if(splitedRes[1]=="tcp")
+						else if(splitedRes[1]==ListenerTcpType)
 						{
 							param1 = splitedRes[2];
 							param2 = splitedRes[3];

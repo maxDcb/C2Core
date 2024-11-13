@@ -4,19 +4,19 @@
 #include <vector>
 
 #ifdef __linux__
-#include <sys/mman.h>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
-#include <sys/user.h>
-#include <spawn.h>
-#include <thread>
-#include <future>
-#define __cdecl __attribute__((__cdecl__))
+	#include <sys/mman.h>
+	#include <sys/ptrace.h>
+	#include <sys/wait.h>
+	#include <sys/user.h>
+	#include <spawn.h>
+	#include <thread>
+	#include <future>
+	#define __cdecl __attribute__((__cdecl__))
 #elif _WIN32
-#include <windows.h>
-#include <io.h>
-#include <fcntl.h>
-// #include <altstr.h>
+	#include <windows.h>
+	#include <io.h>
+	#include <fcntl.h>
+	// #include <altstr.h>
 #endif
 
 

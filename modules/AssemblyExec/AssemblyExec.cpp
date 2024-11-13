@@ -30,7 +30,7 @@ using namespace std;
 
 // Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
 constexpr std::string_view moduleName = "assemblyExec";
-constexpr unsigned long moduleHash = djb2(moduleName);
+constexpr unsigned long long moduleHash = djb2(moduleName);
 
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 const std::string ToolsDirectoryFromTeamServer = "../Tools/";
