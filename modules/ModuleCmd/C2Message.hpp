@@ -2,6 +2,29 @@
 #include <base64.h>
 #include "nlohmann/json.hpp"
 
+// C2Message tags
+const std::string InstructionMsgTag = "INS";
+const std::string CmdMsgTag = "CM";
+const std::string ReturnValueTag = "RV";
+const std::string InputFileTag = "IF";
+const std::string OutputFileTag = "OF";
+const std::string DataTag = "DA";
+const std::string ArgsTag = "AR";
+const std::string PidTag = "PI";
+const std::string ErrorCodeTag = "EC";
+
+// BundleC2Message tags
+const std::string BeaconHashMsgTag = "BH";
+const std::string ListenerHashMsgTag = "LH";
+const std::string UsernameMsgTag = "UN";
+const std::string HostnameMsgTag = "HN";
+const std::string ArchMsgTag = "ARC";
+const std::string PrivilegeMsgTag = "PR";
+const std::string OsMsgTag = "OS";
+const std::string LastProofOfLifeMsgTag = "POF";
+const std::string SessionsMsgTag = "SS";
+
+
 
 //
 // C2Message
@@ -66,53 +89,53 @@ public:
 			return;
 		}
 
-		auto it = my_json.find("instruction");
+		auto it = my_json.find(InstructionMsgTag);
 		if(it != my_json.end())
-			m_instruction = my_json["instruction"].get<std::string>();
+			m_instruction = my_json[InstructionMsgTag].get<std::string>();
 
-		it = my_json.find("cmd");
+		it = my_json.find(CmdMsgTag);
 		if(it != my_json.end())
-			m_cmd = my_json["cmd"].get<std::string>();
+			m_cmd = my_json[CmdMsgTag].get<std::string>();
 		
-		it = my_json.find("returnValue");
+		it = my_json.find(ReturnValueTag);
 		if(it != my_json.end())
 		{
-			std::string returnValueB64 = my_json["returnValue"].get<std::string>();
+			std::string returnValueB64 = my_json[ReturnValueTag].get<std::string>();
 			m_returnValue = base64_decode(returnValueB64);
 		}
 		
-		it = my_json.find("inputFile");
+		it = my_json.find(InputFileTag);
 		if(it != my_json.end())
 		{
-			std::string inputFileB64 = my_json["inputFile"].get<std::string>();
+			std::string inputFileB64 = my_json[InputFileTag].get<std::string>();
 			m_inputFile = base64_decode(inputFileB64);
 		}
 		
-		it = my_json.find("outputFile");
+		it = my_json.find(OutputFileTag);
 		if(it != my_json.end())
 		{
-			std::string outputFileB64 = my_json["outputFile"].get<std::string>();
+			std::string outputFileB64 = my_json[OutputFileTag].get<std::string>();
 			m_outputFile = base64_decode(outputFileB64);
 		}
 		
-		it = my_json.find("data");
+		it = my_json.find(DataTag);
 		if(it != my_json.end())
 		{
-			std::string dataB64 = my_json["data"].get<std::string>();
+			std::string dataB64 = my_json[DataTag].get<std::string>();
 			m_data = base64_decode(dataB64);
 		}
 		
-		it = my_json.find("args");
+		it = my_json.find(ArgsTag);
 		if(it != my_json.end())
-			m_args = my_json["args"].get<std::string>();
+			m_args = my_json[ArgsTag].get<std::string>();
 		
-		it = my_json.find("pid");
+		it = my_json.find(PidTag);
 		if(it != my_json.end())
-			m_pid = my_json["pid"].get<int>();
+			m_pid = my_json[PidTag].get<int>();
 
-		it = my_json.find("errorCode");
+		it = my_json.find(ErrorCodeTag);
 		if(it != my_json.end())
-			m_errorCode = my_json["errorCode"].get<int>();
+			m_errorCode = my_json[ErrorCodeTag].get<int>();
 	}
 
 	void SerializeToString(std::string* output)
@@ -124,23 +147,23 @@ public:
 
 		nlohmann::json finalJson;
 		if(!m_instruction.empty())
-			finalJson += nlohmann::json::object_t::value_type("instruction", m_instruction);
+			finalJson += nlohmann::json::object_t::value_type(InstructionMsgTag, m_instruction);
 		if(!m_cmd.empty())
-			finalJson += nlohmann::json::object_t::value_type("cmd", m_cmd);
+			finalJson += nlohmann::json::object_t::value_type(CmdMsgTag, m_cmd);
 		if(!returnValueB64.empty())
-			finalJson += nlohmann::json::object_t::value_type("returnValue", returnValueB64);
+			finalJson += nlohmann::json::object_t::value_type(ReturnValueTag, returnValueB64);
 		if(!inputFileB64.empty())
-			finalJson += nlohmann::json::object_t::value_type("inputFile", inputFileB64);
+			finalJson += nlohmann::json::object_t::value_type(InputFileTag, inputFileB64);
 		if(!outputFileB64.empty())
-			finalJson += nlohmann::json::object_t::value_type("outputFile", outputFileB64);
+			finalJson += nlohmann::json::object_t::value_type(OutputFileTag, outputFileB64);
 		if(!dataB64.empty())
-			finalJson += nlohmann::json::object_t::value_type("data", dataB64);
+			finalJson += nlohmann::json::object_t::value_type(DataTag, dataB64);
 		if(!m_args.empty())
-			finalJson += nlohmann::json::object_t::value_type("args", m_args);
+			finalJson += nlohmann::json::object_t::value_type(ArgsTag, m_args);
 		if(m_pid!=-100)
-			finalJson += nlohmann::json::object_t::value_type("pid", m_pid);
+			finalJson += nlohmann::json::object_t::value_type(PidTag, m_pid);
 		if(m_errorCode!=-1)
-			finalJson += nlohmann::json::object_t::value_type("errorCode", m_errorCode);
+			finalJson += nlohmann::json::object_t::value_type(ErrorCodeTag, m_errorCode);
 
 		std::string json_str = finalJson.dump();
 		*output = json_str;
@@ -267,39 +290,39 @@ public:
 			return;
 		}
 
-		auto it = bundleC2MessageJson.find("beaconHash");
+		auto it = bundleC2MessageJson.find(BeaconHashMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_beaconHash = bundleC2MessageJson["beaconHash"].get<std::string>();
+			m_beaconHash = bundleC2MessageJson[BeaconHashMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("listenerHash");
+		it = bundleC2MessageJson.find(ListenerHashMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_listenerHash = bundleC2MessageJson["listenerHash"].get<std::string>();
+			m_listenerHash = bundleC2MessageJson[ListenerHashMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("username");
+		it = bundleC2MessageJson.find(UsernameMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_username = bundleC2MessageJson["username"].get<std::string>();
+			m_username = bundleC2MessageJson[UsernameMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("hostname");
+		it = bundleC2MessageJson.find(HostnameMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_hostname = bundleC2MessageJson["hostname"].get<std::string>();
+			m_hostname = bundleC2MessageJson[HostnameMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("arch");
+		it = bundleC2MessageJson.find(ArchMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_arch = bundleC2MessageJson["arch"].get<std::string>();
+			m_arch = bundleC2MessageJson[ArchMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("privilege");
+		it = bundleC2MessageJson.find(PrivilegeMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_privilege = bundleC2MessageJson["privilege"].get<std::string>();
+			m_privilege = bundleC2MessageJson[PrivilegeMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("os");
+		it = bundleC2MessageJson.find(OsMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_os = bundleC2MessageJson["os"].get<std::string>();
+			m_os = bundleC2MessageJson[OsMsgTag].get<std::string>();
 
-		it = bundleC2MessageJson.find("lastProofOfLife");
+		it = bundleC2MessageJson.find(LastProofOfLifeMsgTag);
 		if(it != bundleC2MessageJson.end())
-			m_lastProofOfLife = bundleC2MessageJson["lastProofOfLife"].get<std::string>();
+			m_lastProofOfLife = bundleC2MessageJson[LastProofOfLifeMsgTag].get<std::string>();
 
-		auto sessions = bundleC2MessageJson["sessions"];
+		auto sessions = bundleC2MessageJson[SessionsMsgTag];
 	
 		for (nlohmann::json::iterator it = sessions.begin(); it != sessions.end(); ++it)
 		{
@@ -335,23 +358,23 @@ public:
 
 		nlohmann::json bundleC2MessageJson ;
 		if(!m_beaconHash.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("beaconHash", m_beaconHash);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(BeaconHashMsgTag, m_beaconHash);
 		if(!m_listenerHash.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("listenerHash", m_listenerHash);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(ListenerHashMsgTag, m_listenerHash);
 		if(!m_username.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("username", m_username);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(UsernameMsgTag, m_username);
 		if(!m_hostname.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("hostname", m_hostname);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(HostnameMsgTag, m_hostname);
 		if(!m_arch.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("arch", m_arch);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(ArchMsgTag, m_arch);
 		if(!m_privilege.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("privilege", m_privilege);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(PrivilegeMsgTag, m_privilege);
 		if(!m_os.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("os", m_os);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(OsMsgTag, m_os);
 		if(!m_lastProofOfLife.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("lastProofOfLife", m_lastProofOfLife);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(LastProofOfLifeMsgTag, m_lastProofOfLife);
 		if(!sessions.empty())
-			bundleC2MessageJson += nlohmann::json::object_t::value_type("sessions", sessions);
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(SessionsMsgTag, sessions);
 
 		*output = bundleC2MessageJson.dump();
 	}
