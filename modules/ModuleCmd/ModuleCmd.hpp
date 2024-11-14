@@ -18,7 +18,7 @@ class ModuleCmd
 {
 	
 public:
-	ModuleCmd(const std::string& name, unsigned long hash=0)
+	ModuleCmd(const std::string& name, unsigned long long hash=0)
 	{
 		m_name=name;
 		m_hash=hash;
@@ -34,7 +34,7 @@ public:
 		return m_name;
 	}
 
-	unsigned long getHash()
+	unsigned long long getHash()
 	{
 		return m_hash;
 	}
@@ -70,7 +70,7 @@ public:
 
 protected:
 	std::string m_name;
-	unsigned long m_hash;
+	unsigned long long m_hash;
 
 	std::string m_teamServerModulesDirectoryPath;
     std::string m_linuxModulesDirectoryPath;
