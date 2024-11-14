@@ -840,7 +840,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			HMODULE hModule = NULL;
 			if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
 				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-				(LPCTSTR)object->getHash(), &hModule))
+				(LPCTSTR)(*object)->getHash(), &hModule))
 			{
 				// test with FreeLibrary, should use MemoryFreeLibrary ?
 				FreeLibrary(hModule);
