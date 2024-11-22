@@ -123,7 +123,7 @@ std::string ListDirectory::listDirectory(const std::string& path)
         if(actualPath.empty())
             actualPath=std::filesystem::current_path().string();
 
-        result += path;
+        result += actualPath;
         result += ":\n";
 
         std::error_code e;
