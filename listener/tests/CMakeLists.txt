@@ -1,10 +1,6 @@
 include_directories(..)
 include_directories(../../modules/ModuleCmd)
 
-IF (WIN32)
-ELSE()
-    include_directories(${Boost_INCLUDE_DIRS})
-ENDIF()
 
 # Test testListener
 add_executable(testListener testListener.cpp)

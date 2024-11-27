@@ -10,15 +10,6 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 	, m_isHttps(isHttps)
 	, m_config(config)
 {	
-#ifdef __linux__
-
-	bool isPortInUse = port_in_use(localPort);
-	if(isPortInUse)
-		throw std::runtime_error("Port Already Used.");
-		
-#elif _WIN32
-#endif
-
 	m_host=ip;
 	m_port=localPort;
 
@@ -34,27 +25,31 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 	m_listenerHash += ip;
 	m_listenerHash += '\x60';
 	m_listenerHash += std::to_string(localPort);
+}
 
-	if(m_isHttps)
+
+int ListenerHttp::init()
+{
+	try
 	{
-		try
-    	{
+		if(m_isHttps)
+		{
 			std::string servCrtFile = m_config[0]["ServHttpsListenerCrtFile"].get<std::string>();
 			std::string servKeyFile = m_config[0]["ServHttpsListenerKeyFile"].get<std::string>();
 			m_svr = std::make_unique<httplib::SSLServer>(servCrtFile.c_str(), servKeyFile.c_str());
 		}
-		catch (const json::out_of_range)
-		{
-			SPDLOG_CRITICAL("No ServHttpsListenerCrtFile or ServHttpsListenerKeyFile in config.");
-			return;
-		}		
+		else
+			m_svr = std::make_unique<httplib::Server>();
 	}
-	else
-		m_svr = std::make_unique<httplib::Server>();
+	catch (const json::out_of_range)
+	{
+		return -1;
+	}		
 
 	this->m_httpServ = std::make_unique<std::thread>(&ListenerHttp::lauchHttpServ, this);
-}
 
+	return 1;
+}
 
 ListenerHttp::~ListenerHttp()
 {

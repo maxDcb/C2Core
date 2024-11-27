@@ -1,6 +1,7 @@
 #include "Listener.hpp"
 
 #ifdef __linux__
+#include <unistd.h>
 #elif _WIN32
 #include <Windows.h>
 
@@ -27,22 +28,11 @@ Listener::Listener(const std::string& param1, const std::string& param2, const s
 	m_type = type;
 	m_isPrimary = false;
 
-#ifdef __linux__
-
-	// TODO at child lvl
-	// bool isPortInUse = port_in_use(port);
-	// if(isPortInUse)
-	// 	throw std::runtime_error("Port Already Used.");
-		
-#elif _WIN32
-#endif
-
-
 	// m_listenerHash is now composed of a UUID and information related to the machine and the listener
 #ifdef __linux__
 
-	char hostname[HOST_NAME_MAX];
-	gethostname(hostname, HOST_NAME_MAX);
+	char hostname[2048];
+	gethostname(hostname, 2048);
 	m_hostname = hostname;
 
 #elif _WIN32
@@ -480,10 +470,10 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 
 							addSessionListener(beaconHash, c2Message.returnvalue(), type, param1, param2);
 						}
-						else if(splitedCmd[0]==StopCmd)
-						{
-							rmSessionListener(beaconHash, c2Message.returnvalue());
-						}
+					}
+					else if(splitedCmd[0]==StopCmd)
+					{
+						rmSessionListener(beaconHash, c2Message.returnvalue());
 					}
 				}
 				else if(c2Message.instruction()==ListenerPollCmd)

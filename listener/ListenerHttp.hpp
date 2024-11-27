@@ -13,6 +13,8 @@ public:
 	ListenerHttp(const std::string& ip, int localport, const nlohmann::json& config, bool isHttps=false);
 	~ListenerHttp();
 
+	int init();
+
 private:
 	void lauchHttpServ();
 

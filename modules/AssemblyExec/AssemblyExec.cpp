@@ -81,8 +81,7 @@ std::string AssemblyExec::getInfo()
 	return info;
 }
 
-// TODO create a new init with boost arguement parsing if just compiled on teamServerSide
-// OPSEC remove init from the beacon compilation
+
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 

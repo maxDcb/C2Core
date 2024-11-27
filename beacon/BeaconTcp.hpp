@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SocketHandler.hpp>
+#include <SocketClient.hpp>
 #include "Beacon.hpp"
 
 
@@ -14,5 +14,7 @@ public:
 private:
 	void checkIn();
 
-	SocketHandler::Client* m_client;
+	int splitInPacket(const std::string& input, std::vector<std::string>& output);
+
+	SocketTunnelClient* m_client;
 };

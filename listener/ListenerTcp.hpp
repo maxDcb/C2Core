@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SocketHandler.hpp>
+#include <SocketServer.hpp>
 #include "Listener.hpp"
 
 
@@ -10,11 +10,14 @@ class ListenerTcp : public Listener
 public:
 	ListenerTcp(const std::string& ip, int localport);
 	~ListenerTcp();
+	
+	int init();
 
 private:
 	void lauchTcpServ();
+	int splitInPacket(const std::string& input, std::vector<std::string>& output);
 
-	SocketHandler::Server* m_serverTcp;
+	SocketServer* m_serverTcp;
 
 	int m_port;
 
