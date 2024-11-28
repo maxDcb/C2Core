@@ -1,12 +1,16 @@
+#ifdef _WIN32
+
 #include "ScreenShooter.h"
 
 #include <iostream>
 
 using namespace guards;
 
+
 void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int nScreenWidth, int nScreenHeight);
 void CaptureDesktop(CDCGuard &desktopGuard, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int * width, int * height, int left, int top);
 void SpliceImages(ScreenShooter::CDisplayHandlesPool * pHdcPool, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int * width, int * height);
+
 
 BOOL CALLBACK ScreenShooter::MonitorEnumProc(
   HMONITOR hMonitor,  // handle to display monitor
@@ -29,6 +33,7 @@ BOOL CALLBACK ScreenShooter::MonitorEnumProc(
     return true;
 }
 
+
 void ScreenShooter::CaptureScreen(std::vector<unsigned char>& dataScreen)
 {
     CDCGuard captureGuard(0);
@@ -38,10 +43,12 @@ void ScreenShooter::CaptureScreen(std::vector<unsigned char>& dataScreen)
     int width = 0;
 
     ScreenShooter::CDisplayHandlesPool displayHandles;
+    
     SpliceImages(& displayHandles, captureGuard, bmpGuard, originalBmp, &width, &height);
 
     CreateBitmapFinal(dataScreen, captureGuard, bmpGuard, originalBmp, width, height);
 }
+
 
 void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int nScreenWidth, int nScreenHeight)
 {
@@ -56,8 +63,6 @@ void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard
     lpbi->bmiHeader.biCompression = BI_RGB;
 
     SelectObject(captureGuard.get(), originalBmp); 
-
-    std::cout << "gogo" << std::endl;
 
     if (!GetDIBits(captureGuard.get(), bmpGuard.get(), 0, nScreenHeight, NULL, lpbi, DIB_RGB_COLORS))
     {
@@ -95,6 +100,7 @@ void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard
 
 }
 
+
 void CaptureDesktop(CDCGuard &desktopGuard, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int * width, int * height, int left, int top)
 {
     unsigned int nScreenWidth=GetDeviceCaps(desktopGuard.get(),HORZRES);
@@ -131,6 +137,7 @@ void CaptureDesktop(CDCGuard &desktopGuard, CDCGuard &captureGuard, CBitMapGuard
         // throw std::runtime_error("CaptureDesktop: BitBlt failed");
     }
 }
+
 
 void SpliceImages( ScreenShooter::CDisplayHandlesPool * pHdcPool
                         , CDCGuard &captureGuard
@@ -187,3 +194,6 @@ void SpliceImages( ScreenShooter::CDisplayHandlesPool * pHdcPool
         }
     }
 }
+
+
+#endif

