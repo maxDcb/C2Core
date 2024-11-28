@@ -887,7 +887,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		}
 		if(!isModuleFound)
 		{
-			c2RetMessage.set_returnvalue(CmdStatusFail);
+			c2RetMessage.set_returnvalue(CmdModuleNotFound);
 		}
 	}
 

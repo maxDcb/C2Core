@@ -43,6 +43,7 @@ const std::string StopCmd = "STO";
 
 const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
+const std::string CmdModuleNotFound = "Module not loaded";
 
 
 #ifdef BUILD_TEAMSERVER
