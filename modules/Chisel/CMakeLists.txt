@@ -5,7 +5,7 @@ if(WITH_TESTS)
     target_link_libraries(Chisel ${Donut} )
 else()
     message(STATUS "[-] Chisel Tests are disable.")    
-    target_link_libraries(Chisel )
+    target_link_libraries(Chisel ${Donut} )
 endif()
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")

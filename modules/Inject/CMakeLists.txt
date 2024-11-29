@@ -5,7 +5,7 @@ if(WITH_TESTS)
     target_link_libraries(Inject ${Donut} )
 else()
     message(STATUS "[-] Inject Tests are disable.")   
-    target_link_libraries(Inject ) 
+    target_link_libraries(Inject ${Donut} ) 
 endif()
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")

@@ -1,12 +1,14 @@
 include_directories(../)
 add_library(AssemblyExec SHARED AssemblyExec.cpp)
+
 if(WITH_TESTS)
     message(STATUS "[+] AssemblyExec Tests are enable.")
-    target_link_libraries(AssemblyExec ${Donut} )
+    target_link_libraries(AssemblyExec ${Donut})
 else()
     message(STATUS "[-] AssemblyExec Tests are disable.")    
-    target_link_libraries(AssemblyExec )
+    target_link_libraries(AssemblyExec ${Donut})
 endif()
+
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")
 
