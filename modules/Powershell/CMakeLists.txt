@@ -10,5 +10,7 @@ if(WITH_TESTS)
     add_custom_command(TARGET testsPowershell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsPowershell> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPowershell>")
 
+    file(COPY ${CMAKE_SOURCE_DIR}/core/modules/Powershell/tests/HelloWorlModule.ps1 DESTINATION ${CMAKE_SOURCE_DIR}/Tests/)
+
     add_test(NAME testsPowershell COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPowershell>")
 endif()

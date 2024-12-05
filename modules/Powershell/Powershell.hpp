@@ -13,9 +13,9 @@
 #include <metahost.h>
 
 // Import mscorlib.tlb (Microsoft Common Language Runtime Class Library).
-#import "mscorlib.tlb" auto_rename raw_interfaces_only				
-    // high_property_prefixes("_get","_put","_putref")		
-    // rename("ReportEvent", "InteropServices_ReportEvent")
+#import "mscorlib.tlb" auto_rename raw_interfaces_only				\
+    high_property_prefixes("_get","_put","_putref")					\
+    rename("ReportEvent", "InteropServices_ReportEvent")
 
 #endif
 

