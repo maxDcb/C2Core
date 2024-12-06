@@ -18,7 +18,7 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
     
-    return 0;
+    return !res;
 }
 
 
@@ -26,6 +26,21 @@ bool testChangeDirectory()
 {
     std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
 
+    {
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("cd");
+        splitedCmd.push_back("sdghdfhdfgnjdgf");
+
+        C2Message c2Message;
+        C2Message c2RetMessage;
+        changeDirectory->init(splitedCmd, c2Message);
+        changeDirectory->process(c2Message, c2RetMessage);
+
+        std::string output = "\n\noutput:\n";
+        output += c2RetMessage.returnvalue();
+        output += "\n";
+        std::cout << output << std::endl;
+    }
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("cd");

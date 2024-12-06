@@ -175,3 +175,52 @@ void static inline splitList(std::string list, const std::string& delimiter, std
 	}
 	splitedList.push_back(list);
 }
+
+
+static inline std::vector<std::string> regroupStrings(const std::vector<std::string>& input) 
+{
+    std::vector<std::string> result;
+    std::string currentGroup;
+    bool inQuotes = false;
+
+    for (const auto& word : input) 
+    {
+        if (!inQuotes) 
+        {
+            // Check if the current word starts a quoted group
+            if (!word.empty() && word.front() == '"') 
+            {
+                inQuotes = true;
+                currentGroup = word; // Start the group
+            } 
+            else 
+            {
+                result.push_back(word); // Add non-quoted word directly
+            }
+        } 
+        else 
+        {
+            // Append the word to the current group
+            currentGroup += " " + word;
+
+            // Check if the current word ends the quoted group
+            if (!word.empty() && word.back() == '"') 
+            {
+                inQuotes = false;
+
+                // remove quotes from the group
+                currentGroup.erase(std::remove(currentGroup.begin(), currentGroup.end(), '"'), currentGroup.end());
+                result.push_back(currentGroup); // Add the completed group
+                currentGroup.clear();
+            }
+        }
+    }
+
+    // Handle unclosed quotes (if any)
+    if (inQuotes) 
+    {
+        result.push_back(currentGroup);
+    }
+
+    return result;
+}

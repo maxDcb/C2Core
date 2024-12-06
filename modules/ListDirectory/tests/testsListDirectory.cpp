@@ -18,7 +18,7 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 bool testListDirectory()

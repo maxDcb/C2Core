@@ -1,5 +1,7 @@
 #include "../Powershell.hpp"
 
+#include <fstream>
+
 #ifdef __linux__
 #elif _WIN32
 #include <windows.h>
@@ -18,7 +20,7 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 
@@ -72,10 +74,29 @@ bool testPowershell()
         std::cout << output << std::endl;
     }
     {
+        std::string scriptFile = "HelloWorlModule.ps1";
+
+        std::string script = R"(
+# Define the PrintHelloWorld function
+function PrintHelloWorld {
+    Write-Output "Hello, World!"
+}
+
+# Export the function to make it available to other scripts
+Export-ModuleMember -Function PrintHelloWorld
+)";
+        std::ofstream outFile(scriptFile);
+        if (!outFile) 
+        {
+            return false;
+        }
+        outFile << script;
+        outFile.close();
+            
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("powershellt");
         splitedCmd.push_back("-i");
-        splitedCmd.push_back("HelloWorlModule.ps1");
+        splitedCmd.push_back(scriptFile);
 
         C2Message c2Message;
         C2Message c2RetMessage;

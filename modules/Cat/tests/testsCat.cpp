@@ -18,11 +18,14 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 bool testCat()
 {
+    std::string testFile = "test1.txt";
+    std::string fileContent = "testCat";
+
     std::ofstream outfile("test1.txt");
     outfile << "testCat" << std::endl;
     outfile.close();
@@ -31,7 +34,7 @@ bool testCat()
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("cat");
-        splitedCmd.push_back("test1.txt");
+        splitedCmd.push_back(testFile);
 
         C2Message c2Message;
         C2Message c2RetMessage;
@@ -42,7 +45,18 @@ bool testCat()
         output += c2RetMessage.returnvalue();
         output += "\n";
         std::cout << output << std::endl;
+
+        if (c2RetMessage.returnvalue().compare(0, fileContent.length(), fileContent) == 0) 
+        {
+        } 
+        else 
+        {
+            std::cout << "[-] fileContent " << fileContent << std::endl;
+            std::cout << "[-] c2RetMessage.returnvalue() " << c2RetMessage.returnvalue() << std::endl;
+            return false;
+        }
     }
+    
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("cat");
@@ -57,8 +71,16 @@ bool testCat()
         output += c2RetMessage.returnvalue();
         output += "\n";
         std::cout << output << std::endl;
-    }
 
+        if (c2RetMessage.errorCode()) 
+        {
+            std::cout << "[+] c2RetMessage.errorCode() " << c2RetMessage.errorCode() << std::endl;
+        } 
+        else 
+        {
+            return false;
+        }
+    }
 
     return true;
 }

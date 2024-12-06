@@ -56,17 +56,19 @@ std::string Upload::getInfo()
 
 int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-	if (splitedCmd.size() == 3)
+	std::vector<std::string> quoteRegroupedCmd = regroupStrings(splitedCmd);
+
+	if (quoteRegroupedCmd.size() == 3)
 	{
-		string inputFile = splitedCmd[1];
-		string outputFile = splitedCmd[2];
+		string inputFile = quoteRegroupedCmd[1];
+		string outputFile = quoteRegroupedCmd[2];
 
 		std::ifstream input(inputFile, std::ios::binary);
 		if( input ) 
 		{
 			std::string buffer(std::istreambuf_iterator<char>(input), {});
 
-			c2Message.set_instruction(splitedCmd[0]);
+			c2Message.set_instruction(quoteRegroupedCmd[0]);
 			c2Message.set_inputfile(inputFile);
 			c2Message.set_outputfile(outputFile);
 			c2Message.set_data(buffer.data(), buffer.size());
@@ -87,6 +89,7 @@ int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 	return 0;
 }
 
+#define ERROR_OPEN_FILE 1 
 
 int Upload::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
@@ -105,8 +108,21 @@ int Upload::process(C2Message &c2Message, C2Message &c2RetMessage)
 	}
 	else
 	{
-		c2RetMessage.set_returnvalue("Failed: Couldn't create file.");
+		c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
 	}
 
+	return 0;
+}
+
+int Upload::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
+{
+#ifdef BUILD_TEAMSERVER
+	int errorCode = c2RetMessage.errorCode();
+	if(errorCode>0)
+	{
+		if(errorCode==ERROR_OPEN_FILE)
+			errorMsg = "Failed: Couldn't open file";
+	}
+#endif
 	return 0;
 }
