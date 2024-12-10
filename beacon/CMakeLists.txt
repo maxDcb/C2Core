@@ -17,6 +17,8 @@ if(WIN32)
 else()
 	target_link_libraries(BeaconHttpLib SocketHandler PipeHandler MemoryModule SocksServer openssl::openssl httplib::httplib)
 endif()
+add_custom_command(TARGET BeaconHttpLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconHttpLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconHttpLib>")
 
 
 set(SOURCES_BEACON_TCP_EXE
@@ -35,6 +37,8 @@ if(WIN32)
 else()
 	target_link_libraries(BeaconTcpLib SocketHandler PipeHandler MemoryModule SocksServer )
 endif()
+add_custom_command(TARGET BeaconTcpLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconTcpLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconTcpLib>")
 
 
 set(SOURCES_BEACON_SMB_EXE
@@ -53,6 +57,8 @@ if(WIN32)
 else()
 	target_link_libraries(BeaconSmbLib SocketHandler PipeHandler MemoryModule SocksServer )
 endif()
+add_custom_command(TARGET BeaconSmbLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconSmbLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconSmbLib>")
 
 
 set(SOURCES_BEACON_GITHUB_EXE
@@ -71,6 +77,8 @@ if(WIN32)
 else()
 	target_link_libraries(BeaconGithubLib SocketHandler PipeHandler MemoryModule SocksServer openssl::openssl  httplib::httplib)
 endif()
+add_custom_command(TARGET BeaconGithubLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconGithubLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconGithubLib>")
 
 
 set(SOURCES_BEACON_DNS_EXE
@@ -89,3 +97,5 @@ if(WIN32)
 else()
 	target_link_libraries(BeaconDnsLib Dnscommunication SocketHandler PipeHandler MemoryModule SocksServer )
 endif()
+add_custom_command(TARGET BeaconDnsLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:BeaconDnsLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconDnsLib>")
