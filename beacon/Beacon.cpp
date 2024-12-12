@@ -269,9 +269,7 @@ bool Beacon::initConfig(const std::string& config)
 	m_key = beaconConfig["xorKey"].get<std::string>();
 
 	m_modulesConfig = beaconConfig["ModulesConfig"];
-
-	std::cout << "m_modulesConfig " << m_modulesConfig << std::endl;
-
+	
 	return true;
 }
 
