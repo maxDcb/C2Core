@@ -203,6 +203,18 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 }
 
 
+int AssemblyExec::initConfig(const nlohmann::json &config)
+{
+	for (auto& it : config.items())
+	{
+		if(it.key()=="process")
+			m_processToSpawn = it.value();
+	}
+
+	return 0;
+}
+
+
 int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	const std::string payload = c2Message.data();

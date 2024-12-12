@@ -41,62 +41,138 @@ using namespace std;
 
 #ifdef __linux__
 
-#define PROC_DIRECTORY "/proc/"
 
-int IsNumeric(const char* ccharptr_CharacterList)
+namespace fs = std::filesystem;
+
+
+struct ProcessInfo 
 {
-    for ( ; *ccharptr_CharacterList; ccharptr_CharacterList++)
-        if (*ccharptr_CharacterList < '0' || *ccharptr_CharacterList > '9')
-            return 0;
-    return 1;
+    std::string user;
+    int pid;
+    std::string state;
+    long memory;
+    std::string command;
+};
+
+
+std::string get_username(uid_t uid) 
+{
+    struct passwd *pw = getpwuid(uid);
+    return pw ? pw->pw_name : "unknown";
 }
 
-std::string GetProcess()
+
+ProcessInfo get_process_info(const std::string& pid_dir) 
 {
-    std::string result;
-   
-    DIR* dir_proc = opendir(PROC_DIRECTORY) ;
-    if (dir_proc == NULL)
-        return result;
+    ProcessInfo proc_info;
+    proc_info.pid = std::stoi(pid_dir);
 
-    struct dirent* dirEntity = NULL;
-    while((dirEntity = readdir(dir_proc)))
+    // Read /proc/[PID]/status for user and state
+    std::ifstream status_file("/proc/" + pid_dir + "/status");
+    std::string line;
+    uid_t uid = -1;
+
+    while (std::getline(status_file, line)) 
     {
-        if (dirEntity->d_type == DT_DIR)
+        if (line.find("Uid:") == 0) 
         {
-            if (IsNumeric(dirEntity->d_name))
+            std::istringstream iss(line);
+            std::string label;
+            iss >> label >> uid; // Get the real UID
+            proc_info.user = get_username(uid);
+        } 
+        else if (line.find("State:") == 0) 
+        {
+            proc_info.state = line.substr(7, 1); // Skip "State:"
+        }
+    }
+
+    // Read /proc/[PID]/stat for memory usage
+    std::ifstream stat_file("/proc/" + pid_dir + "/stat");
+    if (stat_file) 
+    {
+        std::string temp;
+        long rss;
+        for (int i = 0; i < 23; ++i) 
+        {
+            stat_file >> temp; // Skip to the 24th field (RSS)
+        }
+        stat_file >> rss; // Resident Set Size in pages
+        proc_info.memory = rss * sysconf(_SC_PAGESIZE) / 1024; // Convert to KB
+    }
+
+    // Read /proc/[PID]/cmdline for command
+    std::ifstream cmdline_file("/proc/" + pid_dir + "/cmdline");
+    if (cmdline_file) 
+    {
+        std::string buffer((std::istreambuf_iterator<char>(cmdline_file)), std::istreambuf_iterator<char>());
+
+        // Split on null character '\0'
+        std::vector<std::string> args;
+        std::istringstream iss(buffer);
+        std::string arg;
+        while (std::getline(iss, arg, '\0')) 
+        {
+            if (!arg.empty()) 
             {
-                std::string CommandLinePath = PROC_DIRECTORY;
-                CommandLinePath+=dirEntity->d_name;
-                CommandLinePath+="/cmdline";
+                args.push_back(arg);
+            }
+        }
 
-                struct stat info;
-                stat(CommandLinePath.c_str(), &info);  // Error check omitted
-                struct passwd *pw = getpwuid(info.st_uid);
-                std::string owner = "";
-                if(pw != 0)
-                    owner = pw->pw_name;
+        // Join arguments with spaces to reconstruct the real command line
+        for (size_t i = 0; i < args.size(); ++i) 
+        {
+            if (i > 0) 
+            {
+                proc_info.command += " ";
+            }
+            proc_info.command += args[i];
+        }
 
-                std::ifstream t(CommandLinePath);
-                std::stringstream buffer;
-                buffer << t.rdbuf();
+    }
 
-                pid_t pid = (pid_t)atoi(dirEntity->d_name);
-                std::string ProcessName = buffer.str();
+    return proc_info;
+}
 
-                if(!ProcessName.empty())
+
+std::string GetProcess()
+{   
+    std::vector<ProcessInfo> processes;
+
+    // Iterate over /proc
+    for (const auto& entry : fs::directory_iterator("/proc")) 
+    {
+        if (entry.is_directory()) 
+        {
+            std::string dirname = entry.path().filename().string();
+            if (std::all_of(dirname.begin(), dirname.end(), ::isdigit)) 
+            {
+                try 
                 {
-                    result += owner;
-                    result += " "; 
-                    result += std::to_string(pid);
-                    result += " ";
-                    result += ProcessName.substr(0,128);
-                    result += "\n";
+                    processes.push_back(get_process_info(dirname));
+                } 
+                catch (...) 
+                {
+                    // Skip processes we can't access
                 }
             }
         }
     }
-    closedir(dir_proc) ;
+
+    // Print header
+    std::string result;
+    result += "USER" + std::string(16-4, ' ') + "PID" + std::string(12-3, ' ') + "STATE" + std::string(6-5, ' ') + "MEM(KB)" + std::string(12-7, ' ') + "COMMAND\n";
+
+    // Print processes
+    for (const auto& proc : processes) 
+    {
+        result += proc.user                     + std::string(std::max((int)(16-proc.user.size()), 1), ' ') 
+                + std::to_string(proc.pid)      + std::string(std::max((int)(12-std::to_string(proc.pid).size()), 1), ' ') 
+                + proc.state                    + std::string(std::max((int)(6-proc.state.size()), 1), ' ') 
+                + std::to_string(proc.memory)   + std::string(std::max((int)(12-std::to_string(proc.memory).size()), 1), ' ') 
+                + proc.command + "\n";
+    }
+
     return result;
 }
 

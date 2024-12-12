@@ -8,10 +8,13 @@ class BeaconTcp : public Beacon
 {
 
 public:
-	BeaconTcp(std::string& ip, int port);
+	BeaconTcp(std::string& config, std::string& ip, int port);
 	~BeaconTcp();
 
 private:
+	std::string m_ip;
+	int m_port;
+
 	void checkIn();
 
 	int splitInPacket(const std::string& input, std::vector<std::string>& output);

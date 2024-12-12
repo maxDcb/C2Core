@@ -7,7 +7,7 @@ class BeaconGithub : public Beacon
 {
 
 public:
-	BeaconGithub(const std::string& project, const std::string& token);
+	BeaconGithub(std::string& config, const std::string& project, const std::string& token);
 	~BeaconGithub();
 
 	void checkIn();

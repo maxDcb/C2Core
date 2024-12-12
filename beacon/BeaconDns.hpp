@@ -8,7 +8,7 @@ class BeaconDns : public Beacon
 {
 
 public:
-	BeaconDns(const std::string& dnsServer, const std::string& domain);
+	BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain);
 	~BeaconDns();
 
 private:

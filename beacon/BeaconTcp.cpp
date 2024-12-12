@@ -3,9 +3,15 @@
 using namespace std;
 
 
-BeaconTcp::BeaconTcp(std::string& ip, int port)
-	: Beacon(ip, port)
+BeaconTcp::BeaconTcp(std::string& config, std::string& ip, int port)
+	: Beacon()
 {
+	m_ip = ip;
+    m_port = port;
+
+	// beacon and modules config
+    initConfig(config);
+
 	m_client=new SocketTunnelClient();
 }
 

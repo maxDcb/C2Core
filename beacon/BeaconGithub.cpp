@@ -371,13 +371,16 @@ int BeaconGithub::HandleRequest(const string& domain, const string& url)
 
 
 
-BeaconGithub::BeaconGithub(const std::string& project, const std::string& token)
-	: Beacon("127.0.0.1", 666)
+BeaconGithub::BeaconGithub(std::string& config, const std::string& project, const std::string& token)
+	: Beacon()
     , m_project(project)
     , m_token(token)
 {
     m_aliveTimerMs = 1000 * 10;
     srand(time(NULL));
+
+    // beacon and modules config
+    initConfig(config);
 }
 
 

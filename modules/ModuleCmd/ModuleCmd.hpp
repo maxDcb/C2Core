@@ -63,6 +63,7 @@ public:
 	// if an error ocurre:
 	// set_returnvalue(errorMsg) && return -1
 	virtual int init(std::vector<std::string>& splitedCmd, C2Message& c2Message) = 0;
+	virtual int initConfig(const nlohmann::json &config) {return 0;};
 	virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
 	virtual int followUp(const C2Message &c2RetMessage) {return 0;};
 	virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};
