@@ -34,8 +34,8 @@ int ListenerHttp::init()
 	{
 		if(m_isHttps)
 		{
-			std::string servCrtFile = m_config[0]["ServHttpsListenerCrtFile"].get<std::string>();
-			std::string servKeyFile = m_config[0]["ServHttpsListenerKeyFile"].get<std::string>();
+			std::string servCrtFile = m_config["ServHttpsListenerCrtFile"].get<std::string>();
+			std::string servKeyFile = m_config["ServHttpsListenerKeyFile"].get<std::string>();
 			m_svr = std::make_unique<httplib::SSLServer>(servCrtFile.c_str(), servKeyFile.c_str());
 		}
 		else
@@ -67,15 +67,15 @@ void ListenerHttp::lauchHttpServ()
 	std::string downloadFolder;
 	try
 	{
-		uri = m_config[0]["uri"];
+		uri = m_config["uri"];
 
-		auto it = m_config[0].find("uriFileDownload");
-		if(it != m_config[0].end())
-			uriFileDownload = m_config[0]["uriFileDownload"].get<std::string>();;
+		auto it = m_config.find("uriFileDownload");
+		if(it != m_config.end())
+			uriFileDownload = m_config["uriFileDownload"].get<std::string>();;
 
-		it = m_config[0].find("downloadFolder");
-		if(it != m_config[0].end())
-			downloadFolder = m_config[0]["downloadFolder"].get<std::string>();;
+		it = m_config.find("downloadFolder");
+		if(it != m_config.end())
+			downloadFolder = m_config["downloadFolder"].get<std::string>();;
 
 		SPDLOG_INFO("uriFileDownload {0}", uriFileDownload);
 		SPDLOG_INFO("downloadFolder {0}", downloadFolder);
@@ -231,7 +231,7 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 	json httpHeaders;
 	try
 	{
-		httpHeaders = m_config[0]["server"][0]["headers"][0];
+		httpHeaders = m_config["server"]["headers"];
 	}
 	catch (const json::out_of_range)
 	{
@@ -267,7 +267,7 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 	json httpHeaders;
 	try
 	{
-		httpHeaders = m_config[0]["server"][0]["headers"][0];
+		httpHeaders = m_config["server"]["headers"];
 	}
 	catch (const json::out_of_range)
 	{
