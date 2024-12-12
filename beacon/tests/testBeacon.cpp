@@ -6,7 +6,7 @@ class BeaconTester : public Beacon
 
 public:
 	BeaconTester()
-    : Beacon("127.0.0.1", 666)
+    : Beacon()
     {
 
     }
