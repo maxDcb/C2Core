@@ -1,5 +1,11 @@
 include_directories(../)
-add_library(Inject SHARED Inject.cpp)
+
+if(WIN32)
+    add_library(Inject SHARED Inject.cpp ../ModuleCmd/syscall.x64.obj)
+else()
+    add_library(Inject SHARED Inject.cpp)
+endif()
+
 if(WITH_TESTS)
     message(STATUS "[+] Inject Tests are enable.")
     target_link_libraries(Inject ${Donut} )
@@ -7,6 +13,7 @@ else()
     message(STATUS "[-] Inject Tests are disable.")   
     target_link_libraries(Inject ${Donut} ) 
 endif()
+
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")
 

@@ -1,5 +1,10 @@
 include_directories(../)
-add_library(AssemblyExec SHARED AssemblyExec.cpp)
+
+if(WIN32)
+    add_library(AssemblyExec SHARED AssemblyExec.cpp ../ModuleCmd/syscall.x64.obj)
+else()
+    add_library(AssemblyExec SHARED AssemblyExec.cpp)
+endif()
 
 if(WITH_TESTS)
     message(STATUS "[+] AssemblyExec Tests are enable.")

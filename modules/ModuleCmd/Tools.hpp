@@ -110,7 +110,7 @@ int static inline inject_data (pid_t pid, const char *src, void *dst, int len)
   return 0;
 }
 
-std::string static inline inject(int pid, const std::string& payload)
+std::string static inline inject(int pid, const std::string& payload, bool useSyscall)
 {
 	std::string result;
 
@@ -212,7 +212,7 @@ int static inline launchProcess(const std::string& processToSpawn)
 	return pid;
 }
 
-std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn)
+std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn, bool useSyscall)
 {
 	std::string result = "TODO";
 

