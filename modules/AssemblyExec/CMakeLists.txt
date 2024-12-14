@@ -18,11 +18,11 @@ add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E co
 $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")
 
 if(WITH_TESTS)
-    add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp)
-
     if(WIN32)
+        add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp ../ModuleCmd/syscall.x64.obj)
         target_link_libraries(testsAssemblyExec ${Donut} )
     else()
+        add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp)
         target_link_libraries(testsAssemblyExec ${Donut} ${aplib64} )
     endif()
 
