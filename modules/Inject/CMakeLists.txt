@@ -18,11 +18,11 @@ add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")
 
 if(WITH_TESTS)
-    add_executable(testsInject tests/testsInject.cpp Inject.cpp)
-
     if(WIN32)
+       add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.x64.obj)
         target_link_libraries(testsInject ${Donut} )
     else()
+        add_executable(testsInject tests/testsInject.cpp Inject.cpp)
         target_link_libraries(testsInject ${Donut} ${aplib64} )
     endif()
 
