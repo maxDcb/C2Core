@@ -6,6 +6,8 @@ else()
     add_library(AssemblyExec SHARED AssemblyExec.cpp)
 endif()
 
+set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 if(WITH_TESTS)
     message(STATUS "[+] AssemblyExec Tests are enable.")
     target_link_libraries(AssemblyExec ${Donut})

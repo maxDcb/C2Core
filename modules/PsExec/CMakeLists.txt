@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(PsExec SHARED PsExec.cpp)
+set_property(TARGET PsExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PsExec )
 add_custom_command(TARGET PsExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:PsExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PsExec>")

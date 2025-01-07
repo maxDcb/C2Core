@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(PrintWorkingDirectory SHARED PrintWorkingDirectory.cpp)
+set_property(TARGET PrintWorkingDirectory PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PrintWorkingDirectory )
 add_custom_command(TARGET PrintWorkingDirectory POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:PrintWorkingDirectory> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PrintWorkingDirectory>")

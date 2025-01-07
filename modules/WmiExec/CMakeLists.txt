@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(WmiExec SHARED WmiExec.cpp)
+set_property(TARGET WmiExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(WmiExec )
 add_custom_command(TARGET WmiExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:WmiExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:WmiExec>")

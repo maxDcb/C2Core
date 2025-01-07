@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Rev2self SHARED Rev2self.cpp)
+set_property(TARGET Rev2self PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Rev2self )
 add_custom_command(TARGET Rev2self POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Rev2self> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Rev2self>")

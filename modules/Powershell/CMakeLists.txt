@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Powershell SHARED Powershell.cpp)
+set_property(TARGET Powershell PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Powershell )
 add_custom_command(TARGET Powershell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Powershell> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Powershell>")

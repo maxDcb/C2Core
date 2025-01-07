@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(ListProcesses SHARED ListProcesses.cpp)
+set_property(TARGET ListProcesses PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(ListProcesses )
 add_custom_command(TARGET ListProcesses POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:ListProcesses> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:ListProcesses>")

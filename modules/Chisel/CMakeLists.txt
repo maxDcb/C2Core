@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Chisel SHARED Chisel.cpp)
+set_property(TARGET Chisel PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 if(WITH_TESTS)
     message(STATUS "[+] Chisel Tests are enable.")
     target_link_libraries(Chisel ${Donut} )

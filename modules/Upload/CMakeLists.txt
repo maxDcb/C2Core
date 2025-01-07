@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Upload SHARED Upload.cpp)
+set_property(TARGET Upload PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Upload )
 add_custom_command(TARGET Upload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Upload> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Upload>")

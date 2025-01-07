@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(ChangeDirectory SHARED ChangeDirectory.cpp)
+set_property(TARGET ChangeDirectory PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(ChangeDirectory )
 add_custom_command(TARGET ChangeDirectory POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:ChangeDirectory> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:ChangeDirectory>")

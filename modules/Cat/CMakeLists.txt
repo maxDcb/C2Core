@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Cat SHARED Cat.cpp)
+set_property(TARGET Cat PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Cat )
 add_custom_command(TARGET Cat POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Cat> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Cat>")

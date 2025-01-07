@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Tree SHARED Tree.cpp)
+set_property(TARGET Tree PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Tree )
 add_custom_command(TARGET Tree POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Tree> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Tree>")

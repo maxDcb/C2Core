@@ -6,6 +6,8 @@ else()
     add_library(Inject SHARED Inject.cpp)
 endif()
 
+set_property(TARGET Inject PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 if(WITH_TESTS)
     message(STATUS "[+] Inject Tests are enable.")
     target_link_libraries(Inject ${Donut} )

@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(Download SHARED Download.cpp)
+set_property(TARGET Download PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Download )
 add_custom_command(TARGET Download POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Download> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Download>")

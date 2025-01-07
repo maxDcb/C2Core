@@ -1,5 +1,6 @@
 include_directories(../)
 add_library(ScreenShot SHARED ScreenShot.cpp ScreenShooter.cpp)
+set_property(TARGET ScreenShot PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(ScreenShot )
 add_custom_command(TARGET ScreenShot POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:ScreenShot> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:ScreenShot>")
