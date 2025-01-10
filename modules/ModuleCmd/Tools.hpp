@@ -42,7 +42,7 @@ std::string static inline creatShellCodeDonut(
 	// default settings
 	c.inst_type = DONUT_INSTANCE_EMBED; // file is embedded
 	c.arch = DONUT_ARCH_X84;			// dual-mode (x86+amd64)
-	c.bypass = DONUT_BYPASS_CONTINUE;	// continues loading even if disabling AMSI/WLDP fails
+	c.bypass = DONUT_BYPASS_NONE;	// continues loading even if disabling AMSI/WLDP fails
 	c.format = DONUT_FORMAT_BINARY;		// default output format
 	c.compress = DONUT_COMPRESS_NONE;	// compression is disabled by default
 	c.entropy = DONUT_ENTROPY_DEFAULT;	// enable random names + symmetric encryption by default
@@ -408,8 +408,7 @@ HMODULE inline GetRemoteModuleHandle(HANDLE hProcess, LPCSTR lpModuleName)
 		goto GRMH_FAIL_JMP;
  
 	/* Get handles to all the modules in the target process */
-	if(!::EnumProcessModulesEx(hProcess, ModuleArray,
-		ModuleArraySize * sizeof(HMODULE), &NumModules, LIST_MODULES_ALL))
+	if(!::EnumProcessModulesEx(hProcess, ModuleArray, ModuleArraySize * sizeof(HMODULE), &NumModules, LIST_MODULES_ALL))
 		goto GRMH_FAIL_JMP;
  
 	/* We want the number of modules not the number of bytes */
@@ -429,8 +428,7 @@ HMODULE inline GetRemoteModuleHandle(HANDLE hProcess, LPCSTR lpModuleName)
 		ModuleArraySize = NumModules; // Update the size of the array
 		
 		/* Get handles to all the modules in the target process */
-		if( !::EnumProcessModulesEx(hProcess, ModuleArray,
-			ModuleArraySize * sizeof(HMODULE), &NumModules, LIST_MODULES_ALL) )
+		if( !::EnumProcessModulesEx(hProcess, ModuleArray, ModuleArraySize * sizeof(HMODULE), &NumModules, LIST_MODULES_ALL) )
 			goto GRMH_FAIL_JMP;
  
 		/* We want the number of modules not the number of bytes */
@@ -571,8 +569,7 @@ FARPROC inline GetRemoteProcAddress (HANDLE hProcess, HMODULE hModule, LPCSTR lp
 		goto GRPA_FAIL_JMP;
  
 	/* Read the main export table */
-	if(!::ReadProcessMemory(hProcess, (LPCVOID)(RemoteModuleBaseVA + ExportDirectory.VirtualAddress),
-		&ExportTable, sizeof(ExportTable), NULL))
+	if(!::ReadProcessMemory(hProcess, (LPCVOID)(RemoteModuleBaseVA + ExportDirectory.VirtualAddress), &ExportTable, sizeof(ExportTable), NULL))
 		goto GRPA_FAIL_JMP;
  
 	/* Save the absolute address of the tables so we don't need to keep adding the base address */
