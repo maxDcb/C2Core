@@ -21,6 +21,11 @@ private:
 	int checkHooks(std::string& result);
 	int unhookFreshCopy(std::string& result);
 	int unhookPerunsFart(std::string& result);
+	int amsiBypass(std::string& result);
+	int introspection(std::string& result, std::string& moduleName);
+	int patchMemory(std::string& result, const std::string& hexAddress, const std::string& patch);
+	int readMemory(std::string& result, const std::string& hexAddress, const int size);
+	int remotePatch(std::string& result);
 #endif
 
 };
