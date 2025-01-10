@@ -23,6 +23,7 @@ public:
 private:
 	std::string m_processToSpawn;
 	bool m_useSyscall;
+	bool m_isModeProcess;
 
 #ifdef _WIN32
 	int createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result);

