@@ -54,7 +54,7 @@ private:
 	std::string m_spoofedParent;
 
 #ifdef __linux__
-	int whateverLinux(std::string& result);
+	int whateverLinux(const std::string& payload, std::string& result);
 #elif _WIN32
 	int createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result);
 	int createNewProcessWithSpoofedParent(const std::string& payload, const std::string& processToSpawn, const std::string& spoofedParent, std::string& result);
