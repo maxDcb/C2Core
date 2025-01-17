@@ -23,7 +23,7 @@
 #include <syscall.hpp>
 #endif
 
-#define BUFSIZE 2048
+#define BUFSIZE 512
 
 // Max duration of the shellcode execution befor it's killed
 const int maxDurationShellCode=120;
@@ -718,13 +718,6 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 	m_processHandle = piProcInfo.hProcess;
 	std::thread thread([this] { killProcess(); });
 
-	WaitForSingleObject(piProcInfo.hProcess, INFINITE);
-
-	CloseHandle(hChildStdErrWr);
-    CloseHandle(hChildStdOutWr);
-	DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
-	DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
-
 	DWORD dwRead; 
     CHAR chBuf[BUFSIZE];
     bSuccess = FALSE;
@@ -732,8 +725,8 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 	std::string err = "";
     for (;;) 
 	{ 
-		DWORD bytesAvailable = 0;
-		if (PeekNamedPipe(hChildStdOutRd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		DWORD bytesAvailableOut = 0;
+		if (PeekNamedPipe(hChildStdOutRd, NULL, 0, NULL, &bytesAvailableOut, NULL) && bytesAvailableOut > 0) 
 		{
 			bSuccess=ReadFile( hChildStdOutRd, chBuf, BUFSIZE, &dwRead, NULL);
 			if( ! bSuccess || dwRead == 0 ) 
@@ -742,7 +735,9 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 			std::string s(chBuf, dwRead);
 			out += s;
 		}
-		if (PeekNamedPipe(hChildStdErrRd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+
+		DWORD bytesAvailableErr = 0;
+		if (PeekNamedPipe(hChildStdErrRd, NULL, 0, NULL, &bytesAvailableErr, NULL) && bytesAvailableErr > 0) 
 		{
 			bSuccess=ReadFile( hChildStdErrRd, chBuf, BUFSIZE, &dwRead, NULL);
 			if( ! bSuccess || dwRead == 0 ) 
@@ -751,14 +746,20 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 			std::string s(chBuf, dwRead);
 			err += s;
 		}
+		
 		DWORD exitCode;
-		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE)
+		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE && bytesAvailableOut==0 && bytesAvailableErr==0)
         	break;
-		// std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
     } 
 
 	m_isProcessRuning = false;
 
+	CloseHandle(hChildStdErrWr);
+    CloseHandle(hChildStdOutWr);
+	DuplicateHandle(hParentProcess, hParentStdOutWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
+	DuplicateHandle(hParentProcess, hParentStdErrWr, GetCurrentProcess(), NULL, 0, FALSE, DUPLICATE_CLOSE_SOURCE);
 	CloseHandle(hChildStdErrRd);
     CloseHandle(hChildStdOutRd);
 
@@ -785,36 +786,20 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 
 int AssemblyExec::createNewProcess(const std::string& payload, const std::string& processToSpawn, std::string& result)
 {
-	HANDLE g_hChildStd_OUT_Rd = NULL;
-	HANDLE g_hChildStd_OUT_Wr = NULL;
-	HANDLE g_hChildStd_ERR_Rd = NULL;
-	HANDLE g_hChildStd_ERR_Wr = NULL;
+	HANDLE hChildStdOutRd = NULL;
+	HANDLE hChildStdOutWr = NULL;
+	HANDLE hChildStdErrRd = NULL;
+	HANDLE hChildStdErrWr = NULL;
 
 	SECURITY_ATTRIBUTES sa; 
     // Set the bInheritHandle flag so pipe handles are inherited. 
     sa.nLength = sizeof(SECURITY_ATTRIBUTES); 
     sa.bInheritHandle = TRUE; 
     sa.lpSecurityDescriptor = NULL; 
-    // Create a pipe for the child process's STDERR. 
-    if ( ! CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &sa, 0) ) 
-	{
-        return -1;
-    }
-    // Ensure the read handle to the pipe for STDERR is not inherited.
-    if ( ! SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0) )
-	{
-       	return -1;
-    }
-    // Create a pipe for the child process's STDOUT. 
-    if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &sa, 0) ) 
-	{
-        return -1;
-    }
-    // Ensure the read handle to the pipe for STDOUT is not inherited
-    if ( ! SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) )
-	{
-        return -1;
-    }
+    CreatePipe(&hChildStdErrRd, &hChildStdErrWr, &sa, 0);
+    SetHandleInformation(hChildStdErrRd, HANDLE_FLAG_INHERIT, 0);
+    CreatePipe(&hChildStdOutRd, &hChildStdOutWr, &sa, 0);
+    SetHandleInformation(hChildStdOutRd, HANDLE_FLAG_INHERIT, 0);
 	
     // Create the child process. 
     PROCESS_INFORMATION piProcInfo; 
@@ -828,14 +813,14 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
     // This structure specifies the STDERR and STDOUT handles for redirection.
     ZeroMemory( &siStartInfo, sizeof(STARTUPINFO) );
     siStartInfo.cb = sizeof(STARTUPINFO); 
-    siStartInfo.hStdError = g_hChildStd_ERR_Wr;
-    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+    siStartInfo.hStdError = hChildStdErrWr;
+    siStartInfo.hStdOutput = hChildStdOutWr;
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
     // Create the child process. 
 	bSuccess = CreateProcess(NULL, const_cast<LPSTR>(processToSpawn.c_str()), NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &siStartInfo, &piProcInfo);
-    CloseHandle(g_hChildStd_ERR_Wr);
-    CloseHandle(g_hChildStd_OUT_Wr);
+    CloseHandle(hChildStdErrWr);
+    CloseHandle(hChildStdOutWr);
 
     // If an error occurs, exit the application. 
     if ( ! bSuccess ) 
@@ -878,8 +863,6 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 	m_processHandle = piProcInfo.hProcess;
 	std::thread thread([this] { killProcess(); });
 
-	WaitForSingleObject(piProcInfo.hProcess, INFINITE);
-
 	DWORD dwRead; 
     CHAR chBuf[BUFSIZE];
     bSuccess = FALSE;
@@ -887,35 +870,38 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 	std::string err = "";
     for (;;) 
 	{ 
-		DWORD bytesAvailable = 0;
-		if (PeekNamedPipe(g_hChildStd_OUT_Rd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+		DWORD bytesAvailableOut = 0;
+		if (PeekNamedPipe(hChildStdOutRd, NULL, 0, NULL, &bytesAvailableOut, NULL) && bytesAvailableOut > 0) 
 		{
-			bSuccess=ReadFile( g_hChildStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+			bSuccess=ReadFile( hChildStdOutRd, chBuf, BUFSIZE, &dwRead, NULL);
 			if( ! bSuccess || dwRead == 0 ) 
 				break; 
 
 			std::string s(chBuf, dwRead);
 			out += s;
 		}
-		if (PeekNamedPipe(g_hChildStd_ERR_Rd, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) 
+
+		DWORD bytesAvailableErr = 0;
+		if (PeekNamedPipe(hChildStdErrRd, NULL, 0, NULL, &bytesAvailableErr, NULL) && bytesAvailableErr > 0) 
 		{
-			bSuccess=ReadFile( g_hChildStd_ERR_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+			bSuccess=ReadFile( hChildStdErrRd, chBuf, BUFSIZE, &dwRead, NULL);
 			if( ! bSuccess || dwRead == 0 ) 
 				break; 
 
 			std::string s(chBuf, dwRead);
 			err += s;
 		}
+
 		DWORD exitCode;
-		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE)
+		if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE && bytesAvailableOut==0 && bytesAvailableErr==0)
         	break;
 
-		// std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
     } 
 
 	m_isProcessRuning = false;
-	CloseHandle(g_hChildStd_ERR_Rd);
-    CloseHandle(g_hChildStd_OUT_Rd);
+	CloseHandle(hChildStdErrRd);
+    CloseHandle(hChildStdOutRd);
   	
 	thread.join();
 
