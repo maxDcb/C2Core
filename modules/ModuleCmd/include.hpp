@@ -64,6 +64,22 @@ typedef struct _PS_ATTRIBUTE_LIST
 	PS_ATTRIBUTE Attributes[1];
 } PS_ATTRIBUTE_LIST, *PPS_ATTRIBUTE_LIST;
 
+typedef enum _MEMORY_INFORMATION_CLASS
+{
+	MemoryBasicInformation,
+	MemoryWorkingSetInformation,
+	MemoryMappedFilenameInformation,
+	MemoryRegionInformation,
+	MemoryWorkingSetExInformation,
+	MemorySharedCommitInformation,
+	MemoryImageInformation,
+	MemoryRegionInformationEx,
+	MemoryPrivilegedBasicInformation,
+	MemoryEnclaveImageInformation,
+	MemoryBasicInformationCapped
+} MEMORY_INFORMATION_CLASS, *PMEMORY_INFORMATION_CLASS;
+
+
 #ifndef InitializeObjectAttributes
 #define InitializeObjectAttributes( p, n, a, r, s ) { \
 	(p)->Length = sizeof( OBJECT_ATTRIBUTES );        \

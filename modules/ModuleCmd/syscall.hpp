@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 
 DWORD SW3_HashSyscall(PCSTR FunctionName);
@@ -12,83 +13,115 @@ EXTERN_C PVOID SW3_GetSyscallAddress(DWORD FunctionHash);
 
 
 EXTERN_C NTSTATUS Sw3NtAllocateVirtualMemory(
-	IN HANDLE ProcessHandle,
-	IN OUT PVOID * BaseAddress,
-	IN ULONG ZeroBits,
-	IN OUT PSIZE_T RegionSize,
-	IN ULONG AllocationType,
-	IN ULONG Protect);
+IN HANDLE ProcessHandle,
+IN OUT PVOID * BaseAddress,
+IN ULONG ZeroBits,
+IN OUT PSIZE_T RegionSize,
+IN ULONG AllocationType,
+IN ULONG Protect);
 
 
 EXTERN_C NTSTATUS Sw3NtWaitForSingleObject(
-	IN HANDLE ObjectHandle,
-	IN BOOLEAN Alertable,
-	IN PLARGE_INTEGER TimeOut OPTIONAL);
+IN HANDLE ObjectHandle,
+IN BOOLEAN Alertable,
+IN PLARGE_INTEGER TimeOut OPTIONAL);
 
 
 EXTERN_C NTSTATUS Sw3NtCreateThreadEx(
-	OUT PHANDLE ThreadHandle,
-	IN ACCESS_MASK DesiredAccess,
-	IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
-	IN HANDLE ProcessHandle,
-	IN PVOID StartRoutine,
-	IN PVOID Argument OPTIONAL,
-	IN ULONG CreateFlags,
-	IN SIZE_T ZeroBits,
-	IN SIZE_T StackSize,
-	IN SIZE_T MaximumStackSize,
-	IN PPS_ATTRIBUTE_LIST AttributeList OPTIONAL);
+OUT PHANDLE ThreadHandle,
+IN ACCESS_MASK DesiredAccess,
+IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+IN HANDLE ProcessHandle,
+IN PVOID StartRoutine,
+IN PVOID Argument OPTIONAL,
+IN ULONG CreateFlags,
+IN SIZE_T ZeroBits,
+IN SIZE_T StackSize,
+IN SIZE_T MaximumStackSize,
+IN PPS_ATTRIBUTE_LIST AttributeList OPTIONAL);
 
 
 EXTERN_C NTSTATUS Sw3NtClose(
-	IN HANDLE Handle);
+IN HANDLE Handle);
 
 
 EXTERN_C NTSTATUS Sw3NtWriteVirtualMemory(
-	IN HANDLE ProcessHandle,
-	IN PVOID BaseAddress,
-	IN PVOID Buffer,
-	IN SIZE_T NumberOfBytesToWrite,
-	OUT PSIZE_T NumberOfBytesWritten OPTIONAL);
+IN HANDLE ProcessHandle,
+IN PVOID BaseAddress,
+IN PVOID Buffer,
+IN SIZE_T NumberOfBytesToWrite,
+OUT PSIZE_T NumberOfBytesWritten OPTIONAL);
 
 
 EXTERN_C NTSTATUS Sw3NtProtectVirtualMemory(
-	IN HANDLE ProcessHandle,
-	IN OUT PVOID * BaseAddress,
-	IN OUT PSIZE_T RegionSize,
-	IN ULONG NewProtect,
-	OUT PULONG OldProtect);
+IN HANDLE ProcessHandle,
+IN OUT PVOID * BaseAddress,
+IN OUT PSIZE_T RegionSize,
+IN ULONG NewProtect,
+OUT PULONG OldProtect);
 
 
 EXTERN_C NTSTATUS Sw3NtOpenProcess(
-	OUT PHANDLE ProcessHandle,
-	IN ACCESS_MASK DesiredAccess,
-	IN POBJECT_ATTRIBUTES ObjectAttributes,
-	IN PCLIENT_ID ClientId OPTIONAL);
+OUT PHANDLE ProcessHandle,
+IN ACCESS_MASK DesiredAccess,
+IN POBJECT_ATTRIBUTES ObjectAttributes,
+IN PCLIENT_ID ClientId OPTIONAL);
 
 
 EXTERN_C NTSTATUS Sw3NtCreateProcess(
-  OUT PHANDLE           ProcessHandle,
-  IN ACCESS_MASK        DesiredAccess,
-  IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
-  IN HANDLE             ParentProcess,
-  IN BOOLEAN            InheritObjectTable,
-  IN HANDLE             SectionHandle OPTIONAL,
-  IN HANDLE             DebugPort OPTIONAL,
-  IN HANDLE             ExceptionPort OPTIONAL ); 
+OUT PHANDLE ProcessHandle,
+IN ACCESS_MASK DesiredAccess,
+IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+IN HANDLE ParentProcess,
+IN BOOLEAN InheritObjectTable,
+IN HANDLE SectionHandle OPTIONAL,
+IN HANDLE DebugPort OPTIONAL,
+IN HANDLE ExceptionPort OPTIONAL ); 
 
 
 EXTERN_C NTSTATUS Sw3NtQueueApcThread(
-  IN HANDLE               ThreadHandle,
-  IN PIO_APC_ROUTINE      ApcRoutine,
-  IN PVOID                ApcRoutineContext OPTIONAL,
-  IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
-  IN ULONG                ApcReserved OPTIONAL );
+IN HANDLE ThreadHandle,
+IN PIO_APC_ROUTINE ApcRoutine,
+IN PVOID ApcRoutineContext OPTIONAL,
+IN PIO_STATUS_BLOCK ApcStatusBlock OPTIONAL,
+IN ULONG pcReserved OPTIONAL );
 
 
 EXTERN_C NTSTATUS Sw3NtResumeThread(
-  IN HANDLE               ThreadHandle,
-  OUT PULONG              SuspendCount OPTIONAL );
+IN HANDLE ThreadHandle,
+OUT PULONG SuspendCount OPTIONAL );
+
+
+EXTERN_C NTSTATUS Sw3NtOpenProcessToken(
+IN HANDLE ProcessHandle,
+IN ACCESS_MASK DesiredAccess,
+OUT PHANDLE TokenHandle);
+
+
+EXTERN_C NTSTATUS Sw3NtAdjustPrivilegesToken(
+IN HANDLE TokenHandle,
+IN BOOLEAN DisableAllPrivileges,
+IN PTOKEN_PRIVILEGES NewState OPTIONAL,
+IN ULONG BufferLength,
+OUT PTOKEN_PRIVILEGES PreviousState OPTIONAL,
+OUT PULONG ReturnLength OPTIONAL);
+
+
+EXTERN_C NTSTATUS Sw3NtQueryVirtualMemory(
+IN HANDLE ProcessHandle,
+IN PVOID BaseAddress,
+IN MEMORY_INFORMATION_CLASS MemoryInformationClass,
+OUT PVOID MemoryInformation,
+IN SIZE_T MemoryInformationLength,
+OUT PSIZE_T ReturnLength OPTIONAL);
+
+
+EXTERN_C NTSTATUS Sw3NtReadVirtualMemory(
+IN HANDLE ProcessHandle,
+IN PVOID BaseAddress OPTIONAL,
+OUT PVOID Buffer,
+IN SIZE_T BufferSize,
+OUT PSIZE_T NumberOfBytesRead OPTIONAL);
 
 
 DWORD GlobalHash = 0x0;
@@ -132,13 +165,8 @@ DWORD SW3_HashSyscall(const char *FunctionName)
 }
 
 
-NTSTATUS Sw3NtAllocateVirtualMemory_(
-HANDLE ProcessHandle,
-PVOID * BaseAddress,
-ULONG ZeroBits,
-PSIZE_T RegionSize,
-ULONG AllocationType,
-ULONG Protect)
+template <typename... Args>
+NTSTATUS Sw3NtAllocateVirtualMemory_(Args&&... args) 
 {
 	// need to put Zw for the syscall
 	// char *FunctionName = "ZwAllocateVirtualMemory";
@@ -146,164 +174,165 @@ ULONG Protect)
 	// std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
 
 	GlobalHash = 806327511;
-
-	return Sw3NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+    return Sw3NtAllocateVirtualMemory(std::forward<Args>(args)...);
 }
 
 
-NTSTATUS Sw3NtWaitForSingleObject_(
-HANDLE ObjectHandle,
-BOOLEAN Alertable,
-PLARGE_INTEGER TimeOut)
+template <typename... Args>
+NTSTATUS Sw3NtWaitForSingleObject_(Args&&... args) 
 {
 	// char *FunctionName = "ZwWaitForSingleObject";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwWaitForSingleObject " << GlobalHash << std::endl;
 
 	GlobalHash = 3941435821;
-
-	return Sw3NtWaitForSingleObject(ObjectHandle, Alertable, TimeOut);
+	return Sw3NtWaitForSingleObject(std::forward<Args>(args)...);
 }
 
 
-NTSTATUS Sw3NtClose_(
-HANDLE Handle)
+template <typename... Args>
+NTSTATUS Sw3NtClose_(Args&&... args) 
 {
-// 	char *FunctionName = "ZwClose";
-// 	GlobalHash = SW3_HashSyscall(FunctionName);
-// std::cout << "ZwClose " << GlobalHash << std::endl;
+	// 	char *FunctionName = "ZwClose";
+	// 	GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << "ZwClose " << GlobalHash << std::endl;
 
 	GlobalHash = 745328858;
-
-	return Sw3NtClose(Handle);
+	return Sw3NtClose(std::forward<Args>(args)...);
 }
 
 
-NTSTATUS Sw3NtWriteVirtualMemory_(
-HANDLE ProcessHandle,
-PVOID BaseAddress,
-PVOID Buffer,
-SIZE_T NumberOfBytesToWrite,
-PSIZE_T NumberOfBytesWritten )
+template <typename... Args>
+NTSTATUS Sw3NtWriteVirtualMemory_(Args&&... args) 
 {
 	// char *FunctionName = "ZwWriteVirtualMemory";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwWriteVirtualMemory " << GlobalHash << std::endl;
 
 	GlobalHash = 4080026747;
-
-	return Sw3NtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
+	return Sw3NtWriteVirtualMemory(std::forward<Args>(args)...);
 }
 
 
-NTSTATUS Sw3NtProtectVirtualMemory_(
-	HANDLE ProcessHandle,
-	PVOID * BaseAddress,
-	PSIZE_T RegionSize,
-	ULONG NewProtect,
-	PULONG OldProtect)
+template <typename... Args>
+NTSTATUS Sw3NtProtectVirtualMemory_(Args&&... args) 
 {
 	// char *FunctionName = "ZwProtectVirtualMemory";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwProtectVirtualMemory " << GlobalHash << std::endl;
 
 	GlobalHash = 699580991;
-
-	return Sw3NtProtectVirtualMemory(ProcessHandle, BaseAddress, RegionSize, NewProtect, OldProtect);
+	return Sw3NtProtectVirtualMemory(std::forward<Args>(args)...);
 }
 
 
-// fail if we put the has calculation in this function !!
-NTSTATUS Sw3NtOpenProcess_(
-PHANDLE ProcessHandle,
-ACCESS_MASK DesiredAccess,
-POBJECT_ATTRIBUTES ObjectAttributes,
-PCLIENT_ID ClientId)
+template <typename... Args>
+NTSTATUS Sw3NtOpenProcess_(Args&&... args) 
 {
 	// char *FunctionName = "ZwOpenProcess";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
 
 	GlobalHash = 3548847587;
-
 	// __debugbreak();
-	return Sw3NtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
+	return Sw3NtOpenProcess(std::forward<Args>(args)...);
 
 }
 
 
-NTSTATUS Sw3NtCreateThreadEx_(
-PHANDLE ThreadHandle,
-ACCESS_MASK DesiredAccess,
-POBJECT_ATTRIBUTES ObjectAttributes,
-HANDLE ProcessHandle,
-PVOID StartRoutine,
-PVOID Argument,
-ULONG CreateFlags,
-SIZE_T ZeroBits,
-SIZE_T StackSize,
-SIZE_T MaximumStackSize,
-PPS_ATTRIBUTE_LIST AttributeList)
+template <typename... Args>
+NTSTATUS Sw3NtCreateThreadEx_(Args&&... args) 
 {
 	// char *FunctionName = "ZwCreateThreadEx";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwCreateThreadEx " << GlobalHash << std::endl;
 
 	GlobalHash = 3653557611;
-
-	return Sw3NtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
+	return Sw3NtCreateThreadEx(std::forward<Args>(args)...);
 }
 
 
-NTSTATUS Sw3NtCreateProcess_(
-PHANDLE ProcessHandle,
-ACCESS_MASK DesiredAccess,
-POBJECT_ATTRIBUTES ObjectAttributes,
-HANDLE ParentProcess,
-BOOLEAN InheritObjectTable,
-HANDLE SectionHandle,
-HANDLE DebugPort,
-HANDLE ExceptionPort)
+template <typename... Args>
+NTSTATUS Sw3NtCreateProcess_(Args&&... args) 
 {
 	// PCSTR FunctionName = "ZwCreateProcess";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwCreateProcess " << GlobalHash << std::endl;
 
-	// TODO get the has
-	// GlobalHash = 3653557611;
-
-	return Sw3NtCreateProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, InheritObjectTable, SectionHandle, DebugPort, ExceptionPort);
+	GlobalHash = 1768521463;
+	return Sw3NtCreateProcess(std::forward<Args>(args)...);
 }
 
 
-EXTERN_C NTSTATUS Sw3NtQueueApcThread_(
-HANDLE               ThreadHandle,
-PIO_APC_ROUTINE      ApcRoutine,
-PVOID                ApcRoutineContext,
-PIO_STATUS_BLOCK     ApcStatusBlock,
-ULONG                ApcReserved)
+template <typename... Args>
+NTSTATUS Sw3NtQueueApcThread_(Args&&... args) 
 {
 	// PCSTR FunctionName = "ZwQueueApcThread";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwQueueApcThread " << GlobalHash << std::endl;
 
 	GlobalHash = 735850453;
-
-	return Sw3NtQueueApcThread(ThreadHandle, ApcRoutine, ApcRoutineContext, ApcStatusBlock, ApcReserved);
+	return Sw3NtQueueApcThread(std::forward<Args>(args)...);
 }
 
 
-EXTERN_C NTSTATUS Sw3NtResumeThread_(
-HANDLE ThreadHandle,
-PULONG SuspendCount)
+template <typename... Args>
+NTSTATUS Sw3NtResumeThread_(Args&&... args) 
 {
 	// PCSTR FunctionName = "ZwResumeThread";
 	// GlobalHash = SW3_HashSyscall(FunctionName);
 	// std::cout << "ZwResumeThread " << GlobalHash << std::endl;
 
 	GlobalHash = 4130550557;
+	return Sw3NtResumeThread(std::forward<Args>(args)...);
+}
 
-	return Sw3NtResumeThread(ThreadHandle, SuspendCount);
+
+template <typename... Args>
+NTSTATUS Sw3NtOpenProcessToken_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwOpenProcessToken";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 2590718720;
+    return Sw3NtOpenProcessToken(std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+NTSTATUS Sw3NtAdjustPrivilegesToken_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwAdjustPrivilegesToken";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 2243258122;
+    return Sw3NtAdjustPrivilegesToken(std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+NTSTATUS Sw3NtQueryVirtualMemory_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwQueryVirtualMemory";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 422492770;
+    return Sw3NtQueryVirtualMemory(std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+NTSTATUS Sw3NtReadVirtualMemory_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwReadVirtualMemory";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 663422542;
+    return Sw3NtReadVirtualMemory(std::forward<Args>(args)...);
 }
 
 

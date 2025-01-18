@@ -47,6 +47,21 @@ Sw3NtResumeThread PROC
 	jmp pipo                                  
 Sw3NtResumeThread ENDP
 
+Sw3NtOpenProcessToken PROC
+	jmp pipo                                  
+Sw3NtOpenProcessToken ENDP
+
+Sw3NtAdjustPrivilegesToken PROC
+	jmp pipo                                  
+Sw3NtAdjustPrivilegesToken ENDP
+
+Sw3NtQueryVirtualMemory PROC
+	jmp pipo                                  
+Sw3NtQueryVirtualMemory ENDP
+
+Sw3NtReadVirtualMemory PROC
+	jmp pipo                                  
+Sw3NtReadVirtualMemory ENDP
 
 pipo PROC
 	mov [rsp +8], rcx          

