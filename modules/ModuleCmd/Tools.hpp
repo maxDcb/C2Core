@@ -477,7 +477,7 @@ GRMH_FAIL_JMP:
  
 
 //-----------------------------------------------------------------------------
-
+// TODO recode GetRemoteModuleHandle to use the peb - https://github.com/ricardojoserf/NativeDump/blob/c-flavour/NativeDump/NativeDump.cpp
 FARPROC inline GetRemoteProcAddress (HANDLE hProcess, HMODULE hModule, LPCSTR lpProcName, UINT Ordinal, BOOL UseOrdinal)
 {
 	BOOL Is64Bit = FALSE;
