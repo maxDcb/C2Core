@@ -13,12 +13,17 @@ public:
 	std::string getInfo();
 
 	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+	int recurringExec(C2Message& c2RetMessage);
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 	int followUp(const C2Message &c2RetMessage);
 	int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
 
 private:
-
+	std::string m_outputfile;
+	std::ofstream m_output;
+    std::ifstream m_input;
+    std::streamsize m_fileSize;
+    std::streamsize m_bytesRead;
 };
 
 
