@@ -133,22 +133,6 @@ EXTERN_C DWORD getGlobalHash()
 }
 
 
-void XOR(char * data, size_t data_len, char * key, size_t key_len) 
-{
-	int j = 0;
-	for (int i = 0; i < data_len; i++) 
-	{
-		if (j == key_len-1) 
-			j = 0;
-
-		data[i] = data[i] ^ key[j];
-		j++;
-	}
-	
-	data[data_len-1]='\0';
-}
-
-
 DWORD SW3_HashSyscall(const char *FunctionName)
 {
     DWORD Hash = 0x811C9DC5; // FNV offset basis

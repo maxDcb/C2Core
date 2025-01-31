@@ -190,6 +190,14 @@ void ListenerHttp::lauchHttpServ()
 		fileDownloadReg+=":filename";
 		m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
 		{
+			bool deleteFile=false;
+			auto it = req.headers.find("OneTimeDownload");
+			if (it != req.headers.end()) 
+			{
+				std::string header_value = it->second;
+				deleteFile=true;
+			} 
+
 			SPDLOG_INFO("File server connection: {0}", req.path);
 
 			std::string filename = req.path_params.at("filename");
@@ -204,6 +212,14 @@ void ListenerHttp::lauchHttpServ()
 				buffer.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 
 				res.set_content(buffer, "application/x-binary");
+
+				file.close();
+				if(deleteFile)
+				{
+					// std::string backUpFile = filePath+".DELETED";
+					// std::rename(filePath.data(), backUpFile.data());
+					std::remove(filePath.data());
+				}
 			} 
 			else 
 			{

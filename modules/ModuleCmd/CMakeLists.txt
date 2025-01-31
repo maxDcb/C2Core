@@ -12,9 +12,11 @@ if(WITH_TESTS)
     $<TARGET_FILE:testsTools> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsTools>")
     add_test(NAME testsTools COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsTools>")
 
-    add_executable(testsSyscall tests/testsSyscall.cpp ./syscall.x64.obj)
-    target_link_libraries(testsSyscall )
-    add_custom_command(TARGET testsSyscall POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsSyscall> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
-    add_test(NAME testsSyscall COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
+    if(WIN32)
+        add_executable(testsSyscall tests/testsSyscall.cpp ./syscall.x64.obj)
+        target_link_libraries(testsSyscall )
+        add_custom_command(TARGET testsSyscall POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+        $<TARGET_FILE:testsSyscall> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
+        add_test(NAME testsSyscall COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
+    endif()
 endif()

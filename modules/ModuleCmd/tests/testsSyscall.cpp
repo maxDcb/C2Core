@@ -4,6 +4,7 @@
 #endif
 
 #include <string>
+#include <iostream>
 
 
 // Sw3NtAllocateVirtualMemory_                             
@@ -24,8 +25,10 @@ int test()
     return 0;
 }
 
+
 int main()
 {
+#ifdef _WIN32
     void *remoteBuffer;
     SIZE_T sizeToAlloc=100;
     NTSTATUS status = Sw3NtAllocateVirtualMemory_(GetCurrentProcess(), &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -108,7 +111,7 @@ int main()
     }
 
     std::cout << "Success" << std::endl;
-
+#endif
     return 0;
 }
 

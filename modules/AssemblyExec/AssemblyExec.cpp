@@ -409,6 +409,8 @@ int AssemblyExec::whateverLinux(const std::string& payload, std::string& result)
 		mprotect(page, payload.size(), PROT_READ|PROT_EXEC);
 		((void(*)())page)();
 	}
+
+	return 0;
 }
 
 
