@@ -10,7 +10,9 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
 	, m_project(project)
 	, m_token(token)
 {	
-	m_listenerHash = random_string(SizeListenerHash);
+	std::string hash = random_string(SizeListenerHash);
+
+	m_listenerHash = hash;
 	m_listenerHash += '\x60';
 	m_listenerHash += ListenerGithubType;
 	m_listenerHash += '\x60';
@@ -20,6 +22,23 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
 
 	m_isRunning=true;
 	this->m_githubFetcher = std::make_unique<std::thread>(&ListenerGithub::checkGithubIssues, this);
+
+#ifdef BUILD_TEAMSERVER
+	// Logger
+	std::vector<spdlog::sink_ptr> sinks;
+
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	console_sink->set_level(spdlog::level::info);
+    sinks.push_back(console_sink);
+
+
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerGithubType+"_"+hash+".txt", 1024*1024*10, 3);
+	file_sink->set_level(spdlog::level::debug);
+	sinks.push_back(file_sink);
+
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerGithubType+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+	m_logger->set_level(spdlog::level::debug);
+#endif
 }
 
 
@@ -27,6 +46,10 @@ ListenerGithub::~ListenerGithub()
 {
 	m_isRunning=false;
 	m_githubFetcher->join();
+
+#ifdef BUILD_TEAMSERVER
+		m_logger->info("Listener Github stoped");
+#endif
 }
 
 
@@ -55,13 +78,17 @@ void ListenerGithub::checkGithubIssues()
 		auto err = response.error();
 		if(err!=httplib::Error::Success)
 		{
-			SPDLOG_ERROR("Http client Get {0}", httplib::to_string(err));
+#ifdef BUILD_TEAMSERVER
+			m_logger->error("Http client Get {0}", httplib::to_string(err));
+#endif
 			continue;
 		}
 
 		if(response->status!=200 && response->status!=201)
 		{
-			SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
+#ifdef BUILD_TEAMSERVER
+			m_logger->error("Error with the ListenerGithub: {0}", response->body);
+#endif
 			continue;
 		}
 
@@ -79,10 +106,10 @@ void ListenerGithub::checkGithubIssues()
 
 				if(nbComments!=0)
 				{
-					SPDLOG_DEBUG("Issue with comments: {0}", std::to_string(number));
+#ifdef BUILD_TEAMSERVER
+					m_logger->debug("Issue with comments: {0}", std::to_string(number));
+#endif
 				}
-
-				SPDLOG_TRACE("[+] handle issue: {0}", std::to_string(number));
 
 				if(title.rfind("ResponseC2: ", 0) == 0)
 				{	
@@ -108,14 +135,11 @@ void ListenerGithub::checkGithubIssues()
 						int maxChunkSize = 65000;
 						if(res.size()>=maxChunkSize)
 						{
-							SPDLOG_DEBUG("Split response");
 							std::vector<std::string> chunks;
 							for (std::size_t i = 0; i < res.size(); i += maxChunkSize) 
 							{
 								chunks.push_back(res.substr(i, maxChunkSize));
 							}
-
-							SPDLOG_DEBUG("Split response of {0} chunks", chunks.size());
 
 							nlohmann::json responseData = {
 							{"title", reponseTitle},
@@ -130,15 +154,21 @@ void ListenerGithub::checkGithubIssues()
 							err = response.error();
 							if(err!=httplib::Error::Success)
 							{
-								SPDLOG_ERROR("Http client Post Issue {0}", httplib::to_string(err));
+#ifdef BUILD_TEAMSERVER
+								m_logger->error("Http client Post Issue {0}", httplib::to_string(err));
+#endif
 								continue;
 							}
 
-							SPDLOG_TRACE("Issue created {0}", response->status);
+#ifdef BUILD_TEAMSERVER
+							m_logger->trace("Issue created {0}", response->status);
+#endif
 							
 							if(response->status!=200 && response->status!=201)
 							{
-								SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
+#ifdef BUILD_TEAMSERVER
+								m_logger->error("Error with the ListenerGithub: {0}", response->body);
+#endif
 								continue;
 							}
 
@@ -164,21 +194,23 @@ void ListenerGithub::checkGithubIssues()
 								err = response.error();
 								if(err!=httplib::Error::Success)
 								{
-									SPDLOG_ERROR("Http client Post Comments {0}", httplib::to_string(err));
+#ifdef BUILD_TEAMSERVER
+									m_logger->error("Http client Post Comments {0}", httplib::to_string(err));
+#endif
 									continue;
 								}
 
 								if(response->status!=200 && response->status!=201)
 								{
-									SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
+#ifdef BUILD_TEAMSERVER
+									m_logger->error("Error with the ListenerGithub: {0}", response->body);
+#endif
 									continue;
 								}
 							}
 						}
 						else
 						{
-							SPDLOG_DEBUG("Simple reponse");
-
 							nlohmann::json responseData = {
 							{"title", reponseTitle},
 							{"body", res},
@@ -192,13 +224,17 @@ void ListenerGithub::checkGithubIssues()
 							err = response.error();
 							if(err!=httplib::Error::Success)
 							{
-								SPDLOG_ERROR("Http client Post {0}", httplib::to_string(err));
+#ifdef BUILD_TEAMSERVER
+								m_logger->error("Http client Post {0}", httplib::to_string(err));
+#endif
 								continue;
 							}
 
 							if(response->status!=200 && response->status!=201)
 							{
-								SPDLOG_ERROR("Error with the ListenerGithub: {0}", response->body);
+#ifdef BUILD_TEAMSERVER
+								m_logger->error("Error with the ListenerGithub: {0}", response->body);
+#endif
 								continue;
 							}
 						}
@@ -217,7 +253,9 @@ void ListenerGithub::checkGithubIssues()
 					err = response.error();
 					if(err!=httplib::Error::Success)
 					{
-						SPDLOG_ERROR("Http client Post close {0}", httplib::to_string(err));
+#ifdef BUILD_TEAMSERVER
+						m_logger->error("Http client Post close {0}", httplib::to_string(err));
+#endif
 						continue;
 					}
 				}
@@ -231,7 +269,9 @@ void ListenerGithub::checkGithubIssues()
 
 int ListenerGithub::HandleCheckIn(const std::string& req, std::string& output)
 {
-	SPDLOG_TRACE("HandleCheckIn");
+#ifdef BUILD_TEAMSERVER
+		m_logger->trace("HandleCheckIn");
+#endif
 
 	try
 	{
@@ -239,14 +279,16 @@ int ListenerGithub::HandleCheckIn(const std::string& req, std::string& output)
 	} 
 	catch (const std::exception& ex) 
 	{
-		SPDLOG_ERROR("HandleCheckIn catch exception");
+#ifdef BUILD_TEAMSERVER
+		m_logger->error("HandleCheckIn catch exception");
+#endif
 	} 
 	catch (...) 
 	{
-		SPDLOG_ERROR("HandleCheckIn catch...");
+#ifdef BUILD_TEAMSERVER
+		m_logger->error("HandleCheckIn catch...");
+#endif
 	}
-
-	
 
 	return 0;
 }

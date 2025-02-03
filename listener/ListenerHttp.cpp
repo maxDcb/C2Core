@@ -13,18 +13,39 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 	m_host=ip;
 	m_port=localPort;
 
-	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += '\x60';
+	std::string hash = random_string(SizeListenerHash);
+	std::string type;
 	if(isHttps)
-		m_listenerHash += ListenerHttpsType;
+		type = ListenerHttpsType;
 	else
-		m_listenerHash += ListenerHttpType;
+		type = ListenerHttpType;
+
+	m_listenerHash = hash;
+	m_listenerHash += '\x60';
+	m_listenerHash += type;
 	m_listenerHash += '\x60';
 	m_listenerHash += m_hostname;
 	m_listenerHash += '\x60';
 	m_listenerHash += ip;
 	m_listenerHash += '\x60';
 	m_listenerHash += std::to_string(localPort);
+
+#ifdef BUILD_TEAMSERVER
+	// Logger
+	std::vector<spdlog::sink_ptr> sinks;
+
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	console_sink->set_level(spdlog::level::info);
+    sinks.push_back(console_sink);
+
+
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+type+"_"+std::to_string(localPort)+"_"+hash+".txt", 1024*1024*10, 3);
+	file_sink->set_level(spdlog::level::debug);
+	sinks.push_back(file_sink);
+
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+type+"_"+std::to_string(localPort)+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+	m_logger->set_level(spdlog::level::debug);
+#endif
 }
 
 
@@ -55,6 +76,10 @@ ListenerHttp::~ListenerHttp()
 {
 	m_svr->stop();
 	m_httpServ->join();
+
+#ifdef BUILD_TEAMSERVER
+		m_logger->info("Server stoped on port {0}", m_port);
+#endif
 }
 
 
@@ -77,21 +102,28 @@ void ListenerHttp::lauchHttpServ()
 		if(it != m_config.end())
 			downloadFolder = m_config["downloadFolder"].get<std::string>();;
 
-		SPDLOG_INFO("uriFileDownload {0}", uriFileDownload);
-		SPDLOG_INFO("downloadFolder {0}", downloadFolder);
+#ifdef BUILD_TEAMSERVER
+		m_logger->info("uriFileDownload {0}", uriFileDownload);
+		m_logger->info("downloadFolder {0}", downloadFolder);
+#endif
+
 		for (json::iterator it = uri.begin(); it != uri.end(); ++it)
 		{
 			std::string uriTmp = *it;
-			SPDLOG_INFO("uri {0}", uriTmp);
+#ifdef BUILD_TEAMSERVER
+			m_logger->info("uri {0}", uriTmp);
+#endif
 		}
 	}
 	catch (const json::out_of_range)
 	{
-		SPDLOG_CRITICAL("No uri in config.");
+#ifdef BUILD_TEAMSERVER
+		m_logger->critical("No uri in config.");
+#endif
 		return;
 	}
 
-	// Filter to match the URI of the config file
+	// Filter to match the URI of the config file or the file download URI
 	m_svr->set_post_routing_handler([&](const auto& req, auto& res) 
 	{
 		bool isUri = false;
@@ -108,7 +140,9 @@ void ListenerHttp::lauchHttpServ()
 		}
 		else
 		{
-			SPDLOG_INFO("Unauthorized connection {0}", req.path);
+#ifdef BUILD_TEAMSERVER
+			m_logger->info("Unauthorized connection {0}", req.path);
+#endif
 			res.status = 401;
 			return Server::HandlerResponse::Handled;
 		}
@@ -120,18 +154,24 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				// SPDLOG_INFO("Post connection: {0}", req.path);
+#ifdef BUILD_TEAMSERVER
+				m_logger->trace("Post connection: {0}", req.path);
+#endif
 				this->HandleCheckIn(req, res);
 				res.status = 200;
 			} 
 			catch(const std::exception& ex)
 			{
-				SPDLOG_INFO("Execption {0}", ex.what());
+#ifdef BUILD_TEAMSERVER
+				m_logger->warn("Execption {0}", ex.what());
+#endif
 				res.status = 401;
 			}
 			catch (...) 
 			{
-				SPDLOG_INFO("Unknown failure occurred.");
+#ifdef BUILD_TEAMSERVER
+				m_logger->warn("Unknown failure occurred.");
+#endif
 				res.status = 401;
 			}
 		});
@@ -142,7 +182,9 @@ void ListenerHttp::lauchHttpServ()
 		{
 			try 
 			{
-				SPDLOG_INFO("Get connection: {0}", req.path);
+#ifdef BUILD_TEAMSERVER
+				// m_logger->info("Get connection: {0}", req.path);
+#endif
 				if (req.has_header("Authorization")) 
 				{
 					// jwt should contained Bearer b64data.b6data.beaconData
@@ -161,24 +203,32 @@ void ListenerHttp::lauchHttpServ()
 					}
 					else
 					{
-						SPDLOG_INFO("Get: invalide JWT");
+#ifdef BUILD_TEAMSERVER
+						m_logger->info("Get: invalide JWT");
+#endif
 						res.status = 401;
 					}
 				}
 				else
 				{
-					SPDLOG_INFO("Get: no Authorization header");
+#ifdef BUILD_TEAMSERVER
+					m_logger->info("Get: no Authorization header");
+#endif
 					res.status = 401;
 				}
 			} 
 			catch(const std::exception& ex)
 			{
-				SPDLOG_INFO("Execption {0}", ex.what());
+#ifdef BUILD_TEAMSERVER
+				m_logger->warn("Execption {0}", ex.what());
+#endif
 				res.status = 401;
 			}
 			catch (...) 
 			{
-				SPDLOG_INFO("Unknown failure occurred.");
+#ifdef BUILD_TEAMSERVER
+				m_logger->warn("Unknown failure occurred.");
+#endif
 				res.status = 401;
 			}
 		});
@@ -198,7 +248,9 @@ void ListenerHttp::lauchHttpServ()
 				deleteFile=true;
 			} 
 
-			SPDLOG_INFO("File server connection: {0}", req.path);
+#ifdef BUILD_TEAMSERVER
+			m_logger->info("File server connection: {0}, OneTimeDownload {1}", req.path, deleteFile);
+#endif
 
 			std::string filename = req.path_params.at("filename");
 			std::string filePath = downloadFolder;
@@ -216,6 +268,9 @@ void ListenerHttp::lauchHttpServ()
 				file.close();
 				if(deleteFile)
 				{
+#ifdef BUILD_TEAMSERVER
+					m_logger->info("Delete file {0}", filePath);
+#endif
 					// std::string backUpFile = filePath+".DELETED";
 					// std::rename(filePath.data(), backUpFile.data());
 					std::remove(filePath.data());
@@ -223,7 +278,9 @@ void ListenerHttp::lauchHttpServ()
 			} 
 			else 
 			{
-				SPDLOG_INFO("File server: File not found.");
+#ifdef BUILD_TEAMSERVER
+				m_logger->info("File server: File not found.");
+#endif
 				res.status = 404;
 			}
 		});
@@ -237,8 +294,10 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 {
 	string input = req.body;
 
-	// SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
-	// SPDLOG_TRACE("input.size {0}", std::to_string(input.size()));
+#ifdef BUILD_TEAMSERVER
+	m_logger->trace("m_isHttps {0}", std::to_string(m_isHttps));
+	m_logger->trace("input.size {0}", std::to_string(input.size()));
+#endif
 
 	string output;
 	bool ret = handleMessages(input, output);
@@ -251,7 +310,9 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 	}
 	catch (const json::out_of_range)
 	{
-		SPDLOG_CRITICAL("No server headers in config.");
+#ifdef BUILD_TEAMSERVER
+		m_logger->error("No server headers in config.");
+#endif
 		return -1;
 	}
 
@@ -260,7 +321,9 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	// SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
+#ifdef BUILD_TEAMSERVER
+	m_logger->trace("output.size {0}", std::to_string(output.size()));
+#endif
 
 	if(ret)
 		res.body = output;
@@ -273,8 +336,10 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 
 int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Response& res)
 {
-	// SPDLOG_TRACE("m_isHttps {0}", std::to_string(m_isHttps));
-	// SPDLOG_TRACE("requestData.size {0}", std::to_string(requestData.size()));
+#ifdef BUILD_TEAMSERVER
+	m_logger->trace("m_isHttps {0}", std::to_string(m_isHttps));
+	m_logger->trace("requestData.size {0}", std::to_string(requestData.size()));
+#endif
 
 	string output;
 	bool ret = handleMessages(requestData, output);
@@ -287,7 +352,9 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 	}
 	catch (const json::out_of_range)
 	{
-		SPDLOG_CRITICAL("No server headers in config.");
+#ifdef BUILD_TEAMSERVER
+		m_logger->error("No server headers in config.");
+#endif
 		return -1;
 	}
 
@@ -296,7 +363,9 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
 		httpServerHeaders.insert({(it).key(), (it).value()});
 	res.headers = httpServerHeaders;
 
-	// SPDLOG_TRACE("output.size {0}", std::to_string(output.size()));
+#ifdef BUILD_TEAMSERVER
+	m_logger->trace("output.size {0}", std::to_string(output.size()));
+#endif
 
 	if(ret)
 		res.body = output;

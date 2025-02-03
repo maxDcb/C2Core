@@ -7,7 +7,9 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	: Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
 	, m_stopThread(true)
 {
-	m_listenerHash = random_string(SizeListenerHash);
+	std::string hash = random_string(SizeListenerHash);
+
+	m_listenerHash = hash;
 	m_listenerHash += '\x60';
 	m_listenerHash += ListenerTcpType;
 	m_listenerHash += '\x60';
@@ -20,6 +22,23 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	m_port = localPort;
 
 	m_serverTcp = new SocketServer(m_port);
+
+#ifdef BUILD_TEAMSERVER
+	// Logger
+	std::vector<spdlog::sink_ptr> sinks;
+
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	console_sink->set_level(spdlog::level::info);
+    sinks.push_back(console_sink);
+
+
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+hash+".txt", 1024*1024*10, 3);
+	file_sink->set_level(spdlog::level::debug);
+	sinks.push_back(file_sink);
+
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+	m_logger->set_level(spdlog::level::debug);
+#endif
 }
 
 
@@ -39,6 +58,9 @@ int ListenerTcp::init()
 			if(attempts>maxAttempt)
 			{			
 				// std::cout << "Unable to start the SocksServer on port " << m_port << " after " << maxAttempt << " attempts" << std::endl;
+#ifdef BUILD_TEAMSERVER
+				m_logger->error("Unable to start the SocksServer on port {0}", m_port);
+#endif
 			}
 		}
 
@@ -48,12 +70,19 @@ int ListenerTcp::init()
 			return -1;
 		}
 
+#ifdef BUILD_TEAMSERVER
+		m_logger->info("Server started on port {0}", m_port);
+#endif
+
 		m_stopThread=false;
 		m_tcpServ = std::make_unique<std::thread>(&ListenerTcp::lauchTcpServ, this);
 	}
 	catch(const std::exception& e)
 	{
 		// std::cout << e.what() << '\n';
+#ifdef BUILD_TEAMSERVER
+		m_logger->error("{0}", e.what());
+#endif
 		return -1;
 	}
 	
@@ -63,13 +92,17 @@ int ListenerTcp::init()
 
 ListenerTcp::~ListenerTcp()
 {
-	if(m_stopThread=false)
+	if(m_stopThread==false)
 	{
 		m_stopThread=true;
 		m_tcpServ->join();
 	}	
 
 	delete m_serverTcp;
+
+#ifdef BUILD_TEAMSERVER
+		m_logger->info("Server stoped on port {0}", m_port);
+#endif
 }
 
 

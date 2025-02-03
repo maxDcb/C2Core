@@ -9,6 +9,12 @@
 #include "Session.hpp"
 #include "Common.hpp"
 
+#ifdef BUILD_TEAMSERVER
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/basic_file_sink.h"
+#endif
 
 class Listener
 {
@@ -68,6 +74,10 @@ protected:
 
 	std::vector<std::shared_ptr<Session>> m_sessions;
 	std::vector<std::shared_ptr<SocksSession>> m_socksSessions;
+
+#ifdef BUILD_TEAMSERVER
+	std::shared_ptr<spdlog::logger> m_logger;
+#endif
 
 private:
 	std::mutex m_mutex;	
