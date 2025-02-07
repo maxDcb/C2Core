@@ -200,7 +200,7 @@ int static inline launchProcess(const std::string& processToSpawn)
 
 	pid_t pid=-1;
 	char *argv[] = {program.data(), programArg.data(), cmd.data(), NULL};
-	int status = posix_spawn(&pid, programPath.data(), NULL, NULL, argv, environ);
+	int status = posix_spawn(&pid, programPath.data(), NULL, NULL, argv, NULL);
 	if (status == 0) 
 	{
 		pid_t endID=waitpid(pid, &status, WNOHANG);
@@ -225,7 +225,7 @@ std::string static inline spawnInject(const std::string& payload, const std::str
 // 	char *argv[] = {program.data(), programArg.data(), cmd.data(), NULL};
 // 	int status;
 // 	fflush(NULL);
-// 	status = posix_spawn(&pid, programPath.data(), NULL, NULL, argv, environ);
+// 	status = posix_spawn(&pid, programPath.data(), NULL, NULL, argv, NULL);
 // 	if (status == 0) 
 // 	{
 // 		result =+ "Process injected.";
