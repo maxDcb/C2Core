@@ -692,6 +692,7 @@ int AssemblyExec::createNewProcessWithSpoofedParent(const std::string& payload, 
 		// https://github.com/0xrob/XOR-Shellcode-QueueUserAPC-Syscall/blob/main/queueUserAPC-XOR/Source.cpp
 		SIZE_T sizeToAlloc = payload.size();
 
+		remoteBuffer=NULL;
 		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 		SIZE_T NumberOfBytesWritten;
@@ -838,6 +839,7 @@ int AssemblyExec::createNewProcess(const std::string& payload, const std::string
 		// https://github.com/0xrob/XOR-Shellcode-QueueUserAPC-Syscall/blob/main/queueUserAPC-XOR/Source.cpp
 		SIZE_T sizeToAlloc = payload.size();
 
+		remoteBuffer=NULL;
 		Sw3NtAllocateVirtualMemory_(piProcInfo.hProcess, &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 		SIZE_T NumberOfBytesWritten;
