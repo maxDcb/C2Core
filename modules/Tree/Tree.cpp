@@ -59,6 +59,7 @@ std::string Tree::getInfo()
 
 int Tree::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
     string path;
     for (int idx = 1; idx < splitedCmd.size(); idx++) 
     {
@@ -69,6 +70,7 @@ int Tree::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 	c2Message.set_instruction(splitedCmd[0]);
 	c2Message.set_cmd(path);
+#endif
 
 	return 0;
 }

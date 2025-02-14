@@ -80,6 +80,7 @@ std::string KerberosUseTicket::getInfo()
 
 int KerberosUseTicket::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
     if (splitedCmd.size() == 2)
 	{
 		string inputFile = splitedCmd[1];
@@ -104,6 +105,7 @@ int KerberosUseTicket::init(std::vector<std::string> &splitedCmd, C2Message &c2M
 		c2Message.set_returnvalue(getInfo());
 		return -1;
 	}
+#endif
 
 	return 0;
 }

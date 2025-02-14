@@ -66,18 +66,29 @@ std::string StealToken::getInfo()
 
 int StealToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-    int pid=-1;
-    if(splitedCmd.size()>0)
-        pid = stoi(splitedCmd[1]);
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+    if(splitedCmd.size() == 2)
+	{
+        int pid=-1;
+        try
+        {
+            pid = stoi(splitedCmd[1]);
+        }
+        catch (const std::invalid_argument& ia) 
+        {
+            c2Message.set_returnvalue(getInfo());
+		    return -1;
+        }
 
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd("");
-    c2Message.set_pid(pid);
-
-#ifdef __linux__ 
-
-#elif _WIN32
-
+        c2Message.set_instruction(splitedCmd[0]);
+        c2Message.set_cmd("");
+        c2Message.set_pid(pid);
+    }
+	else
+	{
+		c2Message.set_returnvalue(getInfo());
+		return -1;
+	}
 #endif
 
 	return 0;

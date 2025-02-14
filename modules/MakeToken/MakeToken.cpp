@@ -69,41 +69,43 @@ std::string MakeToken::getInfo()
 
 int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-    // format DOMAIN\Username Password
-    string usernameDomain="";
-    string password="";
-    std::string username="";
-    std::string domain=".";
-    if(splitedCmd.size()>=3)
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+    if(splitedCmd.size()==3)
     {
-	    usernameDomain = splitedCmd[1];
+        // format DOMAIN\Username Password
+        string usernameDomain="";
+        string password="";
+        std::string username="";
+        std::string domain=".";
+        
+        usernameDomain = splitedCmd[1];
         password = splitedCmd[2];
+        
+        std::vector<std::string> splitedList;
+        splitList(usernameDomain, "\\", splitedList);
+
+        if(splitedList.size()==1)
+            username = splitedList[0];
+        else if(splitedList.size()>1)
+        {
+            domain = splitedList[0];
+            username = splitedList[1];
+        }
+
+        std::string cmd = domain;
+        cmd += ";";
+        cmd += username;
+        cmd += ";";
+        cmd += password;
+
+        c2Message.set_instruction(splitedCmd[0]);
+        c2Message.set_cmd(cmd);
     }
-
-    std::vector<std::string> splitedList;
-    splitList(usernameDomain, "\\", splitedList);
-
-    if(splitedList.size()==1)
-        username = splitedList[0];
-    else if(splitedList.size()>1)
-    {
-        domain = splitedList[0];
-        username = splitedList[1];
-    }
-
-    std::string cmd = domain;
-    cmd += ";";
-    cmd += username;
-    cmd += ";";
-    cmd += password;
-
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd(cmd);
-
-#ifdef __linux__ 
-
-#elif _WIN32
-
+    else
+	{
+		c2Message.set_returnvalue(getInfo());
+		return -1;
+	}
 #endif
 
 	return 0;
