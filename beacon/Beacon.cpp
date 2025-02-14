@@ -444,19 +444,22 @@ bool Beacon::runTasks()
 
 void Beacon::sleep()
 {
-	if(m_aliveTimerMs<=0)
-	{
-		// EkkoObf( 50 );
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));		
-	}
-	else
-	{
-		int dela = rand()%(int(float(m_aliveTimerMs)/100.0*20.0))-int(float(m_aliveTimerMs)/100.0*10.0);
-		int timeToSleepMs = m_aliveTimerMs + dela;
+	std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.8, 1.2); // 20% jitter range
 
-		// EkkoObf( timeToSleepMs );
-		std::this_thread::sleep_for(std::chrono::milliseconds(timeToSleepMs));
-	}
+    int jitteredTimeMs = static_cast<int>(m_aliveTimerMs * dis(gen));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(jitteredTimeMs));
+
+	// else
+	// {
+	// 	int dela = rand()%(int(float(m_aliveTimerMs)/100.0*20.0))-int(float(m_aliveTimerMs)/100.0*10.0);
+	// 	int timeToSleepMs = m_aliveTimerMs + dela;
+
+	// 	// EkkoObf( timeToSleepMs );
+	// 	std::this_thread::sleep_for(std::chrono::milliseconds(timeToSleepMs));
+	// }
 }
 
 
@@ -486,6 +489,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		try 
 		{
 			m_aliveTimerMs = std::stof(newSleepTimer)*1000;
+			newSleepTimer = to_string(m_aliveTimerMs) + "ms";
 		}
 		catch (const std::invalid_argument& ia) 
 		{
