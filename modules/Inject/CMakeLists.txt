@@ -1,7 +1,7 @@
 include_directories(../)
 
 if(WIN32)
-    add_library(Inject SHARED Inject.cpp ../ModuleCmd/syscall.x64.obj)
+    add_library(Inject SHARED Inject.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
 else()
     add_library(Inject SHARED Inject.cpp)
 endif()
@@ -21,7 +21,7 @@ $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:In
 
 if(WITH_TESTS)
     if(WIN32)
-       add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.x64.obj)
+       add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
         target_link_libraries(testsInject ${Donut} )
     else()
         add_executable(testsInject tests/testsInject.cpp Inject.cpp)
