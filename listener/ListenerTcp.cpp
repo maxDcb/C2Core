@@ -148,10 +148,10 @@ void ListenerTcp::lauchTcpServ()
 						std::vector<std::string> trames;
 						splitInPacket(input, trames);
 
-						for(int i=0; i<trames.size(); i++)
+						for(int j=0; j<trames.size(); j++)
 						{
 							std::string output;
-							handleMessages(trames[i], output);	
+							handleMessages(trames[j], output);
 							output.append("<TCP-666>");
 							m_serverTcp->m_socketTunnelServers[i]->send(output);
 						}
