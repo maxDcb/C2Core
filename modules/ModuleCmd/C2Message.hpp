@@ -4,6 +4,7 @@
 
 // C2Message tags
 const std::string InstructionMsgTag = "INS";
+const std::string UuidMsgTag = "UID";
 const std::string CmdMsgTag = "CM";
 const std::string ReturnValueTag = "RV";
 const std::string InputFileTag = "IF";
@@ -44,6 +45,7 @@ public:
 		m_args = "";
 		m_pid = -100;
 		m_errorCode = -1;
+		m_uuid = "";
 	}
 
 	~C2Message()
@@ -61,6 +63,7 @@ public:
 		m_args = c2Message.args();
 		m_pid = c2Message.pid();
 		m_errorCode = c2Message.errorCode();
+		m_uuid = c2Message.uuid();
 	}
 
 	void operator=(const C2Message& c2Message)
@@ -74,6 +77,7 @@ public:
 		m_args = c2Message.args();
 		m_pid = c2Message.pid();
 		m_errorCode = c2Message.errorCode();
+		m_uuid = c2Message.uuid();
 	}
 
 	void ParseFromArray(const char* data, int size)
@@ -136,6 +140,10 @@ public:
 		it = my_json.find(ErrorCodeTag);
 		if(it != my_json.end())
 			m_errorCode = my_json[ErrorCodeTag].get<int>();
+
+		it = my_json.find(UuidMsgTag);
+		if(it != my_json.end())
+			m_uuid = my_json[UuidMsgTag].get<std::string>();
 	}
 
 	void SerializeToString(std::string* output)
@@ -164,6 +172,8 @@ public:
 			finalJson += nlohmann::json::object_t::value_type(PidTag, m_pid);
 		if(m_errorCode!=-1)
 			finalJson += nlohmann::json::object_t::value_type(ErrorCodeTag, m_errorCode);
+		if(!m_uuid.empty())
+			finalJson += nlohmann::json::object_t::value_type(UuidMsgTag, m_uuid);
 
 		std::string json_str = finalJson.dump();
 		*output = json_str;
@@ -204,6 +214,10 @@ public:
 	const std::string& args() const
 	{
 		return m_args;
+	}
+	const std::string& uuid() const
+	{
+		return m_uuid;
 	}
 
 	void set_instruction(const std::string& instruction)
@@ -246,6 +260,10 @@ public:
 	{
 		m_args = args;
 	};
+	void set_uuid(const std::string& uuid)
+	{
+		m_uuid = uuid;
+	};
 
 
 private:
@@ -258,6 +276,7 @@ private:
 	std::string m_args;
 	int m_pid;
 	int m_errorCode;
+	std::string m_uuid;
 };
 
 

@@ -470,9 +470,11 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 {
 	string instruction = c2Message.instruction();
 	string cmd = c2Message.cmd();
+	string uuid = c2Message.uuid();
 
 	c2RetMessage.set_instruction(instruction);
 	c2RetMessage.set_cmd(cmd);
+	c2RetMessage.set_uuid(uuid);
 
 	if (instruction == EndCmd)
 	{
