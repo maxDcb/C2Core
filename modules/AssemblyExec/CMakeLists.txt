@@ -1,7 +1,7 @@
 include_directories(../)
 
 if(WIN32)
-    add_library(AssemblyExec SHARED AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+    add_library(AssemblyExec SHARED AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj ../ModuleCmd/peb.cpp ../ModuleCmd/hwbp.cpp)
 else()
     add_library(AssemblyExec SHARED AssemblyExec.cpp)
 endif()
@@ -21,7 +21,7 @@ $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_N
 
 if(WITH_TESTS)
     if(WIN32)
-        add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+        add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj ../ModuleCmd/peb.cpp ../ModuleCmd/hwbp.cpp)
         target_link_libraries(testsAssemblyExec ${Donut} )
 
         add_executable(testOutputWriter tests/testOutputWriter.cpp)

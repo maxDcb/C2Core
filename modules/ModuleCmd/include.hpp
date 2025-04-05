@@ -1,5 +1,9 @@
 #pragma once
 
+
+#include <winternl.h> // for UNICODE_STRING
+
+
 #define SW3_RVA2VA(Type, DllBase, Rva) (Type)((ULONG_PTR) DllBase + Rva)
 
 typedef struct _SW3_PEB_LDR_DATA {
@@ -35,28 +39,28 @@ typedef struct _PS_ATTRIBUTE
 	PSIZE_T ReturnLength;
 } PS_ATTRIBUTE, *PPS_ATTRIBUTE;
 
-typedef struct _UNICODE_STRING
-{
-	USHORT Length;
-	USHORT MaximumLength;
-	PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
+// typedef struct _UNICODE_STRING
+// {
+// 	USHORT Length;
+// 	USHORT MaximumLength;
+// 	PWSTR  Buffer;
+// } UNICODE_STRING, *PUNICODE_STRING;
 
-typedef struct _OBJECT_ATTRIBUTES
-{
-	ULONG           Length;
-	HANDLE          RootDirectory;
-	PUNICODE_STRING ObjectName;
-	ULONG           Attributes;
-	PVOID           SecurityDescriptor;
-	PVOID           SecurityQualityOfService;
-} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+// typedef struct _OBJECT_ATTRIBUTES
+// {
+// 	ULONG           Length;
+// 	HANDLE          RootDirectory;
+// 	PUNICODE_STRING ObjectName;
+// 	ULONG           Attributes;
+// 	PVOID           SecurityDescriptor;
+// 	PVOID           SecurityQualityOfService;
+// } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
 
-typedef struct _CLIENT_ID
-{
-	HANDLE UniqueProcess;
-	HANDLE UniqueThread;
-} CLIENT_ID, *PCLIENT_ID;
+// typedef struct _CLIENT_ID
+// {
+// 	HANDLE UniqueProcess;
+// 	HANDLE UniqueThread;
+// } CLIENT_ID, *PCLIENT_ID;
 
 typedef struct _PS_ATTRIBUTE_LIST
 {
@@ -344,13 +348,13 @@ HANDLE hSnapshot,
 LPTHREADENTRY32 lpte
 );
 
-typedef struct _IO_STATUS_BLOCK {
-  union {
-    NTSTATUS Status;
-    PVOID    Pointer;
-  };
-  ULONG_PTR Information;
-} IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
+// typedef struct _IO_STATUS_BLOCK {
+//   union {
+//     NTSTATUS Status;
+//     PVOID    Pointer;
+//   };
+//   ULONG_PTR Information;
+// } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
 
 
 typedef

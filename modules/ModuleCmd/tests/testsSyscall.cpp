@@ -95,7 +95,7 @@ int main()
     CLIENT_ID pid;
     pid.UniqueProcess = (HANDLE)dwPid;
 	pid.UniqueThread = 0;
-    status = Sw3NtOpenProcess_(&handle, PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, &zoa, (PCLIENT_ID)&pid);
+    status = Sw3NtOpenProcess_(&handle, PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, &zoa, (CLIENT_ID*)&pid);
     if(status!=0)
     {
         std::cout << "Fail Sw3NtOpenProcess_" << std::endl;

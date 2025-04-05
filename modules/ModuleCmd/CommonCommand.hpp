@@ -33,8 +33,8 @@ const std::string ListenerPollCmd = "LISP";
 const std::string LoadC2ModuleCmd = "LM";
 const std::string UnloadC2ModuleCmd = "ULM";
 const std::string Socks5Cmd = "SO5";
-const std::string GetInfoCmd = "GI";
-const std::string PatchMemoryCmd = "PM";
+// const std::string GetInfoCmd = "GI";
+// const std::string PatchMemoryCmd = "PM";
 const std::string InitCmd = "IN";
 const std::string RunCmd = "RU";
 const std::string EndCmd = "EN";
@@ -74,8 +74,8 @@ class CommonCommands
 		m_commonCommands.push_back(LoadModuleInstruction);
 		m_commonCommands.push_back(UnloadModuleInstruction);
 		m_commonCommands.push_back(SocksInstruction);
-		m_commonCommands.push_back(GetInfoInstruction);
-		m_commonCommands.push_back(PatchMemoryInstruction);
+		// m_commonCommands.push_back(GetInfoInstruction);
+		// m_commonCommands.push_back(PatchMemoryInstruction);
 	}
 
 	int getNumberOfCommand()
@@ -107,10 +107,10 @@ class CommonCommands
 			return UnloadModuleInstruction;
 		else if(cmd==Socks5Cmd)
 			return SocksInstruction;
-		else if(cmd==GetInfoCmd)
-			return GetInfoInstruction;
-		else if(cmd==PatchMemoryCmd)
-			return PatchMemoryInstruction;
+		// else if(cmd==GetInfoCmd)
+		// 	return GetInfoInstruction;
+		// else if(cmd==PatchMemoryCmd)
+		// 	return PatchMemoryInstruction;
 
 		return "";
 	}
@@ -167,16 +167,16 @@ class CommonCommands
 		// 	output += " - socks start 1080 \n";
 		// 	output += " - socks stop \n";
 		// }
-		else if(cmd==GetInfoCmd)
-		{
-			output = "getInfo: \n";
-			output += "TODO\n";
-		}
-		else if(cmd==PatchMemoryCmd)
-		{
-			output = "patchMemory: \n";
-			output += "TODO\n";
-		}
+		// else if(cmd==GetInfoCmd)
+		// {
+		// 	output = "getInfo: \n";
+		// 	output += "TODO\n";
+		// }
+		// else if(cmd==PatchMemoryCmd)
+		// {
+		// 	output = "patchMemory: \n";
+		// 	output += "TODO\n";
+		// }
 
 		return output;
 	}

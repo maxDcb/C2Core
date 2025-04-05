@@ -351,8 +351,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	while(!m_taskResult.empty())
 	{
 		C2Message c2MessageRet=m_taskResult.front();
-		C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-		addedC2MessageRet->CopyFrom(c2MessageRet);
+		// C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
+		// addedC2MessageRet->CopyFrom(c2MessageRet);
+		bundleC2Message->add_c2messages(c2MessageRet);
 		m_taskResult.pop();
 	}
 
@@ -378,8 +379,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 			C2Message c2Message = ptr->getTaskResult();
 			while(!c2Message.instruction().empty())
 			{
-				C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-				addedC2MessageRet->CopyFrom(c2Message);
+				// C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
+				// addedC2MessageRet->CopyFrom(c2Message);
+				bundleC2Message->add_c2messages(c2Message);
 				c2Message = ptr->getTaskResult();
 			}
 		}
@@ -416,10 +418,11 @@ bool Beacon::runTasks()
 		C2Message c2RetMessage;
 		bool exit = execInstruction(c2Message, c2RetMessage);
 
-		std::string out;
-		c2RetMessage.SerializeToString(&out);
+		// not needed ???
+		// std::string out;
+		// c2RetMessage.SerializeToString(&out);
 
-		m_taskResult.push(c2RetMessage);
+		m_taskResult.push(std::move(c2RetMessage));
 
 		if(exit)
 			return exit; 

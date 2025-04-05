@@ -161,15 +161,26 @@ public:
 		return m_messageToRead.size();
 	}
 
+	// C2Message getTaskResult()
+	// {
+	// 	C2Message output;
+	// 	if(!m_messageToRead.empty())
+	// 	{
+	// 		output.CopyFrom(m_messageToRead.front());
+	// 		m_messageToRead.pop();
+	// 	}
+	// 	return output;
+	// }
+
 	C2Message getTaskResult()
 	{
-		C2Message output;
-		if(!m_messageToRead.empty())
+		if (!m_messageToRead.empty())
 		{
-			output.CopyFrom(m_messageToRead.front());
+			C2Message output = std::move(m_messageToRead.front());
 			m_messageToRead.pop();
+			return output;
 		}
-		return output;
+		return C2Message();
 	}
 
 	bool addListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)

@@ -248,6 +248,10 @@ public:
 	{
 		m_data.assign(data);
 	};
+	void set_data(std::string&& data)                                                                                                                    
+	{                                                                                                                                                    
+			m_data = std::move(data);                                                                                                                    
+	}  
 	void set_pid(int pid)
 	{
 		m_pid = pid;
@@ -424,6 +428,12 @@ public:
 		m_c2Messages.push_back(std::move(c2Message));
 		return m_c2Messages.back().get();
 	}
+
+	C2Message* add_c2messages(C2Message& c2Message)                       
+	{                                                                     
+			m_c2Messages.emplace_back(std::make_unique<C2Message>(std::move(c2Message)));                                                                
+			return m_c2Messages.back().get();                                                                                                            
+	}  
 
 	const std::string&  beaconhash() const
 	{
