@@ -18,5 +18,11 @@ if(WITH_TESTS)
         add_custom_command(TARGET testsSyscall POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
         $<TARGET_FILE:testsSyscall> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
         add_test(NAME testsSyscall COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSyscall>")
+
+        add_executable(testsHwbp tests/testsHwbp.cpp ./hwbp.cpp ./peb.cpp)
+        target_link_libraries(testsHwbp )
+        add_custom_command(TARGET testsHwbp POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+        $<TARGET_FILE:testsHwbp> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsHwbp>")
+        add_test(NAME testsHwbp COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsHwbp>")
     endif()
 endif()

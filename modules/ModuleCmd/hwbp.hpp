@@ -65,6 +65,11 @@ BOOL set_hwbp(
     OUT PHANDLE phHwBpHandler);
 
 
+VOID unset_hwbp(
+    IN HANDLE hThread,
+    IN UINT32 index);
+
+
 VOID remove_hwbp_handler(
     IN HANDLE hHwBpHandler);
 

