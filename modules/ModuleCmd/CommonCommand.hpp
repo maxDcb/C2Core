@@ -33,8 +33,6 @@ const std::string ListenerPollCmd = "LISP";
 const std::string LoadC2ModuleCmd = "LM";
 const std::string UnloadC2ModuleCmd = "ULM";
 const std::string Socks5Cmd = "SO5";
-// const std::string GetInfoCmd = "GI";
-// const std::string PatchMemoryCmd = "PM";
 const std::string InitCmd = "IN";
 const std::string RunCmd = "RU";
 const std::string EndCmd = "EN";
@@ -55,9 +53,6 @@ const std::string EndInstruction = "end";
 const std::string ListenerInstruction = "listener";
 const std::string LoadModuleInstruction = "loadModule";
 const std::string UnloadModuleInstruction = "unloadModule";
-const std::string SocksInstruction = "socks";
-const std::string GetInfoInstruction = "getInfo";
-const std::string PatchMemoryInstruction = "patchMemory";
 
 const std::string StartInstruction = "start";
 const std::string StopInstruction = "stop";
@@ -68,14 +63,11 @@ class CommonCommands
 	public:
 	CommonCommands()
 	{
-		m_commonCommands.push_back(SleepInstruction);
 		m_commonCommands.push_back(EndInstruction);
 		m_commonCommands.push_back(ListenerInstruction);
 		m_commonCommands.push_back(LoadModuleInstruction);
 		m_commonCommands.push_back(UnloadModuleInstruction);
-		m_commonCommands.push_back(SocksInstruction);
-		// m_commonCommands.push_back(GetInfoInstruction);
-		// m_commonCommands.push_back(PatchMemoryInstruction);
+		m_commonCommands.push_back(SleepInstruction);
 	}
 
 	int getNumberOfCommand()
@@ -105,13 +97,6 @@ class CommonCommands
 			return LoadModuleInstruction;
 		else if(cmd==UnloadC2ModuleCmd)
 			return UnloadModuleInstruction;
-		else if(cmd==Socks5Cmd)
-			return SocksInstruction;
-		// else if(cmd==GetInfoCmd)
-		// 	return GetInfoInstruction;
-		// else if(cmd==PatchMemoryCmd)
-		// 	return PatchMemoryInstruction;
-
 		return "";
 	}
 
@@ -157,26 +142,6 @@ class CommonCommands
 			output += "exemple:\n";
 			output += " - unloadModule assemblyExec \n";
 		}
-		// else if(cmd==Socks5Cmd)
-		// {
-		// 	output = "socks: \n";
-		// 	output += "Start a socks5 server on the TeamServer and tunnel the traffic to the Beacon.\n";
-		// 	output += "The tunneling is done using the communication protocol of the beacon.\n";
-		// 	output += "Only one socks5 server can be opened at a time.\n";
-		// 	output += "exemple:\n";
-		// 	output += " - socks start 1080 \n";
-		// 	output += " - socks stop \n";
-		// }
-		// else if(cmd==GetInfoCmd)
-		// {
-		// 	output = "getInfo: \n";
-		// 	output += "TODO\n";
-		// }
-		// else if(cmd==PatchMemoryCmd)
-		// {
-		// 	output = "patchMemory: \n";
-		// 	output += "TODO\n";
-		// }
 
 		return output;
 	}
@@ -363,59 +328,6 @@ class CommonCommands
 				return -1;
 			}
 		}
-		//
-		// Socks5
-		//
-		// else if(instruction==SocksInstruction)
-		// {
-		// 	if(splitedCmd.size()>=2)
-		// 	{
-		// 		if(splitedCmd[1]==StartInstruction)
-		// 		{
-		// 			if(splitedCmd.size()>=3)
-		// 			{
-		// 				int port=-1;
-		// 				try 
-		// 				{
-		// 					port = std::atoi(splitedCmd[2].c_str());
-		// 				}
-		// 				catch (const std::invalid_argument& ia) 
-		// 				{
-		// 					std::cerr << "Invalid argument: " << ia.what() << '\n';
-		// 					return -1;
-		// 				}
-
-		// 				c2Message.set_instruction(Socks5Cmd);
-		// 				c2Message.set_cmd(StartCmd);
-		// 				c2Message.set_data(splitedCmd[2].data(), splitedCmd[2].size());	
-		// 			}
-		// 			else
-		// 			{
-		// 				std::string errorMsg = "socks start: not enough arguments";
-		// 				c2Message.set_returnvalue(errorMsg);	
-		// 				return -1;
-		// 			}
-		// 		}
-		// 		else if(splitedCmd[1]==StopInstruction)
-		// 		{
-		// 			c2Message.set_instruction(Socks5Cmd);
-		// 			c2Message.set_cmd(StopSocksCmd);	
-		// 		}		
-		// 		else
-		// 		{
-		// 			std::string errorMsg = getHelp(Socks5Cmd);
-		// 			c2Message.set_returnvalue(errorMsg);
-		// 			return -1;
-		// 		}
-
-		// 	}
-		// 	else
-		// 	{
-		// 		std::string errorMsg = getHelp(instruction);
-		// 		c2Message.set_returnvalue(errorMsg);
-		// 		return -1;
-		// 	}
-		// }
 		return 0;
 	}
 

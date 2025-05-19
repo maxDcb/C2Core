@@ -11,6 +11,15 @@
 #include <C2Message.hpp>
 
 
+enum OSCompatibility {
+    OS_NONE    = 0,
+    OS_LINUX   = 1 << 0,  // 0001
+    OS_MAC     = 1 << 1,  // 0010
+    OS_WINDOWS = 1 << 2,  // 0100
+    OS_ALL     = OS_LINUX | OS_MAC | OS_WINDOWS
+};
+
+
 //
 // ModuleCmd
 //
@@ -68,6 +77,7 @@ public:
 	virtual int followUp(const C2Message &c2RetMessage) {return 0;};
 	virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};
 	virtual int recurringExec (C2Message& c2RetMessage) {return 0;};
+	virtual int osCompatibility () {return OS_NONE;};
 
 protected:
 	std::string m_name;

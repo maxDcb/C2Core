@@ -17,6 +17,10 @@ public:
 	int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
 	int recurringExec(C2Message& c2RetMessage);
 	int followUp(const C2Message &c2RetMessage);
+	int osCompatibility() 
+	{
+        return OS_WINDOWS;
+    }
 
 private:
 

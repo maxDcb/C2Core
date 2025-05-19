@@ -14,6 +14,10 @@ public:
 
 	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
+	int osCompatibility() 
+	{
+        return OS_WINDOWS;
+    }
 
 private:
 	std::string importTicket(const std::string& ticket);

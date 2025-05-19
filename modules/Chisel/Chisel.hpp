@@ -15,6 +15,10 @@ public:
 	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 	int followUp(const C2Message &c2RetMessage);
+	int osCompatibility() 
+	{
+        return OS_WINDOWS;
+    }
 
 private:
 	std::vector<std::pair<int, std::string>> m_instances;

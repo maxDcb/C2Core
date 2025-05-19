@@ -17,6 +17,10 @@ public:
 	int process(C2Message& c2Message, C2Message& c2RetMessage);
 	int followUp(const C2Message &c2RetMessage);
 	int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
+	int osCompatibility() 
+	{
+        return OS_LINUX | OS_WINDOWS;
+    }
 
 private:
 	std::string m_outputfile;

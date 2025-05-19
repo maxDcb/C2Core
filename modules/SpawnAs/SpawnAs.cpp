@@ -122,6 +122,7 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 
+//TODO look at https://github.com/antonioCoco/RunasCs/blob/master/RunasCs.cs
 int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
 	std::string cmd = c2Message.cmd();
