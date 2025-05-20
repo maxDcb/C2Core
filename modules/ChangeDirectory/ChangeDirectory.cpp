@@ -47,10 +47,12 @@ std::string ChangeDirectory::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "cd:\n";
-	info += "ChangeDirectory\n";
-	info += "exemple:\n";
+	info += "ChangeDirectory Module:\n";
+	info += "Change the current working directory on the victim machine.\n";
+	info += "This affects the context for relative file paths in subsequent commands.\n";
+	info += "\nExample:\n";
 	info += "- cd /tmp\n";
+	info += "- cd C:\\Users\\Public\n";
 #endif
 	return info;
 }

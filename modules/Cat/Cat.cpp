@@ -44,10 +44,11 @@ std::string Cat::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "cat:\n";
-	info += "Cat a file from victime machine\n";
-	info += "exemple:\n";
-	info += "- cat c:\\temp\\toto.exe\n";
+	info += "Cat Module:\n";
+	info += "Read and display the contents of a file from the victim machine.\n";
+	info += "Useful for quickly inspecting text files or verifying file contents.\n";
+	info += "\nExample:\n";
+	info += "- cat c:\\temp\\toto.txt\n";
 #endif
 	return info;
 }

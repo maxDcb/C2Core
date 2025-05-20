@@ -67,12 +67,12 @@ std::string PsExec::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "PsExec:\n";
-	info += "Create an exe on an SMB share of the victime and a service to launch this exec using system. \n";
-    info += "The exe must be a service binary or inject into another process. \n";
-    info += "You must have the right kerberos tickets. \n";
-	info += "exemple:\n";
-	info += "- psExec m3dc.cyber.local /tmp/implant.exe\n";
+    info += "PsExec Module:\n";
+    info += "Execute a binary on a remote victim machine by creating a service via an SMB share.\n";
+    info += "- The binary must either be a valid service executable or perform injection into another process.\n";
+    info += "- Proper Kerberos authentication (e.g., valid tickets) is required for execution.\n";
+    info += "\nExamples:\n";
+    info += "- psExec m3dc.cyber.local /tmp/implant.exe\n";
     info += "- psExec 10.9.20.10 /tmp/implant.exe\n";
 #endif
 	return info;

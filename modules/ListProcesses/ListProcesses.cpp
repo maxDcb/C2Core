@@ -374,10 +374,11 @@ std::string ListProcesses::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "ps:\n";
-	info += "ListProcesses\n";
-	info += "exemple:\n";
-	info += "- ps\n";
+    info += "ListProcesses Module:\n";
+    info += "List all running processes on the victim machine.\n";
+    info += "Displays process ID (PID), name and owner.\n";
+    info += "\nExamples:\n";
+    info += "- ps\n";
 #endif
 	return info;
 }

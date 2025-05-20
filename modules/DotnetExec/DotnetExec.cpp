@@ -242,9 +242,17 @@ int DotnetExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 			c2Message.set_returnvalue("For exe typeForDll need to be left empty.\nFor dll typeForDll need to specify the namespace and class: Exemple: PowerShellRunner.PowerShellRunner.");
 			return -1;	
 		}
-		
+
 		std::ifstream myfile;
 		myfile.open(inputFile, std::ios::binary);
+
+		if(!myfile)
+		{
+			std::string newInputFile=m_toolsDirectoryPath;
+			newInputFile+=inputFile;
+			myfile.open(newInputFile, std::ios::binary);
+			inputFile=newInputFile;
+		}
 
 		if(!myfile) 
 		{
@@ -252,6 +260,7 @@ int DotnetExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 			c2Message.set_returnvalue(msg);
 			return -1;
 		}
+		myfile.close();
 
 		c2Message.set_inputfile(inputFile);
 
@@ -1186,7 +1195,7 @@ int DotnetExec::invokeMethodDll(const std::string name, const string& method, co
 
 int DotnetExec::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER || defined(BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
 	int errorCode = c2RetMessage.errorCode();
 	if(errorCode>0)
 	{

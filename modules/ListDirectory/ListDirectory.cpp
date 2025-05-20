@@ -48,10 +48,12 @@ std::string ListDirectory::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "ls:\n";
-	info += "ListDirectory\n";
-	info += "exemple:\n";
-	info += "- ls /tmp\n";
+    info += "ListDirectory Module:\n";
+    info += "List the contents of a directory on the victim machine.\n";
+    info += "Displays files and folders within the specified path. If no path is provided, lists the current working directory.\n";
+    info += "\nExamples:\n";
+    info += "- ls /tmp\n";
+    info += "- ls C:\\Users\\Public\n";
 #endif
 	return info;
 }

@@ -46,10 +46,14 @@ std::string Upload::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "upload:\n";
-	info += "Upload a file from the attacker machine to the victime machine\n";
-	info += "exemple:\n";
-	info += "- upload c:\\temp\\toto.exe c:\\temp\\toto.exe\n";
+	info += "Upload Module:\n";
+	info += "Transfer a file from the attacker's machine to the victim's machine.\n";
+	info += "The file is read from the local system and written to the specified path on the remote target.\n";
+	info += "\nUsage example:\n";
+	info += " - upload /tmp/toto.exe C:\\Temp\\toto.exe\n";
+	info += "\nArguments:\n";
+	info += " <sourcePath>    Path to the file on the attacker's machine\n";
+	info += " <destPath>      Destination path on the victim's machine\n";
 #endif
 	return info;
 }

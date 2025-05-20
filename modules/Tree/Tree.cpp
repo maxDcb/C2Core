@@ -49,10 +49,12 @@ std::string Tree::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "tree:\n";
-	info += "Tree\n";
-	info += "exemple:\n";
-	info += "- tree /tmp\n";
+    info += "Tree Module:\n";
+    info += "Recursively list the directory structure of a given path on the victim machine.\n";
+    info += "Displays files and folders in a tree-like format.\n";
+    info += "\nExamples:\n";
+    info += "- tree /tmp\n";
+    info += "- tree C:\\Users\\Public\n";
 #endif
 	return info;
 }

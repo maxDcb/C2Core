@@ -79,16 +79,24 @@ std::string AssemblyExec::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "assemblyExec:\n";
-	info += "Execute shellcode in a process (notepad.exe), wait for the end of execution or a timeout (120 sec). Retrieve the output.\n";
-	info += "Use -r to use a shellcode file.\n";
-	info += "If -e or -d are given, use donut to create the shellcode.\n";
-	info += "exemple:\n";
-	info += "- assemblyExec thread/process/processWithSpoofedParent\n";
-	info += "- assemblyExec -r ./shellcode.bin\n";
-	info += "- assemblyExec -e ./program.exe arg1 arg2...\n";
-	info += "- assemblyExec -e ./Seatbelt.exe -group=system\n";
-	info += "- assemblyExec -d ./test.dll method arg1 arg2...\n";
+	info += "AssemblyExec Module:\n";
+	info += "Execute shellcode in a remote process (e.g., notepad.exe). Waits for execution to complete or until a 120-second timeout.\n";
+	info += "Captures and returns any output produced by the shellcode.\n";
+	info += "\nOptions:\n";
+	info += " -r <file>          		Use a raw shellcode file.\n";
+	info += " -e <exe> [args]    		Use Donut to generate shellcode from a .NET executable.\n";
+	info += " -d <dll> <method> [args]  Use Donut to generate shellcode from a .NET DLL and specify method and arguments.\n";
+	info += "\nExecution Modes:\n";
+	info += " thread                  	Inject and execute in a new thread\n";
+	info += " process                 	Inject into a newly spawned process\n";
+	info += " processWithSpoofedParent  Same as above, but with spoofed parent process\n";
+	info += "\nExamples:\n";
+	info += " - assemblyExec thread\n";
+	info += " - assemblyExec process\n";
+	info += " - assemblyExec -r ./shellcode.bin\n";
+	info += " - assemblyExec -e ./program.exe arg1 arg2\n";
+	info += " - assemblyExec -e ./Seatbelt.exe -group=system\n";
+	info += " - assemblyExec -d ./test.dll MethodName arg1 arg2\n";
 #endif
 	return info;
 }
@@ -255,6 +263,7 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 
 int AssemblyExec::initConfig(const nlohmann::json &config)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
 	for (auto& it : config.items())
 	{
 		if(it.key()=="process")
@@ -269,7 +278,7 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 			m_spoofedParent = it.value();
 		}			
 	}
-
+#endif
 	return 0;
 }
 

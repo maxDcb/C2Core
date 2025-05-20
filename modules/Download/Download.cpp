@@ -46,10 +46,14 @@ std::string Download::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "download:\n";
-	info += "Download a file from victime machine to the attacker machine. If the file is big, it is split in chunks of 2Mo and send in multiple checkin.\n";
-	info += "exemple:\n";
-	info += "- download c:\\temp\\toto.exe /tmp/toto.exe\n";
+	info += "Download Module:\n";
+	info += "Retrieve a file from the victim's machine and save it to the attacker's machine.\n";
+	info += "Large files are automatically split into 2MB chunks and transferred over multiple check-ins.\n";
+	info += "\nUsage example:\n";
+	info += " - download C:\\Temp\\toto.exe /tmp/toto.exe\n";
+	info += "\nArguments:\n";
+	info += " <sourcePath>    Path to the file on the victim's machine\n";
+	info += " <destPath>      Destination path on the attacker's machine\n";
 #endif
 	return info;
 }

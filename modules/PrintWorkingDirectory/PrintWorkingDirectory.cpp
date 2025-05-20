@@ -48,9 +48,9 @@ std::string PrintWorkingDirectory::getInfo()
 {
 	std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "pwd:\n";
-	info += "PrintWorkingDirectory\n";
-	info += "exemple:\n";
+	info += "PrintWorkingDirectory Module:\n";
+	info += "Print the current working directory on the victim machine.\n";
+	info += "\nExample:\n";
 	info += "- pwd\n";
 #endif
 	return info;
