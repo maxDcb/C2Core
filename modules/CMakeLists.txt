@@ -26,4 +26,6 @@ add_subdirectory(Tree)
 add_subdirectory(WmiExec)
 add_subdirectory(KeyLogger)
 add_subdirectory(ScreenShot)
+add_subdirectory(MiniDump)
+add_subdirectory(DotnetExec)
 

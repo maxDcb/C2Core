@@ -1,0 +1,25 @@
+include_directories(../)
+if(WIN32)
+    add_library(DotnetExec SHARED DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj )
+else()
+    add_library(DotnetExec SHARED DotnetExec.cpp)
+endif()
+set_property(TARGET DotnetExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+target_link_libraries(DotnetExec )
+add_custom_command(TARGET DotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:DotnetExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:DotnetExec>")
+
+if(WITH_TESTS)
+    if(WIN32)
+        add_executable(testsDotnetExec tests/testsDotnetExec.cpp DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj tests/project.rc)
+    else()
+        add_executable(testsDotnetExec tests/testsDotnetExec.cpp DotnetExec.cpp)
+    endif()
+    # add_executable(testsDotnetExec WIN32 tests/testsDotnetExec.cpp DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj tests/project.rc)
+    target_link_libraries(testsDotnetExec )
+    set_property(TARGET testsDotnetExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    add_custom_command(TARGET testsDotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+    $<TARGET_FILE:testsDotnetExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDotnetExec>")
+
+    add_test(NAME testsDotnetExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDotnetExec>")
+endif()

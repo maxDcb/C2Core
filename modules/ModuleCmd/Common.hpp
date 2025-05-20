@@ -97,11 +97,49 @@ const int SizeListenerHash = 32;
 const int SizeBeaconHash = 32;
 
 
+/**
+ * @brief Compile-time implementation of the djb2 hash algorithm.
+ *
+ * This constexpr function recursively computes the djb2 hash of a string at compile time.
+ * The djb2 algorithm was proposed by Dan Bernstein and is known for its simplicity and good distribution.
+ *
+ * Hash function logic:
+ *   hash(i) = hash(i - 1) * 33 + str[i]
+ * where 33 is chosen because it is a simple shift and addition: (hash << 5) + hash.
+ *
+ * @param str   The input string to hash (as std::string_view).
+ * @param hash  The current hash value (default is 5381, the traditional initial value).
+ * @param index The current index in the input string (used internally for recursion).
+ * @return The resulting hash as an unsigned long long.
+ *
+ * @note This function is constexpr, allowing its use in compile-time contexts (e.g., switch cases).
+ *       Be cautious of recursion limits on deeply nested strings during compilation.
+ */
 constexpr unsigned long long djb2(std::string_view str, unsigned long long hash = 5381, std::size_t index = 0) 
 {
     return (index == str.size()) ? hash : djb2(str, ((hash << 5) + hash) + str[index], index + 1);
 }
 
+
+/**
+ * @brief Compile-time XOR encryption/decryption of a string using a repeating key.
+ *
+ * This constexpr function takes an input string (`data`) and XORs each byte with a repeating key (`key`),
+ * producing an obfuscated result stored in a `std::array<char, N>`. It is useful for basic compile-time
+ * string obfuscation, such as hiding string literals in binaries.
+ *
+ * Template Parameters:
+ * @tparam N Size of the resulting array (usually the size of `data`).
+ * @tparam M Size of the key (not directly used in logic, but enforces compile-time constraints).
+ *
+ * @param data The input string to obfuscate/deobfuscate (as std::string_view).
+ * @param key  The XOR key to repeat across the input data (as std::string_view).
+ * @return A `std::array<char, N>` containing the XORed result.
+ *
+ * @note This function is `constexpr` and suitable for compile-time usage, such as
+ *       pre-obfuscating strings for static storage in executables.
+ *       Use in conjunction with decryption logic at runtime if needed.
+ */
 template<std::size_t N, std::size_t M>
 inline constexpr std::array<char, N> compileTimeXOR(const std::string_view data, const std::string_view key) 
 {
