@@ -181,6 +181,7 @@ std::string DotnetExec::getInfo()
 	info += "  - Assemblies remain in memory and can be re-used without reloading.\n";
 	info += "  - Make sure the type and method names are correctly specified for DLLs.\n";
 	info += "  - This module does not persist files to disk, making execution more stealthy.\n";
+	info += "  - If you performe \"load\" in a process that already have the CLR loaded you could face \"Failed: DefaultAppDomain - Load_2\".\n";
 
 #endif
 	return info;
