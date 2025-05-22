@@ -446,29 +446,22 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 
 					if(splitedCmd[0]==StartCmd)
 					{
-						std::vector<std::string> splitedRes;
-						delimiter = '\x60';
-						splitList(c2Message.returnvalue(), delimiter, splitedRes);
-						if(splitedRes.size()>=3)
+						std::string listenerMetadata = c2Message.data();
+						std::string listenerHash = c2Message.returnvalue();
+
+						nlohmann::json parsed;
+						try
 						{
-							std::string param1="";
-							std::string param2="";
-							std::string type="";
-							if(splitedRes[1]==ListenerSmbType)
-							{
-								param1 = splitedRes[2];
+							parsed = nlohmann::json::parse(listenerMetadata);
+							std::string type = parsed["1"];
+							std::string param1 = parsed["2"];
+							std::string param2 = parsed["3"];
 
-								type=ListenerSmbType;
-							}
-							else if(splitedRes[1]==ListenerTcpType)
-							{
-								param1 = splitedRes[2];
-								param2 = splitedRes[3];
-
-								type=ListenerTcpType;
-							}
-
-							addSessionListener(beaconHash, c2Message.returnvalue(), type, param1, param2);
+							addSessionListener(beaconHash, listenerHash, type, param1, param2);
+						} 
+						catch (...)
+						{
+							continue;
 						}
 					}
 					else if(splitedCmd[0]==StopCmd)
@@ -478,30 +471,22 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				}
 				else if(c2Message.instruction()==ListenerPollCmd)
 				{					
-					std::vector<std::string> splitedRes;
-					std::string delimiter = " ";
-					delimiter = '\x60';
-					splitList(c2Message.returnvalue(), delimiter, splitedRes);
-					if(splitedRes.size()>=3)
+					std::string listenerMetadata = c2Message.data();
+					std::string listenerHash = c2Message.returnvalue();
+
+					nlohmann::json parsed;
+					try
 					{
-						std::string param1="";
-						std::string param2="";
-						std::string type="";
-						if(splitedRes[1]==ListenerSmbType)
-						{
-							param1 = splitedRes[2];
+						parsed = nlohmann::json::parse(listenerMetadata);
+						std::string type = parsed["1"];
+						std::string param1 = parsed["2"];
+						std::string param2 = parsed["3"];
 
-							type=ListenerSmbType;
-						}
-						else if(splitedRes[1]==ListenerTcpType)
-						{
-							param1 = splitedRes[2];
-							param2 = splitedRes[3];
-
-							type=ListenerTcpType;
-						}
-
-						addSessionListener(beaconHash, c2Message.returnvalue(), type, param1, param2);
+						addSessionListener(beaconHash, listenerHash, type, param1, param2);
+					} 
+					catch (...)
+					{
+						continue;
 					}
 				}
 			}

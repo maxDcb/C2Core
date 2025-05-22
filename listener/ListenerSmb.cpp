@@ -2,18 +2,24 @@
 
 
 using namespace std;
+using json = nlohmann::json;
 
 
-ListenerSmb::ListenerSmb(const std::string& pipeName)
-	: Listener(pipeName, "", ListenerSmbType)
+// Initializes an SMB listener that can be contacted at the specified IP address or domain and named pipe.
+// - Generates a random listener hash for identification.
+// - Prepares metadata containing the listener type, IP, and pipe name, serialized as a JSON string.
+// - Creates a named pipe server using the specified pipe name to handle SMB communication.
+// - Launches the SMB server handler in a separate thread to listen for incoming connections.
+ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName)
+	: Listener(ip, pipeName, ListenerSmbType)
 {
 	m_listenerHash = random_string(SizeListenerHash);
-	m_listenerHash += '\x60';
-	m_listenerHash += ListenerSmbType;
-	m_listenerHash += '\x60';
-	m_listenerHash += m_hostname;
-	m_listenerHash += "->";
-	m_listenerHash += pipeName;
+
+	json metadata;
+    metadata["1"] = ListenerSmbType;
+    metadata["2"] = ip;
+    metadata["3"] = pipeName;
+	m_metadata = metadata.dump();
 
 	m_serverSmb = new PipeHandler::Server(pipeName);
 

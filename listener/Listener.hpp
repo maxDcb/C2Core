@@ -27,6 +27,10 @@ public:
 	const std::string & getParam2();
 	const std::string & getType();
 	const std::string & getListenerHash();
+	const std::string & getListenerMetadata()
+	{
+		return m_metadata;
+	}
 	int getNumberOfSession();
 
 	// Session
@@ -71,6 +75,8 @@ protected:
 
 	std::string m_listenerHash;
 	std::string m_hostname;
+
+	std::string m_metadata;
 
 	std::vector<std::shared_ptr<Session>> m_sessions;
 	std::vector<std::shared_ptr<SocksSession>> m_socksSessions;

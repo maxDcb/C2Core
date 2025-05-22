@@ -101,50 +101,54 @@ class CommonCommands
 	}
 
 	std::string getHelp(std::string cmd)
+{
+	std::string output;
+
+	if (cmd == SleepCmd)
 	{
-		std::string output;
-
-		if(cmd==SleepCmd)
-		{
-			output = "sleep: \n";
-			output += "Set the sleep time in sec for the beacon.\n";
-			output += "exemple:\n";
-			output += " - sleep 1\n";
-		}
-		else if(cmd==EndCmd)
-		{
-			output = "end: \n";
-			output += "Stop the beacon.\n";
-			output += "exemple:\n";
-			output += " - end\n";
-		}
-		else if(cmd==ListenerCmd)
-		{
-			output = "listener: \n";
-			output += "Start a tcp or smb listener on the beacon.\n";
-			output += "exemple:\n";
-			output += " - listener start tcp 0.0.0.0 4444\n";
-			output += " - listener start smb pipename\n";
-			output += " - listener stop uAgXVQny0o1GVoIHf0Jaed4xl5lYpHKU\n";
-		}
-		else if(cmd==LoadC2ModuleCmd)
-		{
-			output = "loadModule: \n";
-			output += "Load module DLL file on the memory of the beacon, giving the beacon this capability.\n";
-			output += "Load the DLL from the given path, if it's not found try the default ../Modules/ path.";
-			output += "exemple:\n";
-			output += " - loadModule /tools/PrintWorkingDirectory.dll \n";
-		}
-		else if(cmd==UnloadC2ModuleCmd)
-		{
-			output = "unloadModule: \n";
-			output += "Unload module DLL loaded by loadModule.\n";
-			output += "exemple:\n";
-			output += " - unloadModule assemblyExec \n";
-		}
-
-		return output;
+		output = "sleep:\n";
+		output += "  Set the sleep interval (in seconds) for the beacon.\n";
+		output += "  Example:\n";
+		output += "    - sleep 0.5\n";
 	}
+	else if (cmd == EndCmd)
+	{
+		output = "end:\n";
+		output += "  Terminates the beacon process.\n";
+		output += "  Example:\n";
+		output += "    - end\n";
+	}
+	else if (cmd == ListenerCmd)
+	{
+		output = "listener:\n";
+		output += "  Starts a TCP or SMB listener on the beacon.\n" 
+		output += "  The IP or hostname given to the listener is only in case of dropper use, to know where to connect to. It will show in the GUI.\n";
+		output += "  Examples:\n";
+		output += "    - listener start tcp <IP> <port>\n";
+		output += "    - listener start tcp 10.2.4.8 4444\n";
+		output += "    - listener start smb <IP/hostname> <pipename>\n";
+		output += "    - listener start smb pipename\n";
+	}
+	else if (cmd == LoadC2ModuleCmd)
+	{
+		output = "loadModule:\n";
+		output += "  Loads a module DLL into the beacon's memory, extending its capabilities.\n";
+		output += "  Attempts to load from the specified path; if not found, falls back to the default '../Modules/' directory.\n";
+		output += "  Example:\n";
+		output += "    - loadModule assemblyexec\n";
+		output += "    - loadModule /tools/PrintWorkingDirectory.dll\n";
+	}
+	else if (cmd == UnloadC2ModuleCmd)
+	{
+		output = "unloadModule:\n";
+		output += "  Unloads a module DLL that was previously loaded via loadModule.\n";
+		output += "  Example:\n";
+		output += "    - unloadModule assemblyExec\n";
+	}
+
+	return output;
+}
+
 
 	// if an error ocurre:
 	// set_returnvalue(errorMsg) && return -1
@@ -222,19 +226,22 @@ class CommonCommands
 					}
 					else
 					{
-						std::string errorMsg = "listener start: not enough arguments";
+						std::string errorMsg = "listener tcp start: not enough arguments";
 						c2Message.set_returnvalue(errorMsg);	
 						return -1;
 					}
 				}
 				else if(splitedCmd[1]==StartInstruction && splitedCmd[2]==ListenerSmbType)
 				{
-					if(splitedCmd.size()>=4)
+					if(splitedCmd.size()==5)
 					{
-						std::string pipeName = splitedCmd[3];
+						std::string host = splitedCmd[3];
+						std::string pipeName = splitedCmd[4];
 						std::string cmd = StartCmd;
 						cmd+=" ";
 						cmd+=ListenerSmbType;
+						cmd+=" ";
+						cmd+=host;
 						cmd+=" ";
 						cmd+=pipeName;
 						c2Message.set_instruction(ListenerCmd);
@@ -242,7 +249,7 @@ class CommonCommands
 					}
 					else
 					{
-						std::string errorMsg = "listener start: not enough arguments";
+						std::string errorMsg = "listener smb start: not enough arguments";
 						c2Message.set_returnvalue(errorMsg);	
 						return -1;
 					}

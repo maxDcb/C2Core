@@ -13,22 +13,19 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 	m_host=ip;
 	m_port=localPort;
 
-	std::string hash = random_string(SizeListenerHash);
 	std::string type;
 	if(isHttps)
 		type = ListenerHttpsType;
 	else
 		type = ListenerHttpType;
 
-	m_listenerHash = hash;
-	m_listenerHash += '\x60';
-	m_listenerHash += type;
-	m_listenerHash += '\x60';
-	m_listenerHash += m_hostname;
-	m_listenerHash += '\x60';
-	m_listenerHash += ip;
-	m_listenerHash += '\x60';
-	m_listenerHash += std::to_string(localPort);
+	m_listenerHash = random_string(SizeListenerHash);
+
+	json metadata;
+    metadata["1"] = type;
+    metadata["2"] = m_host;
+    metadata["3"] = std::to_string(m_port);
+	m_metadata = metadata.dump();
 
 #ifdef BUILD_TEAMSERVER
 	// Logger
@@ -39,11 +36,11 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
     sinks.push_back(console_sink);
 
 
-	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+type+"_"+std::to_string(localPort)+"_"+hash+".txt", 1024*1024*10, 3);
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+type+"_"+std::to_string(localPort)+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
 	file_sink->set_level(spdlog::level::debug);
 	sinks.push_back(file_sink);
 
-    m_logger = std::make_shared<spdlog::logger>("Listener_"+type+"_"+std::to_string(localPort)+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+type+"_"+std::to_string(localPort)+"_"+m_listenerHash.substr(0,8), begin(sinks), end(sinks));
 	m_logger->set_level(spdlog::level::debug);
 #endif
 }

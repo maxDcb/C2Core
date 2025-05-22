@@ -1,23 +1,20 @@
 #include "ListenerTcp.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 
 ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	: Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
 	, m_stopThread(true)
 {
-	std::string hash = random_string(SizeListenerHash);
+	m_listenerHash = random_string(SizeListenerHash);
 
-	m_listenerHash = hash;
-	m_listenerHash += '\x60';
-	m_listenerHash += ListenerTcpType;
-	m_listenerHash += '\x60';
-	m_listenerHash += m_hostname;
-	m_listenerHash += "->";
-	m_listenerHash += ip;
-	m_listenerHash += '\x60';
-	m_listenerHash += std::to_string(localPort);
+	json metadata;
+    metadata["1"] = ListenerTcpType;
+    metadata["2"] = ip;
+    metadata["3"] = std::to_string(localPort);
+	m_metadata = metadata.dump();
 
 	m_port = localPort;
 
@@ -32,11 +29,11 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
     sinks.push_back(console_sink);
 
 
-	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+hash+".txt", 1024*1024*10, 3);
+	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
 	file_sink->set_level(spdlog::level::debug);
 	sinks.push_back(file_sink);
 
-    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+hash.substr(0,8), begin(sinks), end(sinks));
+    m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+m_listenerHash.substr(0,8), begin(sinks), end(sinks));
 	m_logger->set_level(spdlog::level::debug);
 #endif
 }
