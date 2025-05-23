@@ -24,7 +24,9 @@ const std::string PrivilegeMsgTag = "PR";
 const std::string OsMsgTag = "OS";
 const std::string LastProofOfLifeMsgTag = "POF";
 const std::string SessionsMsgTag = "SS";
-
+const std::string InternalIpsMsgTag = "IIPS";
+const std::string ProcessIdMsgTag = "PID";
+const std::string AdditionalInfoMsgTag = "ADI";
 
 
 //
@@ -345,6 +347,18 @@ public:
 		if(it != bundleC2MessageJson.end())
 			m_lastProofOfLife = bundleC2MessageJson[LastProofOfLifeMsgTag].get<std::string>();
 
+		it = bundleC2MessageJson.find(InternalIpsMsgTag);
+		if(it != bundleC2MessageJson.end())
+			m_internalIps = bundleC2MessageJson[InternalIpsMsgTag].get<std::string>();
+
+		it = bundleC2MessageJson.find(ProcessIdMsgTag);
+		if(it != bundleC2MessageJson.end())
+			m_processId = bundleC2MessageJson[ProcessIdMsgTag].get<std::string>();
+
+		it = bundleC2MessageJson.find(AdditionalInfoMsgTag);
+		if(it != bundleC2MessageJson.end())
+			m_additionalInformation = bundleC2MessageJson[AdditionalInfoMsgTag].get<std::string>();
+
 		auto sessions = bundleC2MessageJson[SessionsMsgTag];
 	
 		for (nlohmann::json::iterator it = sessions.begin(); it != sessions.end(); ++it)
@@ -396,8 +410,15 @@ public:
 			bundleC2MessageJson += nlohmann::json::object_t::value_type(OsMsgTag, m_os);
 		if(!m_lastProofOfLife.empty())
 			bundleC2MessageJson += nlohmann::json::object_t::value_type(LastProofOfLifeMsgTag, m_lastProofOfLife);
+		if (!m_internalIps.empty())
+   			bundleC2MessageJson += nlohmann::json::object_t::value_type(InternalIpsMsgTag, m_internalIps);
+		if (!m_processId.empty())
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(ProcessIdMsgTag, m_processId);
+		if (!m_additionalInformation.empty())
+			bundleC2MessageJson += nlohmann::json::object_t::value_type(AdditionalInfoMsgTag, m_additionalInformation);
 		if(!sessions.empty())
 			bundleC2MessageJson += nlohmann::json::object_t::value_type(SessionsMsgTag, sessions);
+
 
 		*output = bundleC2MessageJson.dump();
 	}
@@ -455,17 +476,29 @@ public:
 	{
 		return m_arch;
 	}
-	const std::string&  privilege() const
+	const std::string& privilege() const
 	{
 		return m_privilege;
 	}
-	const std::string&  os() const
+	const std::string& os() const
 	{
 		return m_os;
 	}
-	const std::string&  lastProofOfLife() const
+	const std::string& lastProofOfLife() const
 	{
 		return m_lastProofOfLife;
+	}
+	const std::string& internalIps() const 
+	{ 
+		return m_internalIps; 
+	}
+	const std::string& processId() const 
+	{ 
+		return m_processId; 
+	}
+	const std::string& additionalInformation() const 
+	{ 
+		return m_additionalInformation; 
 	}
 
 	void set_beaconhash(const std::string& beaconHash)
@@ -500,7 +533,20 @@ public:
 	{
 		m_lastProofOfLife = lastProofOfLife;
 	}
+	void set_internalIps(const std::string& internalIps) 
+	{ 
+		m_internalIps = internalIps; 
+	}
+	void set_processId(const std::string& pid) 
+	{ 
+		m_processId = pid; 
+	}
+	void set_additionalInformation(const std::string& info) 
+	{ 
+		m_additionalInformation = info; 
+	}
 
+	
 private:
 	std::vector<std::unique_ptr<C2Message>> m_c2Messages;
 
@@ -512,6 +558,9 @@ private:
 	std::string m_privilege;
 	std::string m_os;
 	std::string m_lastProofOfLife;
+	std::string m_internalIps;
+	std::string m_processId;
+	std::string m_additionalInformation;
 };
 
 

@@ -43,6 +43,9 @@ protected:
 	std::string m_arch;
 	std::string m_privilege;
 	std::string m_os;
+	std::string m_ips;
+	std::string m_pid;
+	std::string m_additionalInfo;
 
 	std::queue<C2Message> m_tasks;
 	std::queue<C2Message> m_taskResult;

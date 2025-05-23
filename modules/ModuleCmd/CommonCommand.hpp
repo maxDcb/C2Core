@@ -121,7 +121,7 @@ class CommonCommands
 	else if (cmd == ListenerCmd)
 	{
 		output = "listener:\n";
-		output += "  Starts a TCP or SMB listener on the beacon.\n" 
+		output += "  Starts a TCP or SMB listener on the beacon.\n";
 		output += "  The IP or hostname given to the listener is only in case of dropper use, to know where to connect to. It will show in the GUI.\n";
 		output += "  Examples:\n";
 		output += "    - listener start tcp <IP> <port>\n";

@@ -384,8 +384,14 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 				std::string arch = bundleC2Message->arch();
 				std::string privilege = bundleC2Message->privilege();
 				std::string os = bundleC2Message->os();
+				std::string internalIps = bundleC2Message->internalIps();
+				std::string processId = bundleC2Message->processId();
+				std::string additionalInformation = bundleC2Message->additionalInformation();
 
 				std::shared_ptr<Session> session = make_shared<Session>(listenerhash, beaconHash, hostname, username, arch, privilege, os);
+				session->setInternalIps(internalIps);
+				session->setProcessId(processId);
+				session->setAdditionalInformation(additionalInformation);
 				m_sessions.push_back(std::move(session));
 			}
 			else

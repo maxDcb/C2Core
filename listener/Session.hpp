@@ -61,45 +61,94 @@ public:
 		m_os=os;
 		m_killed=false;
 
+
 		auto current_time = std::chrono::system_clock::now();
 		auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
 		m_lastProofOfLifeSec = duration_in_seconds.count();
 	}
 
-	std::string getListenerHash()
+	const std::string& getListenerHash() const 
 	{
 		return m_listenerHash;
 	}
-
-	std::string getBeaconHash()
+	const std::string& getBeaconHash() const 
 	{
 		return m_beaconHash;
 	}
-
-	std::string getUsername()
+	const std::string& getUsername() const 
 	{
 		return m_username;
 	}
-
-	std::string getHostname()
+	const std::string& getHostname() const 
 	{
 		return m_hostname;
 	}
-
-	std::string getArch()
+	const std::string& getArch() const 
 	{
 		return m_arch;
 	}
-
-	std::string getPrivilege()
+	const std::string& getPrivilege() const 
 	{
 		return m_privilege;
 	}
-
-	std::string getOs()
+	const std::string& getOs() const 
 	{
 		return m_os;
 	}
+	const std::string& getInternalIps() const 
+	{ 
+		return m_internalIps; 
+	}
+	const std::string& getProcessId() const 
+	{ 
+		return m_processId; 
+	}
+	const std::string& getAdditionalInformation() const 
+	{ 
+		return m_additionalInformation; 
+	}
+
+	void setListenerHash(const std::string& listenerHash)
+	{
+		m_listenerHash = listenerHash;
+	}
+	void setBeaconHash(const std::string& beaconHash)
+	{
+		m_beaconHash = beaconHash;
+	}
+	void setUsername(const std::string& username)
+	{
+		m_username = username;
+	}
+	void setHostname(const std::string& hostname)
+	{
+		m_hostname = hostname;
+	}
+	void setArch(const std::string& arch)
+	{
+		m_arch = arch;
+	}
+	void setPrivilege(const std::string& privilege)
+	{
+		m_privilege = privilege;
+	}
+	void setOs(const std::string& os)
+	{
+		m_os = os;
+	}
+	void setInternalIps(const std::string& internalIps)
+	{
+		m_internalIps = internalIps;
+	}
+	void setProcessId(const std::string& processId)
+	{
+		m_processId = processId;
+	}
+	void setAdditionalInformation(const std::string& additionalInformation)
+	{
+		m_additionalInformation = additionalInformation;
+	}
+
 
 	void updatePoofOfLife(std::string& lastProofOfLife)
 	{
@@ -242,6 +291,9 @@ private:
 	std::string m_arch;
 	std::string m_privilege;
 	std::string m_os;
+	std::string m_internalIps;
+	std::string m_processId;
+	std::string m_additionalInformation;
 
 	std::vector<SessionListener> m_sessionListener;
 

