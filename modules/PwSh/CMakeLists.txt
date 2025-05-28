@@ -1,0 +1,25 @@
+include_directories(../)
+if(WIN32)
+    add_library(PwSh SHARED PwSh.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj )
+else()
+    add_library(PwSh SHARED PwSh.cpp)
+endif()
+set_property(TARGET PwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+target_link_libraries(PwSh )
+add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+$<TARGET_FILE:PwSh> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PwSh>")
+
+if(WITH_TESTS)
+    if(WIN32)
+        add_executable(testsPwSh tests/testsPwSh.cpp PwSh.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+    else()
+        add_executable(testsPwSh tests/testsPwSh.cpp PwSh.cpp)
+    endif()
+    # add_executable(testsPwSh WIN32 tests/testsPwSh.cpp PwSh.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+    target_link_libraries(testsPwSh )
+    set_property(TARGET testsPwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    add_custom_command(TARGET testsPwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+    $<TARGET_FILE:testsPwSh> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPwSh>")
+
+    add_test(NAME testsPwSh COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPwSh>")
+endif()
