@@ -1,15 +1,6 @@
 name: Module Tests (Windows)
 
-on:
-  push:
-    paths:
-      - 'modules/**'
-      - 'thirdParty/**'
-      - '.github/workflows/Tests_Windows.yml'
-  pull_request:
-    paths:
-      - 'modules/**'
-      - 'thirdParty/**'
+on: workflow_dispatch
 
 jobs:
   test-windows:

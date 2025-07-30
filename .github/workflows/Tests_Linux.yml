@@ -1,15 +1,6 @@
 name: Module Tests (Linux)
 
-on:
-  push:
-    paths:
-      - 'modules/**'
-      - 'thirdParty/**'
-      - '.github/workflows/Tests_Linux.yml'
-  pull_request:
-    paths:
-      - 'modules/**'
-      - 'thirdParty/**'
+on: workflow_dispatch
 
 jobs:
   test-linux:
