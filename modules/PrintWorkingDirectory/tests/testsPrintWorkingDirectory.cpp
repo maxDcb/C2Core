@@ -1,9 +1,6 @@
 #include "../PrintWorkingDirectory.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
 
 bool testPrintWorkingDirectory();
 
@@ -18,26 +15,21 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 bool testPrintWorkingDirectory()
 {
     std::unique_ptr<PrintWorkingDirectory> printWorkingDirectory = std::make_unique<PrintWorkingDirectory>();
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("pwd");
 
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        printWorkingDirectory->init(splitedCmd, c2Message);
-        printWorkingDirectory->process(c2Message, c2RetMessage);
+    std::vector<std::string> splitedCmd;
+    splitedCmd.push_back("pwd");
 
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
+    C2Message c2Message;
+    C2Message c2RetMessage;
+    printWorkingDirectory->init(splitedCmd, c2Message);
+    printWorkingDirectory->process(c2Message, c2RetMessage);
 
-    return true;
+    std::string expected = std::filesystem::current_path().string();
+    return c2RetMessage.returnvalue() == expected;
 }
