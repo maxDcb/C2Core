@@ -64,4 +64,27 @@ Once the build completes, the test binaries will be available in the `modules/Te
 
 These tests validate core functionality and encoding/decoding routines.
 
+### 🛠 Cleaning Up
+
+When you are done building or testing locally, remove the temporary folders to
+keep the repository clean:
+
+```bash
+rm -rf modules/build modules/ModuleCmd/nlohmann modules/ModuleCmd/base64.h \
+       modules/Tests thirdParty
+```
+
+### 🚀 Workflow Hints
+
+The GitHub workflows in `.github/workflows/` mirror the exact commands used to
+compile the modules and run the tests on both Linux and Windows. Refer to these
+files if you need a quick reminder of the expected build steps.
+
+### 📜 Tracking Previous Work
+
+Test coverage has been steadily improved across the modules. Review the recent
+commit history (`git log`) to see examples such as the addition of the MkDir
+module tests and CI configuration. Checking the history can help you understand
+what has already been addressed before starting a new task.
+
 
