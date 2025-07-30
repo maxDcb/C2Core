@@ -1,10 +1,13 @@
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 include_directories(ModuleCmd)
 
 add_subdirectory(ModuleCmd)
 add_subdirectory(AssemblyExec)
 add_subdirectory(ChangeDirectory)
 add_subdirectory(Chisel)
-add_subdirectory(CoffLoader)
+# add_subdirectory(CoffLoader)
 add_subdirectory(Download)
 add_subdirectory(Evasion)
 add_subdirectory(Inject)
