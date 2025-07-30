@@ -37,13 +37,10 @@ jobs:
           curl -o ModuleCmd\base64.h https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.h
 
       - name: Configure CMake for tests
-        run: |
-          cmake -G "Visual Studio 17 2022" -B ${{github.workspace}}\modules\build -DWITH_TESTS=ON
+        run: cmake -G "Visual Studio 17 2022" -S modules -B modules/build -DWITH_TESTS=ON
 
       - name: Build modules with tests
-        run: |
-          cmake --build ${{github.workspace}}\modules\build --config Release --parallel
+        run: cmake --build modules/build --config Release --parallel
 
       - name: Run unit tests
-        run: |
-          ctest --test-dir modules\build -C Release
+        run: ctest --test-dir modules/build -C Release
