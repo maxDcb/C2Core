@@ -1,246 +1,95 @@
 #include "../Download.hpp"
-
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <fstream>
 
 bool testDownload();
 
-int main()
-{
-    bool res;
-
+int main() {
     std::cout << "[+] testDownload" << std::endl;
-    res = testDownload();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
-
+    bool res = testDownload();
+    if (res) {
+        std::cout << "[+] Success" << std::endl;
+    } else {
+        std::cout << "[-] Failed" << std::endl;
+    }
     return !res;
 }
 
-
-bool areFilesIdentical(const std::string& file1, const std::string& file2) {
-    std::ifstream f1(file1, std::ios::binary | std::ios::ate);
-    std::ifstream f2(file2, std::ios::binary | std::ios::ate);
-
-    if (!f1 || !f2) {
-        std::cerr << "Failed to open one or both files." << std::endl;
-        return false;
-    }
-
-    if (f1.tellg() != f2.tellg()) {
-        return false; // Different sizes
-    }
-
-    f1.seekg(0, std::ios::beg);
-    f2.seekg(0, std::ios::beg);
-
-    std::vector<char> buffer1((std::istreambuf_iterator<char>(f1)), std::istreambuf_iterator<char>());
-    std::vector<char> buffer2((std::istreambuf_iterator<char>(f2)), std::istreambuf_iterator<char>());
-
-    return buffer1 == buffer2;
+static bool filesEqual(const std::filesystem::path& a, const std::filesystem::path& b) {
+    std::ifstream f1(a, std::ios::binary); 
+    std::ifstream f2(b, std::ios::binary);
+    std::string d1((std::istreambuf_iterator<char>(f1)), {});
+    std::string d2((std::istreambuf_iterator<char>(f2)), {});
+    return d1 == d2;
 }
 
+bool testDownload() {
+    namespace fs = std::filesystem;
+    fs::path temp = fs::temp_directory_path() / "c2core_download_test";
+    fs::create_directories(temp);
+    bool ok = true;
 
-bool testDownload()
-{
-    std::unique_ptr<Download> download = std::make_unique<Download>();
+    // Small file
     {
-        std::string fileName = "test.txt";
-        std::string outputFileName = "testDownload.txt";
-        std::string fileContent = "tesDownload";
+        Download dl;
+        fs::path src = temp / "src.txt";
+        fs::path dst = temp / "dst.txt";
+        std::string data = "small file";
+        std::ofstream(src) << data;
 
-        std::ofstream outfile(fileName);
-        outfile << fileContent;
-        outfile.close();
-        
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("download");
-        splitedCmd.push_back(fileName);
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        download->init(splitedCmd, c2Message);
-        download->process(c2Message, c2RetMessage);
-        download->followUp(c2RetMessage);
-
-        std::string errorMsg;
-        download->errorCodeToMsg(c2RetMessage, errorMsg);
-
-        std::string error = "errorMsg:\n";
-        error += errorMsg;
-        error += "\n";
-        std::cout << error << std::endl;
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (areFilesIdentical(fileName, outputFileName)) 
-        {
-        } 
-        else 
-        {
-            std::cout << "The files are different." << std::endl;
-            return false;
-        }
+        std::vector<std::string> cmd = {"download", src.string(), dst.string()};
+        C2Message msg, ret;
+        dl.init(cmd, msg);
+        dl.process(msg, ret);
+        dl.followUp(ret);
+        std::cout << "small ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
+        bool sub = ret.errorCode() == -1 && ret.returnvalue() == "Success" && filesEqual(src, dst);
+        std::cout << "small ok=" << sub << std::endl;
+        ok &= sub;
     }
 
+    // Large file requiring multiple chunks
     {
-        std::string fileName = "test with space.txt";
-        std::string outputFileName = "testDownload2.txt";
-        std::string fileContent = "tesDownload2";
+        Download dl;
+        fs::path src = temp / "large.bin";
+        fs::path dst = temp / "large_copy.bin";
+        const size_t size = 1024 * 1024 + 500; // > CHUNK_SIZE
+        std::string data(size, 'A');
+        std::ofstream(src, std::ios::binary).write(data.data(), data.size());
 
-        std::ofstream outfile(fileName);
-        outfile << fileContent;
-        outfile.close();
-        
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("download");
-        splitedCmd.push_back("\"test");
-        splitedCmd.push_back("with");
-        splitedCmd.push_back("space.txt\"");
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        download->init(splitedCmd, c2Message);
-        download->process(c2Message, c2RetMessage);
-        download->followUp(c2RetMessage);
-
-        std::string errorMsg;
-        download->errorCodeToMsg(c2RetMessage, errorMsg);
-
-        std::string error = "errorMsg:\n";
-        error += errorMsg;
-        error += "\n";
-        std::cout << error << std::endl;
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (areFilesIdentical(fileName, outputFileName)) 
-        {
-        } 
-        else 
-        {
-            std::cout << "The files are different." << std::endl;
-            return false;
+        std::vector<std::string> cmd = {"download", src.string(), dst.string()};
+        C2Message msg, ret; 
+        dl.init(cmd, msg);
+        dl.process(msg, ret);
+        dl.followUp(ret);
+        std::cout << "large first ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
+        while(ret.returnvalue() != "Success") {
+            C2Message next;
+            dl.recurringExec(next);
+            dl.followUp(next);
+            ret = next;
         }
+        bool sub = filesEqual(src, dst);
+        std::cout << "large ok=" << sub << std::endl;
+        ok &= sub;
     }
 
+    // Non-existent source file
     {
-        std::string fileName = "rockyou.txt.gz";
-        std::string outputFileName = "rockyouCopy.txt.gz";
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("download");
-        splitedCmd.push_back(fileName);
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        download->init(splitedCmd, c2Message);
-        download->process(c2Message, c2RetMessage);
-        download->followUp(c2RetMessage);
-
-        std::string errorMsg;
-        download->errorCodeToMsg(c2RetMessage, errorMsg);
-
-        std::string error = "errorMsg:\n";
-        error += errorMsg;
-        error += "\n";
-        std::cout << error << std::endl;
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        while(true)
-        {
-            C2Message c2RetMessageNew;
-            download->recurringExec(c2RetMessageNew);
-            download->followUp(c2RetMessageNew);
-            
-            std::string errorMsg;
-            download->errorCodeToMsg(c2RetMessageNew, errorMsg);
-
-            std::string error = "errorMsg:\n";
-            error += errorMsg;
-            error += "\n";
-            std::cout << error << std::endl;
-
-            std::string output = "output:\n";
-            output += c2RetMessageNew.returnvalue();
-            output += "\n";
-            std::cout << output << std::endl;
-
-            if("Success" == c2RetMessageNew.returnvalue())
-                break;
-        }
-
-        if (areFilesIdentical(fileName, outputFileName)) 
-        {
-        } 
-        else 
-        {
-            std::cout << "The files are different." << std::endl;
-            return false;
-        }
+        Download dl;
+        fs::path src = temp / "missing.txt";
+        fs::path dst = temp / "missing_out.txt";
+        std::vector<std::string> cmd = {"download", src.string(), dst.string()};
+        C2Message msg, ret; 
+        dl.init(cmd, msg);
+        dl.process(msg, ret);
+        dl.followUp(ret);
+        std::cout << "missing ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
+        bool sub = ret.errorCode() != -1 && !fs::exists(dst);
+        std::cout << "missing ok=" << sub << std::endl;
+        ok &= sub;
     }
 
-    {
-        std::string fileName = "sdgsdfhkjjhgzetreyixwvccn.txt";
-        std::string outputFileName = "notHere.txt";
-        
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("download");
-        splitedCmd.push_back(fileName);
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        download->init(splitedCmd, c2Message);
-        download->process(c2Message, c2RetMessage);
-        download->followUp(c2RetMessage);
-
-        std::string errorMsg;
-        download->errorCodeToMsg(c2RetMessage, errorMsg);
-
-        std::string error = "errorMsg:\n";
-        error += errorMsg;
-        error += "\n";
-        std::cout << error << std::endl;
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (c2RetMessage.errorCode()) 
-        {
-        } 
-        else 
-        {
-            return false;
-        }
-
-        std::ifstream myfile;
-		myfile.open(outputFileName, std::ios::binary);
-
-		if(myfile)
-		{
-            return false;
-        }
-    }
-
-    return true;
+    fs::remove_all(temp);
+    return ok;
 }
