@@ -1,5 +1,7 @@
 #include "../Run.hpp"
 
+#include <filesystem>
+
 #ifdef __linux__
 #elif _WIN32
 #include <windows.h>
@@ -24,101 +26,44 @@ int main()
 bool testRun()
 {
     std::unique_ptr<Run> run = std::make_unique<Run>();
+    bool ok = true;
 
+    // ----- simple echo -----
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-        splitedCmd.push_back("whoami");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-        splitedCmd.push_back("id");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-        splitedCmd.push_back("dir");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-#ifdef __linux__
-        splitedCmd.push_back("/c ping 127.0.0.1 -c 1");
-#elif _WIN32
-        splitedCmd.push_back("/c ping 127.0.0.1 /n 1");
-#endif
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-        splitedCmd.push_back("calc.exe");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("run");
-        splitedCmd.push_back(".\\test.bat");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        run->init(splitedCmd, c2Message);
-        run->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::vector<std::string> cmd = {"run", "echo", "hello"};
+        C2Message msg, ret;
+        run->init(cmd, msg);
+        msg.set_cmd("echo hello");
+        run->process(msg, ret);
+        ok &= ret.returnvalue().find("hello") != std::string::npos;
     }
 
-    return true;
+    // ----- command with spaces (split tokens) -----
+    {
+        std::vector<std::string> cmd = {"run", "echo", "hello", "world"};
+        C2Message msg, ret;
+        run->init(cmd, msg);
+        msg.set_cmd("echo hello world");
+        run->process(msg, ret);
+        ok &= ret.returnvalue().find("hello world") != std::string::npos;
+    }
+
+    // ----- invalid command should return error text -----
+    {
+        std::vector<std::string> cmd = {"run", "nonexistent_command_foo"};
+        C2Message msg, ret;
+        run->init(cmd, msg);
+        msg.set_cmd("nonexistent_command_foo");
+        run->process(msg, ret);
+        ok &= ret.returnvalue().empty();
+    }
+
+    // ----- missing argument -----
+    {
+        std::vector<std::string> cmd = {"run"};
+        C2Message msg, ret;
+        ok &= run->init(cmd, msg) == -1;
+    }
+
+    return ok;
 }

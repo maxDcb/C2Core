@@ -1,5 +1,7 @@
 #include "../Cat.hpp"
 
+#include <filesystem>
+
 #ifdef __linux__
 #elif _WIN32
 #include <windows.h>
@@ -23,64 +25,60 @@ int main()
 
 bool testCat()
 {
-    std::string testFile = "test1.txt";
-    std::string fileContent = "testCat";
+    namespace fs = std::filesystem;
+    fs::path temp = fs::temp_directory_path() / "c2core_cat_test";
+    fs::create_directories(temp);
 
-    std::ofstream outfile("test1.txt");
-    outfile << "testCat" << std::endl;
-    outfile.close();
+    bool ok = true;
 
     std::unique_ptr<Cat> cat = std::make_unique<Cat>();
+
+    // ----- valid file -----
+    fs::path file = temp / "file.txt";
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("cat");
-        splitedCmd.push_back(testFile);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        cat->init(splitedCmd, c2Message);
-        cat->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (c2RetMessage.returnvalue().compare(0, fileContent.length(), fileContent) == 0) 
-        {
-        } 
-        else 
-        {
-            std::cout << "[-] fileContent " << fileContent << std::endl;
-            std::cout << "[-] c2RetMessage.returnvalue() " << c2RetMessage.returnvalue() << std::endl;
-            return false;
-        }
-    }
-    
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("cat");
-        splitedCmd.push_back(".\\test space folder\\test space.txt");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        cat->init(splitedCmd, c2Message);
-        cat->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (c2RetMessage.errorCode()) 
-        {
-            std::cout << "[+] c2RetMessage.errorCode() " << c2RetMessage.errorCode() << std::endl;
-        } 
-        else 
-        {
-            return false;
-        }
+        std::ofstream(file) << "hello";
+        std::vector<std::string> cmd = {"cat", file.string()};
+        C2Message msg, ret;
+        cat->init(cmd, msg);
+        msg.set_inputfile(file.string());
+        cat->process(msg, ret);
+        
+        ok &= ret.returnvalue().find("hello") == 0;
     }
 
-    return true;
+    // ----- path containing spaces and tokens splitted -----
+    fs::path spaced = temp / "space file.txt";
+    {
+        std::ofstream(spaced) << "space";
+        std::vector<std::string> cmd = {"cat", (temp.string()+"/space").c_str(), "file.txt"};
+        C2Message msg, ret;
+        cat->init(cmd, msg);
+        msg.set_inputfile(spaced.string());
+        cat->process(msg, ret);
+
+        ok &= ret.returnvalue().find("space") == 0;
+    }
+
+    // ----- invalid file -----
+    {
+        fs::path invalid = temp / "does_not_exist.txt";
+        std::vector<std::string> cmd = {"cat", invalid.string()};
+        C2Message msg, ret;
+        cat->init(cmd, msg);
+        msg.set_inputfile(invalid.string());
+        cat->process(msg, ret);
+        std::string err;
+        cat->errorCodeToMsg(ret, err);
+#ifdef BUILD_TEAMSERVER
+        ok &= ret.errorCode() == 1 && !err.empty();
+#else
+
+        ok &= ret.errorCode() == 1;
+#endif
+    }
+
+
+
+    fs::remove_all(temp);
+    return ok;
 }
