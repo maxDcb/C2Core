@@ -30,6 +30,10 @@ The code is written in **modern C++**, uses **CMake** as its build system, and e
    * `nlohmann::json` (used for JSON parsing):
 
      ```bash
+     cd ~
+     mkdir -p thirdParty/base64
+     curl -L https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.cpp -o thirdParty/base64/base64.cpp
+     cd modules
      curl -o ModuleCmd/nlohmann/json.hpp https://raw.githubusercontent.com/maxDcb/C2TeamServer/refs/heads/master/thirdParty/nlohmann/json.hpp
      ```
 
