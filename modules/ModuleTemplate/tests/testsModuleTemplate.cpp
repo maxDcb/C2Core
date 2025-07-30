@@ -29,49 +29,47 @@ bool testModuleTemplate()
 {
 
     std::unique_ptr<ModuleTemplate> moduleTemplate = std::make_unique<ModuleTemplate>();
-    
+    bool ok = true;
+
+    // ----- correct argument -----
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("moduleTemplate");
-        splitedCmd.push_back("arg1");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        moduleTemplate->init(splitedCmd, c2Message);
-        moduleTemplate->process(c2Message, c2RetMessage);
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::vector<std::string> cmd = {"moduleTemplate", "arg1"};
+        C2Message msg, ret;
+        moduleTemplate->init(cmd, msg);
+        moduleTemplate->process(msg, ret);
+        ok &= ret.returnvalue().find("return value") != std::string::npos;
     }
 
+    // ----- wrong argument triggers error -----
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("moduleTemplate");
-        splitedCmd.push_back("notarg1");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        moduleTemplate->init(splitedCmd, c2Message);
-        moduleTemplate->process(c2Message, c2RetMessage);
-
-        std::string output = "output:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (c2RetMessage.errorCode()) 
-        {
-            std::string errorMsg;
-            moduleTemplate->errorCodeToMsg(c2RetMessage, errorMsg);
-            std::cout << "[+] error: \n" << errorMsg << std::endl;
-        } 
-        else 
-        {
-            return false;
-        }
+        std::vector<std::string> cmd = {"moduleTemplate", "notarg1"};
+        C2Message msg, ret;
+        moduleTemplate->init(cmd, msg);
+        moduleTemplate->process(msg, ret);
+        std::string err;
+        moduleTemplate->errorCodeToMsg(ret, err);
+#ifdef BUILD_TEAMSERVER
+        ok &= ret.errorCode() == 1 && !err.empty();
+#else
+        ok &= ret.errorCode() == 1;
+#endif
     }
 
-    return true;
+    // ----- missing argument -----
+    {
+        std::vector<std::string> cmd = {"moduleTemplate"};
+        C2Message msg, ret;
+        ok &= moduleTemplate->init(cmd, msg) == -1;
+        ok &= !msg.returnvalue().empty();
+    }
+
+    // ----- followUp path -----
+    {
+        C2Message ret;
+        ret.set_errorCode(-1);
+        ret.set_args("dummy");
+        ok &= moduleTemplate->followUp(ret) == 0;
+    }
+
+    return ok;
 }

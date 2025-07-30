@@ -1,5 +1,7 @@
 #include "../Tree.hpp"
 
+#include <filesystem>
+
 #ifdef __linux__
 #elif _WIN32
 #include <windows.h>
@@ -23,67 +25,61 @@ int main()
 
 bool testTree()
 {
+    namespace fs = std::filesystem;
+    fs::path temp = fs::temp_directory_path() / "c2core_tree_test";
+    fs::remove_all(temp);
+    fs::create_directories(temp / "sub");
+    std::ofstream(temp / "file.txt") << "data";
+    std::ofstream(temp / "sub" / "inner.txt") << "data";
+
     std::unique_ptr<Tree> tree = std::make_unique<Tree>();
+    bool ok = true;
 
+    // ----- explicit path -----
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("tree");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        tree->init(splitedCmd, c2Message);
-        tree->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::vector<std::string> cmd = {"tree", temp.string()};
+        C2Message msg, ret;
+        tree->init(cmd, msg);
+        msg.set_cmd(temp.string());
+        tree->process(msg, ret);
+        std::string out = ret.returnvalue();
+        ok &= out.find((temp / "file.txt").string()) != std::string::npos;
+        ok &= out.find((temp / "sub").string() + "\\") != std::string::npos;
     }
+
+    // ----- path with spaces using split tokens -----
+    fs::path spacedDir = temp / "dir space";
+    fs::create_directories(spacedDir);
+    std::ofstream(spacedDir / "dummy.txt") << "a";
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("tree");
-        splitedCmd.push_back("C:\\Users");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        tree->init(splitedCmd, c2Message);
-        tree->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::vector<std::string> cmd = {"tree", (temp.string()+"/dir").c_str(), "space"};
+        C2Message msg, ret;
+        tree->init(cmd, msg);
+        msg.set_cmd(spacedDir.string());
+        tree->process(msg, ret);
+        ok &= ret.returnvalue().find((spacedDir/"dummy.txt").string()) != std::string::npos;
     }
+
+    // ----- invalid path -----
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("tree");
-        splitedCmd.push_back(".");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        tree->init(splitedCmd, c2Message);
-        tree->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        fs::path invalid = temp / "does_not_exist";
+        std::vector<std::string> cmd = {"tree", invalid.string()};
+        C2Message msg, ret;
+        tree->init(cmd, msg);
+        msg.set_cmd(invalid.string());
+        tree->process(msg, ret);
+        ok &= ret.returnvalue().empty();
     }
-    // {
-    //     std::vector<std::string> splitedCmd;
-    //     splitedCmd.push_back("tree");
-    //     splitedCmd.push_back("C:\\Program Files");
 
-    //     C2Message c2Message;
-    //     C2Message c2RetMessage;
-    //     tree->init(splitedCmd, c2Message);
-    //     tree->process(c2Message, c2RetMessage);
+    // ----- no argument -----
+    {
+        std::vector<std::string> cmd = {"tree"};
+        C2Message msg, ret;
+        tree->init(cmd, msg);
+        tree->process(msg, ret);
+        ok &= !ret.returnvalue().empty();
+    }
 
-    //     std::string output = "\n\noutput:\n";
-    //     output += c2RetMessage.returnvalue();
-    //     output += "\n";
-    //     std::cout << output << std::endl;
-    // }
-
-    return true;
+    fs::remove_all(temp);
+    return ok;
 }
