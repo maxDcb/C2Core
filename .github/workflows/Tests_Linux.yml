@@ -1,0 +1,53 @@
+name: Module Tests (Linux)
+
+on:
+  push:
+    paths:
+      - 'modules/**'
+      - 'thirdParty/**'
+      - '.github/workflows/Tests_Linux.yml'
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'thirdParty/**'
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ curl make
+
+      - name: Fetch base64.cpp
+        run: |
+          mkdir -p thirdParty/base64
+          curl -L https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.cpp \
+            -o thirdParty/base64/base64.cpp
+
+      - name: Fetch module dependencies
+        run: |
+          cd modules
+          mkdir -p ModuleCmd/nlohmann
+          curl -o ModuleCmd/nlohmann/json.hpp https://raw.githubusercontent.com/maxDcb/C2TeamServer/refs/heads/master/thirdParty/nlohmann/json.hpp
+          curl -o ModuleCmd/base64.h https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.h
+
+      - name: Configure with CMake
+        run: |
+          cd modules
+          mkdir build
+          cd build
+          cmake -DWITH_TESTS=ON ..
+
+      - name: Build
+        run: |
+          cd modules/build
+          make -j$(nproc)
+
+      - name: Run tests
+        run: |
+          cd modules/build
+          ctest --output-on-failure
