@@ -37,7 +37,7 @@ bool testKeyLogger()
         C2Message c2RetMessage;
         keyLogger->process(c2Message, c2RetMessage);
 
-        std::this_thread::sleep_for (std::chrono::seconds(20));
+        std::this_thread::sleep_for (std::chrono::seconds(2));
 
         keyLogger->recurringExec(c2RetMessage) ;
         keyLogger->followUp(c2RetMessage);
