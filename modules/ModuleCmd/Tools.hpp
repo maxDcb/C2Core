@@ -92,6 +92,7 @@ std::string static inline creatShellCodeDonut(
 
 #ifdef __linux__
 
+#include <string.h>
 
 int static inline inject_data (pid_t pid, const char *src, void *dst, int len)
 {

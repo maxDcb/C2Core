@@ -170,8 +170,7 @@ std::string PwSh::getInfo()
 
 
 	info += "  pwSh import <modulePsPath>\n";
-	info += "      - Import the powersehll module (e.g., PowerView.ps1
-)\n\n";
+	info += "      - Import the powersehll module (e.g., PowerView.ps1)\n\n";
 
 	info += "  pwSh script <scriptPath>\n";
 	info += "      - execute the powersehll script.\n\n";

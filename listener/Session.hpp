@@ -210,16 +210,6 @@ public:
 		return m_messageToRead.size();
 	}
 
-	// C2Message getTaskResult()
-	// {
-	// 	C2Message output;
-	// 	if(!m_messageToRead.empty())
-	// 	{
-	// 		output.CopyFrom(m_messageToRead.front());
-	// 		m_messageToRead.pop();
-	// 	}
-	// 	return output;
-	// }
 
 	C2Message getTaskResult()
 	{
@@ -232,24 +222,35 @@ public:
 		return C2Message();
 	}
 
-	bool addListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
+
+	// Adds a new SessionListener to the current session if one with the same hash doesn't already exist.
+	// Returns true if the listener was successfully added, false if it already exists.
+	bool addListener(const std::string& listenerHash, const std::string& type,
+					const std::string& param1, const std::string& param2)
 	{
-		bool listenerAlreadyExist=false;
-		for(int i=0; i<m_sessionListener.size(); i++)
+		bool listenerAlreadyExists = false;
+
+		// Check if a listener with the same hash already exists in the session
+		for (int i = 0; i < m_sessionListener.size(); ++i)
 		{
-			if(m_sessionListener[i].getListenerHash()==listenerHash)
-				listenerAlreadyExist=true;
+			if (m_sessionListener[i].getListenerHash() == listenerHash)
+			{
+				listenerAlreadyExists = true;
+				break;  // Exit early if found
+			}
 		}
 
-		if(listenerAlreadyExist==false)
+		// If the listener does not exist, create and add it
+		if (!listenerAlreadyExists)
 		{
 			SessionListener sessionListener(listenerHash, type, param1, param2);
 			m_sessionListener.push_back(sessionListener);
-			return true;
-		}	
+			return true;  // Successfully added
+		}
 
-		return false;
+		return false;  // Listener already existed, not added
 	}
+
 
 	bool rmListener(const std::string& listenerHash)
 	{

