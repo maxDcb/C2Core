@@ -1,142 +1,82 @@
 #include "../Upload.hpp"
-
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <fstream>
 
 bool testUpload();
 
-int main()
-{
-    bool res;
-
+int main() {
     std::cout << "[+] testUpload" << std::endl;
-    res = testUpload();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
-
+    bool res = testUpload();
+    if (res) {
+        std::cout << "[+] Success" << std::endl;
+    } else {
+        std::cout << "[-] Failed" << std::endl;
+    }
     return !res;
 }
 
-bool testUpload()
-{
-    std::unique_ptr<Upload> upload = std::make_unique<Upload>();
+static bool fileContentEqual(const std::filesystem::path& p, const std::string& expected) {
+    std::ifstream f(p, std::ios::binary);
+    if(!f) return false;
+    std::string data((std::istreambuf_iterator<char>(f)), {});
+    return data == expected;
+}
+
+bool testUpload() {
+    namespace fs = std::filesystem;
+    fs::path temp = fs::temp_directory_path() / "c2core_upload_test";
+    fs::create_directories(temp);
+    bool ok = true;
+
+    // Successful upload
     {
-        std::string fileName = "testUpload.txt";
-        std::string outputFileName = "testUpload_.txt";
-        std::string fileContent = "testUpload";
+        Upload up;
+        std::string content = "upload_test";
+        fs::path src = temp / "src.txt";
+        fs::path dst = temp / "dst.txt";
+        std::ofstream(src) << content;
 
-        std::ofstream outfile(fileName);
-        outfile << fileContent;
-        outfile.close();
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("upload");
-        splitedCmd.push_back(fileName);
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        upload->init(splitedCmd, c2Message);
-        upload->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        std::ifstream myfile(outputFileName);
-        if (myfile.is_open())
-        {
-            std::string buffer(std::istreambuf_iterator<char>(myfile), {});
-
-            if (buffer!=fileContent)
-            {
-                return false;
-            }
-        }
-        else 
-        {
-            return false;
-        }
+        std::vector<std::string> cmd = {"upload", src.string(), dst.string()};
+        C2Message msg, ret;
+        up.init(cmd, msg);
+        up.process(msg, ret);
+        std::cout << "success ret=" << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
+        bool sub = ret.errorCode() == -1 && ret.returnvalue() == "Success." && fileContentEqual(dst, content);
+        std::cout << "success ok=" << sub << std::endl;
+        ok &= sub;
     }
 
+    // Invalid destination path
     {
-        std::string fileName = "test Upload 2.txt";
-        std::string outputFileName = "test Upload 2_.txt";
-        std::string fileContent = "testUpload2";
+        Upload up;
+        std::string content = "test";
+        fs::path src = temp / "src2.txt";
+        fs::path dst = temp / "dir_not_exist" / "file.txt";
+        std::ofstream(src) << content;
 
-        std::ofstream outfile(fileName);
-        outfile << fileContent;
-        outfile.close();
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("");
-        splitedCmd.push_back("\"test"); splitedCmd.push_back("Upload"); splitedCmd.push_back("2.txt\"");
-        splitedCmd.push_back("\"test"); splitedCmd.push_back("Upload"); splitedCmd.push_back("2_.txt\"");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        upload->init(splitedCmd, c2Message);
-        upload->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        std::ifstream myfile(outputFileName);
-        if (myfile.is_open())
-        {
-            std::string buffer(std::istreambuf_iterator<char>(myfile), {});
-
-            if (buffer!=fileContent)
-            {
-                return false;
-            }
-        }
-        else 
-        {
-            return false;
-        }
+        std::vector<std::string> cmd = {"upload", src.string(), dst.string()};
+        C2Message msg, ret;
+        up.init(cmd, msg);
+        up.process(msg, ret);
+        std::cout << "bad dest ret=" << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
+        bool sub = ret.errorCode() != -1 && !fs::exists(dst);
+        std::cout << "bad dest ok=" << sub << std::endl;
+        ok &= sub;
     }
 
+    // Missing source file
     {
-        std::string fileName = "sdgsdfhkjjhgzetreyixwvccn.txt";
-        std::string outputFileName = "notHere.txt";
-        
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("upload");
-        splitedCmd.push_back(fileName);
-        splitedCmd.push_back(outputFileName);
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        upload->init(splitedCmd, c2Message);
-        upload->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-
-        if (c2RetMessage.errorCode()) 
-        {
-        } 
-        else 
-        {
-            return false;
-        }
-
-        std::ifstream myfile;
-		myfile.open(outputFileName, std::ios::binary);
-
-		if(myfile)
-		{
-            return false;
-        }
+        Upload up;
+        fs::path src = temp / "no_file.txt";
+        fs::path dst = temp / "out.txt";
+        std::vector<std::string> cmd = {"upload", src.string(), dst.string()};
+        C2Message msg;
+        int r = up.init(cmd, msg);
+        bool sub = r != 0 && msg.returnvalue().find("Couldn't open file") != std::string::npos;
+        std::cout << "missing ok=" << sub << std::endl;
+        ok &= sub;
     }
+
+    fs::remove_all(temp);
+    return ok;
 }

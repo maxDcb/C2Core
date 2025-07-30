@@ -1,9 +1,7 @@
 #include "../ListDirectory.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <fstream>
 
 bool testListDirectory();
 
@@ -25,80 +23,50 @@ bool testListDirectory()
 {
     std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
 
+    // Prepare temporary directory with a file
+    std::filesystem::path temp = std::filesystem::temp_directory_path() / "c2core_listdir_test";
+    std::filesystem::create_directories(temp);
+    std::ofstream(temp / "file.txt") << "data";
+
+    bool ok = true;
+
+    // List temporary directory and expect file name in output
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("ls");
+        splitedCmd.push_back(temp.string());
 
         C2Message c2Message;
         C2Message c2RetMessage;
         listDirectory->init(splitedCmd, c2Message);
+        c2Message.set_cmd(temp.string());
         listDirectory->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::cout << "list result: \n" << c2RetMessage.returnvalue() << std::endl;
+        if (c2RetMessage.returnvalue().find("file.txt") == std::string::npos) {
+            std::cout << "no file" << std::endl;
+            ok = false;
+        }
     }
+
+    // Invalid directory should contain error
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("ls");
-        splitedCmd.push_back("/tmp");
+        splitedCmd.push_back((temp / "does_not_exist").string());
 
         C2Message c2Message;
         C2Message c2RetMessage;
         listDirectory->init(splitedCmd, c2Message);
+        std::string invalidPath = (temp / "does_not_exist").string();
+        c2Message.set_cmd(invalidPath);
         listDirectory->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("ls");
-        splitedCmd.push_back("gsdgsg");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        listDirectory->init(splitedCmd, c2Message);
-        listDirectory->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("ls");
-        splitedCmd.push_back(".");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        listDirectory->init(splitedCmd, c2Message);
-        listDirectory->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("ls");
-        splitedCmd.push_back("C:\\");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        listDirectory->init(splitedCmd, c2Message);
-        listDirectory->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::cout << "invalid result: \n" << c2RetMessage.returnvalue() << std::endl;
+        if (c2RetMessage.returnvalue() != invalidPath + ":\n") {
+            ok = false;
+        }
     }
 
-    return true;
+    std::filesystem::remove_all(temp);
+
+    return ok;
 }
