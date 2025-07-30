@@ -19,6 +19,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1.3
+        with:
+          msbuild-architecture: x64
+
       - name: Fetch base64.cpp
         run: |
           mkdir thirdParty\base64
@@ -31,19 +36,14 @@ jobs:
           curl -o ModuleCmd\nlohmann\json.hpp https://raw.githubusercontent.com/maxDcb/C2TeamServer/refs/heads/master/thirdParty/nlohmann/json.hpp
           curl -o ModuleCmd\base64.h https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.h
 
-      - name: Configure with CMake
+      - name: Configure CMake for tests
         run: |
-          cd modules
-          mkdir build
-          cd build
-          cmake -DWITH_TESTS=ON ..
+          cmake -G "Visual Studio 17 2022" -B ${{github.workspace}}\modules\build -DWITH_TESTS=ON
 
-      - name: Build
+      - name: Build modules with tests
         run: |
-          cd modules\build
-          cmake --build . --config Release
+          cmake --build ${{github.workspace}}\modules\build --config Release --parallel
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
-          cd modules\build
-          ctest -C Release --output-on-failure
+          ctest --test-dir modules\build -C Release
