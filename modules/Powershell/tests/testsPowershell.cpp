@@ -26,6 +26,12 @@ int main()
 
 bool testPowershell()
 {
+#ifdef __linux__
+    // Module is Windows only; on Linux just ensure it can be instantiated.
+    std::unique_ptr<Powershell> powershell = std::make_unique<Powershell>();
+    (void)powershell;
+    return true;
+#else
     std::unique_ptr<Powershell> powershell = std::make_unique<Powershell>();
 
     {
@@ -133,4 +139,5 @@ Export-ModuleMember -Function PrintHelloWorld
     }
 
     return true;
+#endif
 }
