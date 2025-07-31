@@ -41,3 +41,8 @@ add_subdirectory(DotnetExec)
 add_subdirectory(PwSh)
 add_subdirectory(Shell)
 
+add_subdirectory(GetEnv)
+add_subdirectory(Whoami)
+add_subdirectory(Netstat)
+add_subdirectory(IpConfig)
+add_subdirectory(EnumerateShares)
