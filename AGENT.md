@@ -62,17 +62,7 @@ Once the build completes, the test binaries will be available in the `modules/Te
 ./testsModuleName
 ```
 
-These tests validate core functionality and encoding/decoding routines.
-
-### 🛠 Cleaning Up
-
-When you are done building or testing locally, remove the temporary folders to
-keep the repository clean:
-
-```bash
-rm -rf modules/build modules/ModuleCmd/nlohmann modules/ModuleCmd/base64.h \
-       modules/Tests thirdParty
-```
+These tests validate core functionality and encoding/decoding routines. You can also use ctest to launch all the tests.
 
 ### 🚀 Workflow Hints
 
