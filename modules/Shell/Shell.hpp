@@ -16,18 +16,19 @@ public:
     int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
     int osCompatibility()
     {
-        return OS_LINUX;
+        return OS_LINUX | OS_WINDOWS;
     }
 
 private:
     int startShell();
     void stopShell();
 
-    int m_masterFd;
-
 #ifdef _WIN32
-    int m_pid;
+    HANDLE m_hChildStdoutRd;
+    HANDLE m_hChildStdinWr;
+    PROCESS_INFORMATION m_pi;
 #else
+    int m_masterFd;
     pid_t m_pid;
 #endif
     std::string m_program;
