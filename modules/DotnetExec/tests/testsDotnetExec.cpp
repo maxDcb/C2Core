@@ -389,8 +389,6 @@ bool testDotnetExec()
 
 
     std::cout << "End of tests " << std::endl;
-	std::cout << "press a key " << std::endl;
-	getchar();
 
     return true;
 }

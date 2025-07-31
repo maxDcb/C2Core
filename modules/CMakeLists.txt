@@ -37,4 +37,5 @@ add_subdirectory(ScreenShot)
 add_subdirectory(MiniDump)
 add_subdirectory(DotnetExec)
 add_subdirectory(PwSh)
+add_subdirectory(Shell)
 
