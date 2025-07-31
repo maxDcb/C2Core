@@ -2,10 +2,12 @@
 #include "Common.hpp"
 
 #include <cstring>
+#ifdef __linux__
 #include <pty.h>
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#endif
 #include <chrono>
 
 using namespace std;

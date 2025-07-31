@@ -3,12 +3,11 @@
 
 #include <cstring>
 #include <sstream>
-#ifdef _WIN32
-#include <sddl.h>
-#endif
 
 #ifdef _WIN32
 #include <windows.h>
+#include <sddl.h>
+#pragma comment(lib, "Advapi32.lib")
 #else
 #include <pwd.h>
 #include <unistd.h>

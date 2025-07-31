@@ -21,5 +21,8 @@ bool testNetstat()
     C2Message msg, ret;
     mod->init(cmd, msg);
     mod->process(msg, ret);
+
+    std::cout << "[+] netstat output: " << ret.returnvalue() << std::endl;
+
     return !ret.returnvalue().empty();
 }

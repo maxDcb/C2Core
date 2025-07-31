@@ -24,7 +24,12 @@ private:
     void stopShell();
 
     int m_masterFd;
+
+#ifdef _WIN32
+    int m_pid;
+#else
     pid_t m_pid;
+#endif
     std::string m_program;
     bool m_started;
 };

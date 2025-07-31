@@ -21,5 +21,8 @@ bool testWhoami()
     C2Message msg, ret;
     mod->init(cmd, msg);
     mod->process(msg, ret);
+
+    std::cout << "[+] whoami output: " << ret.returnvalue() << std::endl;
+
     return !ret.returnvalue().empty();
 }

