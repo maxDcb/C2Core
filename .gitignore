@@ -1,0 +1,5 @@
+modules/ModuleCmd/base64.*
+modules/ModuleCmd/nlohmann/
+modules/Release/
+modules/Tests/
+modules/build/
