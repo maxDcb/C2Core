@@ -13,7 +13,7 @@ public:
 	~ListenerDns();
 
 private:
-	void lauchDnsListener();
+	void launchDnsListener();
 
 	dns::Server m_serverDns;
 

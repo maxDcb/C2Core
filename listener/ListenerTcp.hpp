@@ -14,7 +14,7 @@ public:
 	int init();
 
 private:
-	void lauchTcpServ();
+	void launchTcpServ();
 	int splitInPacket(const std::string& input, std::vector<std::string>& output);
 
 	SocketServer* m_serverTcp;

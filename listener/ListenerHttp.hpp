@@ -16,7 +16,7 @@ public:
 	int init();
 
 private:
-	void lauchHttpServ();
+	void launchHttpServ();
 
 	int HandleCheckIn(const httplib::Request& req, httplib::Response& res);
 	int HandleCheckIn(const std::string& requestData, httplib::Response& res);

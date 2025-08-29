@@ -12,7 +12,7 @@ public:
 	~ListenerSmb();
 
 private:
-	void lauchSmbServ();
+	void launchSmbServ();
 
 	PipeHandler::Server* m_serverSmb;
 
