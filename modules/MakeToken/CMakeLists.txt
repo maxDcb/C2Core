@@ -5,7 +5,7 @@ target_link_libraries(MakeToken )
 add_custom_command(TARGET MakeToken POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:MakeToken> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:MakeToken>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsMakeToken tests/testsMakeToken.cpp MakeToken.cpp)
     target_link_libraries(testsMakeToken )
     add_custom_command(TARGET testsMakeToken POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

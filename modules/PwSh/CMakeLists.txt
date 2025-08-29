@@ -9,7 +9,7 @@ target_link_libraries(PwSh )
 add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:PwSh> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PwSh>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     if(WIN32)
         add_executable(testsPwSh tests/testsPwSh.cpp PwSh.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
     else()

@@ -5,7 +5,7 @@ target_link_libraries(Cat )
 add_custom_command(TARGET Cat POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Cat> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Cat>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsCat tests/testsCat.cpp Cat.cpp)
     target_link_libraries(testsCat )
     add_custom_command(TARGET testsCat POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

@@ -1,5 +1,5 @@
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     include_directories(../../../thirdParty/base64)
     add_executable(testsModuleCmd tests/testsModuleCmd.cpp ../../../thirdParty/base64/base64.cpp)
     target_link_libraries(testsModuleCmd nlohmann_json::nlohmann_json)

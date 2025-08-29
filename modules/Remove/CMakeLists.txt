@@ -6,7 +6,7 @@ add_custom_command(TARGET Remove POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:Remove> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Remove>"
 )
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsRemove tests/testsRemove.cpp Remove.cpp)
     target_link_libraries(testsRemove )
     add_custom_command(TARGET testsRemove POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy

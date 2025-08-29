@@ -8,7 +8,7 @@ endif()
 
 set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     message(STATUS "[+] AssemblyExec Tests are enable.")
     target_link_libraries(AssemblyExec ${Donut})
 else()
@@ -19,7 +19,7 @@ endif()
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     if(WIN32)
         add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj ../ModuleCmd/peb.cpp ../ModuleCmd/hwbp.cpp)
         target_link_libraries(testsAssemblyExec ${Donut} )

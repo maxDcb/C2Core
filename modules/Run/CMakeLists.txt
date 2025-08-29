@@ -5,7 +5,7 @@ target_link_libraries(Run )
 add_custom_command(TARGET Run POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Run> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Run>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsRun tests/testsRun.cpp Run.cpp)
     target_link_libraries(testsRun )
     add_custom_command(TARGET testsRun POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
