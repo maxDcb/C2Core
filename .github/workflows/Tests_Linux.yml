@@ -11,7 +11,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ curl make libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ curl make libssl-dev libsmbclient-dev pkg-config
 
       - name: Configure with CMake
         run: cmake -S . -B build -DC2CORE_BUILD_TESTS=ON
