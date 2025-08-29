@@ -5,7 +5,7 @@ target_link_libraries(ListProcesses )
 add_custom_command(TARGET ListProcesses POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:ListProcesses> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:ListProcesses>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsListProcesses tests/testsListProcesses.cpp ListProcesses.cpp)
     target_link_libraries(testsListProcesses )
     add_custom_command(TARGET testsListProcesses POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

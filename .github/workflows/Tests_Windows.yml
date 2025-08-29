@@ -1,4 +1,4 @@
-name: Module Tests (Windows)
+name: C2Core Tests (Windows)
 
 on: workflow_dispatch
 
@@ -15,23 +15,11 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Fetch base64.cpp
-        run: |
-          mkdir thirdParty\base64
-          curl -L https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.cpp -o thirdParty\base64\base64.cpp
-
-      - name: Fetch module dependencies
-        run: |
-          cd modules
-          mkdir ModuleCmd\nlohmann
-          curl -o ModuleCmd\nlohmann\json.hpp https://raw.githubusercontent.com/maxDcb/C2TeamServer/refs/heads/master/thirdParty/nlohmann/json.hpp
-          curl -o ModuleCmd\base64.h https://raw.githubusercontent.com/ReneNyffenegger/cpp-base64/82147d6d89636217b870f54ec07ddd3e544d5f69/base64.h
-
       - name: Configure CMake for tests
-        run: cmake -G "Visual Studio 17 2022" -S modules -B modules/build -DWITH_TESTS=ON
+        run: cmake -G "Visual Studio 17 2022" -S . -B build -DC2CORE_BUILD_TESTS=ON
 
-      - name: Build modules with tests
-        run: cmake --build modules/build --config Release --parallel
+      - name: Build
+        run: cmake --build build --config Release --parallel
 
-      - name: Run unit tests
-        run: ctest --test-dir modules/build -C Release
+      - name: Run tests
+        run: ctest --test-dir build -C Release

@@ -5,7 +5,7 @@ target_link_libraries(StealToken )
 add_custom_command(TARGET StealToken POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:StealToken> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:StealToken>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsStealToken tests/testsStealToken.cpp StealToken.cpp)
     target_link_libraries(testsStealToken )
     add_custom_command(TARGET testsStealToken POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

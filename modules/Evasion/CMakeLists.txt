@@ -5,7 +5,7 @@ target_link_libraries(Evasion )
 add_custom_command(TARGET Evasion POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Evasion> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Evasion>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsEvasion tests/testsEvasion.cpp Evasion.cpp)
     target_link_libraries(testsEvasion )
     add_custom_command(TARGET testsEvasion POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

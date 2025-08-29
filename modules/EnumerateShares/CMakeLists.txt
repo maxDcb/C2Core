@@ -7,7 +7,7 @@ endif()
 add_custom_command(TARGET EnumerateShares POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:EnumerateShares> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:EnumerateShares>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsEnumerateShares tests/testsEnumerateShares.cpp EnumerateShares.cpp)
     if(UNIX)
         target_link_libraries(testsEnumerateShares smbclient)

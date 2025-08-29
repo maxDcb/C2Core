@@ -5,7 +5,7 @@ target_link_libraries(Upload )
 add_custom_command(TARGET Upload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Upload> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Upload>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsUpload tests/testsUpload.cpp Upload.cpp)
     target_link_libraries(testsUpload )
     add_custom_command(TARGET testsUpload POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

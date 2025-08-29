@@ -5,7 +5,7 @@ target_link_libraries(GetEnv )
 add_custom_command(TARGET GetEnv POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:GetEnv> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:GetEnv>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsGetEnv tests/testsGetEnv.cpp GetEnv.cpp)
     target_link_libraries(testsGetEnv )
     add_custom_command(TARGET testsGetEnv POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy

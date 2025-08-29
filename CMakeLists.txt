@@ -90,10 +90,15 @@ find_package(OpenSSL REQUIRED)
 add_library(openssl::openssl INTERFACE IMPORTED)
 target_link_libraries(openssl::openssl INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 
-option(BUILD_TESTING "Build unit tests" ON)
-if(BUILD_TESTING)
+# Build tests only when explicitly enabled. Default to ON when C2Core is the
+# top-level project and OFF when included from another build.
+option(C2CORE_BUILD_TESTS "Build C2Core unit tests" OFF)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  set(C2CORE_BUILD_TESTS ON CACHE BOOL "Build C2Core unit tests" FORCE)
+endif()
+
+if(C2CORE_BUILD_TESTS)
   enable_testing()
-  set(WITH_TESTS ON CACHE BOOL "" FORCE)
 
   FetchContent_Declare(
     Catch2

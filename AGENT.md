@@ -11,7 +11,7 @@ You are an expert C++/CMake contributor tasked with maintaining, and expending *
 
 ```bash
 mkdir -p build && cd build
-cmake -DWITH_TESTS=ON ..
+cmake -DC2CORE_BUILD_TESTS=ON ..
 cmake --build . -j
 
 ctest --output-on-failure

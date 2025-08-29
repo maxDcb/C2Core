@@ -5,7 +5,7 @@ target_link_libraries(Powershell )
 add_custom_command(TARGET Powershell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Powershell> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Powershell>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsPowershell tests/testsPowershell.cpp Powershell.cpp)
     target_link_libraries(testsPowershell )
     add_custom_command(TARGET testsPowershell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
