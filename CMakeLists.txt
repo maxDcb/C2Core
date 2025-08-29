@@ -58,6 +58,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SocksServer)
 
+if(WIN32)
+  FetchContent_Declare(
+    CoffPacker
+    GIT_REPOSITORY https://github.com/maxDcb/COFFPacker.git
+    GIT_TAG master
+  )
+  FetchContent_Declare(
+    CoffLoader
+    GIT_REPOSITORY https://github.com/maxDcb/COFFLoader.git
+    GIT_TAG main
+  )
+  FetchContent_MakeAvailable(CoffPacker CoffLoader)
+endif()
+
 # Header-only / source dependencies placed in thirdParty for relative includes
 set(BASE64_SRC_DIR ${CMAKE_SOURCE_DIR}/thirdParty/base64)
 FetchContent_Declare(
