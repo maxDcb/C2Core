@@ -17,6 +17,11 @@ if(MSVC)
       string(REGEX REPLACE "/MD"  "" ${flag_var} "${${flag_var}}")
     endif()
   endforeach()
+
+  add_compile_definitions(
+    WIN32_LEAN_AND_MEAN     # optional: speed up <windows.h>
+    NOMINMAX                # <-- disables Windows min/max macros
+  )
 endif()
 # --------------------------------------------------------------------
 
