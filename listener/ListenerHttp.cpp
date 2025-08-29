@@ -64,7 +64,7 @@ int ListenerHttp::init()
 		return -1;
 	}		
 
-	this->m_httpServ = std::make_unique<std::thread>(&ListenerHttp::lauchHttpServ, this);
+	this->m_httpServ = std::make_unique<std::thread>(&ListenerHttp::launchHttpServ, this);
 
 	return 1;
 }
@@ -80,7 +80,7 @@ ListenerHttp::~ListenerHttp()
 }
 
 
-void ListenerHttp::lauchHttpServ()
+void ListenerHttp::launchHttpServ()
 {
 	httplib::Response res;
 

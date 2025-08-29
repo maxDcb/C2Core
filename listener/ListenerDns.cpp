@@ -21,7 +21,7 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port)
 	m_serverDns.launch();
 
 	m_stopThread=false;
-	m_dnsListener = std::make_unique<std::thread>(&ListenerDns::lauchDnsListener, this);
+	m_dnsListener = std::make_unique<std::thread>(&ListenerDns::launchDnsListener, this);
 }
 
 
@@ -34,7 +34,7 @@ ListenerDns::~ListenerDns()
 }
 
 
-void ListenerDns::lauchDnsListener()
+void ListenerDns::launchDnsListener()
 {
 	try 
     {

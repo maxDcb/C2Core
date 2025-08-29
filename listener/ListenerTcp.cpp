@@ -72,7 +72,7 @@ int ListenerTcp::init()
 #endif
 
 		m_stopThread=false;
-		m_tcpServ = std::make_unique<std::thread>(&ListenerTcp::lauchTcpServ, this);
+		m_tcpServ = std::make_unique<std::thread>(&ListenerTcp::launchTcpServ, this);
 	}
 	catch(const std::exception& e)
 	{
@@ -123,7 +123,7 @@ int ListenerTcp::splitInPacket(const std::string& input, std::vector<std::string
 }
 
 
-void ListenerTcp::lauchTcpServ()
+void ListenerTcp::launchTcpServ()
 {
 	try 
     {

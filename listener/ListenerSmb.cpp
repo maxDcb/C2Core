@@ -24,7 +24,7 @@ ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName)
 	m_serverSmb = new PipeHandler::Server(pipeName);
 
 	m_stopThread=false;
-	m_smbServ = std::make_unique<std::thread>(&ListenerSmb::lauchSmbServ, this);
+	m_smbServ = std::make_unique<std::thread>(&ListenerSmb::launchSmbServ, this);
 }
 
 
@@ -37,7 +37,7 @@ ListenerSmb::~ListenerSmb()
 }
 
 
-void ListenerSmb::lauchSmbServ()
+void ListenerSmb::launchSmbServ()
 {
 	try 
     {
