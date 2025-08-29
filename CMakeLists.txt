@@ -1,6 +1,25 @@
 cmake_minimum_required(VERSION 3.16)
 project(C2Core LANGUAGES CXX)
 
+# --- Use the static MSVC runtime (/MT, /MTd) everywhere on Windows ---
+if(MSVC)
+  # Make CMAKE_MSVC_RUNTIME_LIBRARY authoritative
+  cmake_policy(SET CMP0091 NEW)
+  # Use /MT for Release-like configs and /MTd for Debug
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
+
+  # (Optional) clean any /MD that third-parties might have injected into global flags
+  foreach(flag_var
+          CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_MINSIZEREL
+          CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_MINSIZEREL)
+    if(DEFINED ${flag_var})
+      string(REGEX REPLACE "/MDd" "" ${flag_var} "${${flag_var}}")
+      string(REGEX REPLACE "/MD"  "" ${flag_var} "${${flag_var}}")
+    endif()
+  endforeach()
+endif()
+# --------------------------------------------------------------------
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
