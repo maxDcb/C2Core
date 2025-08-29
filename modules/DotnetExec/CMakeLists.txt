@@ -9,7 +9,7 @@ target_link_libraries(DotnetExec )
 add_custom_command(TARGET DotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:DotnetExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:DotnetExec>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     if(WIN32)
         add_executable(testsDotnetExec tests/testsDotnetExec.cpp DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj tests/project.rc)
     else()

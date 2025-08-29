@@ -8,7 +8,7 @@ endif()
 add_custom_command(TARGET Coff POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Coff> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Coff>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsCoffLoader tests/testsCoffLoader.cpp CoffLoader.cpp)
 
     if(WIN32)

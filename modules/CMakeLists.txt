@@ -1,7 +1,7 @@
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     enable_testing()
 endif()
 

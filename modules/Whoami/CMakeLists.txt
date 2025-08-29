@@ -5,7 +5,7 @@ target_link_libraries(Whoami )
 add_custom_command(TARGET Whoami POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:Whoami> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Whoami>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsWhoami tests/testsWhoami.cpp Whoami.cpp)
     target_link_libraries(testsWhoami )
     add_custom_command(TARGET testsWhoami POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy

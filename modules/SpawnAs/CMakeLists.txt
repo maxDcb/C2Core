@@ -5,7 +5,7 @@ target_link_libraries(SpawnAs ${Donut} )
 add_custom_command(TARGET SpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:SpawnAs> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:SpawnAs>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
 add_executable(testsSpawnAs tests/testsSpawnAs.cpp SpawnAs.cpp)
 
 if(WIN32)

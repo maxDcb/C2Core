@@ -6,7 +6,7 @@ add_custom_command(TARGET KillProcess POST_BUILD COMMAND ${CMAKE_COMMAND} -E cop
     $<TARGET_FILE:KillProcess> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:KillProcess>"
 )
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsKillProcess tests/testsKillProcess.cpp KillProcess.cpp)
     target_link_libraries(testsKillProcess )
     add_custom_command(TARGET testsKillProcess POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy

@@ -5,7 +5,7 @@ target_link_libraries(KerberosUseTicket )
 add_custom_command(TARGET KerberosUseTicket POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:KerberosUseTicket> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:KerberosUseTicket>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsKerberosUseTicket tests/testsKerberosUseTicket.cpp KerberosUseTicket.cpp)
     target_link_libraries(testsKerberosUseTicket )
     add_custom_command(TARGET testsKerberosUseTicket POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

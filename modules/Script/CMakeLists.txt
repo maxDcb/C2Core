@@ -5,7 +5,7 @@ target_link_libraries(Script )
 add_custom_command(TARGET Script POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Script> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Script>")
 
-if(WITH_TESTS)
+if(C2CORE_BUILD_TESTS)
     add_executable(testsScript tests/testsScript.cpp Script.cpp)
     target_link_libraries(testsScript )
     add_custom_command(TARGET testsScript POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
