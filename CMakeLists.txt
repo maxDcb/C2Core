@@ -67,6 +67,7 @@ FetchContent_Declare(
   SOURCE_DIR ${BASE64_SRC_DIR}
 )
 FetchContent_Populate(base64)
+include_directories(${BASE64_SRC_DIR})
 
 set(DONUT_SRC_DIR ${CMAKE_SOURCE_DIR}/thirdParty/donut)
 FetchContent_Declare(
@@ -93,8 +94,22 @@ option(BUILD_TESTING "Build unit tests" ON)
 if(BUILD_TESTING)
   enable_testing()
   set(WITH_TESTS ON CACHE BOOL "" FORCE)
+
+  FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.4.0
+  )
+  FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
+  )
+  FetchContent_MakeAvailable(Catch2 nlohmann_json)
+  include_directories(${nlohmann_json_SOURCE_DIR}/include)
+
+  add_subdirectory(beacon/tests)
+  add_subdirectory(listener/tests)
 endif()
 
-add_subdirectory(beacon/tests)
-add_subdirectory(listener/tests)
 add_subdirectory(modules)

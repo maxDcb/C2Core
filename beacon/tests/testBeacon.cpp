@@ -1,85 +1,62 @@
-#include "Beacon.hpp"
+#include <catch2/catch_test_macros.hpp>
+#include "../Beacon.hpp"
+#include "../../modules/ModuleCmd/CommonCommand.hpp"
 
-
-class BeaconTester : public Beacon
-{
-
+class BeaconTestProxy : public Beacon {
 public:
-	BeaconTester()
-    : Beacon()
-    {
+    using Beacon::initConfig;
+    using Beacon::cmdToTasks;
+    using Beacon::taskResultsToCmd;
+    using Beacon::execInstruction;
 
-    }
+    void checkIn() override {}
 
-	~BeaconTester()
-    {
-
-    }
-
-    void checkIn()
-    {	
-    }
-
-	void cmdToTasksTest(const std::string& input)
-    {	
-        cmdToTasks(input);
-    }
-
-    void taskResultsToCmdTest(std::string& output)
-    {	
-        taskResultsToCmd(output);
-    }
-
-    void execInstructionTest(std::string& output)
-    {	
-        // execInstruction();
-    }
-
-    
-
+    void pushTask(const C2Message &msg) { m_tasks.push(msg); }
+    void pushResult(const C2Message &msg) { m_taskResult.push(msg); }
+    size_t resultCount() const { return m_taskResult.size(); }
+    size_t taskCount() const { return m_tasks.size(); }
 };
 
+static const std::string kConfig = R"({"xorKey":"key","ModulesConfig":{}})";
 
+TEST_CASE("initConfig parses xor key", "[beacon]") {
+    BeaconTestProxy b;
+    REQUIRE(b.initConfig(kConfig));
+}
 
-int main()
-{
-    //
-    // Constructor tests
-    //
-    {
-        BeaconTester beacon;
-    }
+TEST_CASE("cmdToTasks handles malformed input", "[beacon]") {
+    BeaconTestProxy b;
+    b.initConfig(kConfig);
+    REQUIRE(b.cmdToTasks("not_base64"));
+    REQUIRE(b.taskCount() == 0);
+}
 
-    //
-    // cmdToTasksTest tests
-    //
-    {
-        BeaconTester beacon;
+TEST_CASE("taskResultsToCmd serializes queued results", "[beacon]") {
+    BeaconTestProxy b;
+    b.initConfig(kConfig);
+    C2Message msg; msg.set_instruction("TEST"); msg.set_returnvalue("OK");
+    b.pushResult(msg);
+    std::string out;
+    REQUIRE(b.taskResultsToCmd(out));
+    REQUIRE_FALSE(out.empty());
+    REQUIRE(b.resultCount() == 0); // queue cleared
+}
 
-        std::string input = "test string to take";
-        beacon.cmdToTasksTest(input);
-    }
-    {
-        BeaconTester beacon;
+TEST_CASE("execInstruction handles Sleep and End", "[beacon]") {
+    BeaconTestProxy b;
 
-        std::string data = "test string to take";
-        std::string input = base64_encode(data);
-        beacon.cmdToTasksTest(input);
-    }
+    C2Message sleepMsg; sleepMsg.set_instruction(SleepCmd); sleepMsg.set_cmd("2");
+    C2Message sleepRet;
+    REQUIRE_FALSE(b.execInstruction(sleepMsg, sleepRet));
+    REQUIRE(sleepRet.returnvalue() == "2000ms");
 
-    //
-    // runTasks tests
-    //
+    C2Message badSleep; badSleep.set_instruction(SleepCmd); badSleep.set_cmd("abc");
+    C2Message badRet;
+    REQUIRE_FALSE(b.execInstruction(badSleep, badRet));
+    REQUIRE(badRet.returnvalue() == CmdStatusFail);
 
-    //
-    // taskResultsToCmd tests
-    //
-
-    //
-    // execInstruction tests
-    //
-
-    //
-    // sleep tests
-    //
+    C2Message endMsg; endMsg.set_instruction(EndCmd);
+    C2Message endRet;
+    REQUIRE(b.execInstruction(endMsg, endRet));
+    REQUIRE(endRet.returnvalue() == CmdStatusSuccess);
 }
