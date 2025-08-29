@@ -1,6 +1,6 @@
 #include "ListenerGithub.hpp"
 
-int main()
-{
-
+int main() {
+    ListenerGithub l("project", "token");
+    return 0;
 }
