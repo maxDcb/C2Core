@@ -24,6 +24,12 @@ TEST_CASE("initConfig parses xor key", "[beacon]") {
     REQUIRE(b.initConfig(kConfig));
 }
 
+TEST_CASE("initConfig validates input", "[beacon]") {
+    BeaconTestProxy b;
+    REQUIRE_FALSE(b.initConfig("not json"));
+    REQUIRE_FALSE(b.initConfig(R"({"xorKey":"k"})"));
+}
+
 TEST_CASE("cmdToTasks handles malformed input", "[beacon]") {
     BeaconTestProxy b;
     b.initConfig(kConfig);
@@ -59,4 +65,12 @@ TEST_CASE("execInstruction handles Sleep and End", "[beacon]") {
     C2Message endRet;
     REQUIRE(b.execInstruction(endMsg, endRet));
     REQUIRE(endRet.returnvalue() == CmdStatusSuccess);
+}
+
+TEST_CASE("execInstruction unknown module", "[beacon]") {
+    BeaconTestProxy b;
+    C2Message msg; msg.set_instruction("UNKNOWN");
+    C2Message ret;
+    REQUIRE_FALSE(b.execInstruction(msg, ret));
+    REQUIRE(ret.returnvalue() == CmdModuleNotFound);
 }
