@@ -37,7 +37,7 @@ public:
 	std::shared_ptr<Session> getSessionPtr(int idxSession);
         std::shared_ptr<Session> getSessionPtr(const std::string& beaconHash, const std::string& listenerHash);
         bool isSessionExist(const std::string& beaconHash, const std::string& listenerHash);
-        bool updateSessionProofOfLife(const std::string& beaconHash, const std::string& lastProofOfLife);
+        bool updateSessionProofOfLife(const std::string& beaconHash, std::string& lastProofOfLife);
         bool markSessionKilled(const std::string& beaconhash);
 
 	// Session Listener
