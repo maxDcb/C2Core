@@ -130,7 +130,7 @@ bool Listener::isSessionExist(const std::string& beaconHash, const std::string& 
         return sessionExist;
 }
 
-bool Listener::updateSessionProofOfLife(const std::string& beaconHash, const std::string& lastProofOfLife)
+bool Listener::updateSessionProofOfLife(const std::string& beaconHash, std::string& lastProofOfLife)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
