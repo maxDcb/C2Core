@@ -12,6 +12,7 @@ add_executable(beacon_unit_tests
 
 target_link_libraries(beacon_unit_tests
     Catch2::Catch2WithMain
+    Catch2::Catch2
     nlohmann_json::nlohmann_json
     SocketHandler
     PipeHandler
