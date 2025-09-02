@@ -420,7 +420,7 @@ bool Beacon::cmdToTasks(const std::string& input)
             for(int i=0; i<m_listeners.size(); i++)
             {
                 // Check each session for a matching beacon hash
-                for(int j=0; j<m_listeners[i]->getNumberOfSession(); j++)
+            for(std::size_t j=0; j<m_listeners[i]->getNumberOfSession(); j++)
                 {
                     std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
 
@@ -472,9 +472,9 @@ bool Beacon::taskResultsToCmd(std::string& output)
 	}
 
 	// Handle results of commands address to child sessions
-	for(int i=0; i<m_listeners.size(); i++)
-	{
-		for(int j=0; j<m_listeners[i]->getNumberOfSession(); j++)
+        for(int i=0; i<m_listeners.size(); i++)
+        {
+                for(std::size_t j=0; j<m_listeners[i]->getNumberOfSession(); j++)
 		{
 			std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
 
