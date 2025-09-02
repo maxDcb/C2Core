@@ -16,6 +16,7 @@ add_executable(listener_unit_tests
 
 target_link_libraries(listener_unit_tests
     Catch2::Catch2WithMain
+    Catch2::Catch2
     nlohmann_json::nlohmann_json
     ${additionalLib})
 
