@@ -1,7 +1,11 @@
 name: C2Core Tests (Windows)
 
-on: workflow_dispatch
-
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    
 jobs:
   test-windows:
     runs-on: windows-latest
