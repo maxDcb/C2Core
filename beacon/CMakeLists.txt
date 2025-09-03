@@ -11,11 +11,23 @@ set(SOURCES_BEACON_HTTP_EXE
 )
 
 add_library(BeaconHttpLib ${SOURCES_BEACON_HTTP_EXE})
+target_include_directories(BeaconHttpLib PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
 if(WIN32)
-	set_property(TARGET BeaconHttpLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_link_libraries(BeaconHttpLib SocketHandler PipeHandler MemoryModule SocksServer )
+        set_property(TARGET BeaconHttpLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        target_link_libraries(BeaconHttpLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>)
 else()
-	target_link_libraries(BeaconHttpLib SocketHandler PipeHandler MemoryModule SocksServer openssl::openssl httplib::httplib dl)
+        target_link_libraries(BeaconHttpLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>
+                $<BUILD_INTERFACE:openssl::openssl>
+                $<BUILD_INTERFACE:httplib::httplib>
+                $<BUILD_INTERFACE:dl>)
 endif()
 # add_custom_command(TARGET BeaconHttpLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 # $<TARGET_FILE:BeaconHttpLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconHttpLib>")
@@ -31,11 +43,21 @@ set(SOURCES_BEACON_TCP_EXE
 )
 
 add_library(BeaconTcpLib ${SOURCES_BEACON_TCP_EXE})
+target_include_directories(BeaconTcpLib PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
 if(WIN32)
-	set_property(TARGET BeaconTcpLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_link_libraries(BeaconTcpLib SocketHandler PipeHandler MemoryModule SocksServer )
+        set_property(TARGET BeaconTcpLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        target_link_libraries(BeaconTcpLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>)
 else()
-	target_link_libraries(BeaconTcpLib SocketHandler PipeHandler MemoryModule SocksServer dl)
+        target_link_libraries(BeaconTcpLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>
+                $<BUILD_INTERFACE:dl>)
 endif()
 # add_custom_command(TARGET BeaconTcpLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 # $<TARGET_FILE:BeaconTcpLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconTcpLib>")
@@ -51,11 +73,21 @@ set(SOURCES_BEACON_SMB_EXE
 )
 
 add_library(BeaconSmbLib ${SOURCES_BEACON_SMB_EXE})
+target_include_directories(BeaconSmbLib PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
 if(WIN32)
-	set_property(TARGET BeaconSmbLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_link_libraries(BeaconSmbLib SocketHandler PipeHandler MemoryModule SocksServer )
+        set_property(TARGET BeaconSmbLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        target_link_libraries(BeaconSmbLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>)
 else()
-	target_link_libraries(BeaconSmbLib SocketHandler PipeHandler MemoryModule SocksServer dl)
+        target_link_libraries(BeaconSmbLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>
+                $<BUILD_INTERFACE:dl>)
 endif()
 # add_custom_command(TARGET BeaconSmbLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 # $<TARGET_FILE:BeaconSmbLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconSmbLib>")
@@ -71,11 +103,23 @@ set(SOURCES_BEACON_GITHUB_EXE
 )
 
 add_library(BeaconGithubLib ${SOURCES_BEACON_GITHUB_EXE})
+target_include_directories(BeaconGithubLib PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
 if(WIN32)
-	set_property(TARGET BeaconGithubLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_link_libraries(BeaconGithubLib SocketHandler PipeHandler MemoryModule SocksServer )
+        set_property(TARGET BeaconGithubLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        target_link_libraries(BeaconGithubLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>)
 else()
-	target_link_libraries(BeaconGithubLib SocketHandler PipeHandler MemoryModule SocksServer openssl::openssl  httplib::httplib dl)
+        target_link_libraries(BeaconGithubLib PRIVATE
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>
+                $<BUILD_INTERFACE:openssl::openssl>
+                $<BUILD_INTERFACE:httplib::httplib>
+                $<BUILD_INTERFACE:dl>)
 endif()
 # add_custom_command(TARGET BeaconGithubLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 # $<TARGET_FILE:BeaconGithubLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconGithubLib>")
@@ -91,11 +135,30 @@ set(SOURCES_BEACON_DNS_EXE
 )
 
 add_library(BeaconDnsLib ${SOURCES_BEACON_DNS_EXE})
+target_include_directories(BeaconDnsLib PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
+
+install(TARGETS BeaconHttpLib BeaconTcpLib BeaconSmbLib BeaconGithubLib BeaconDnsLib
+        EXPORT C2CoreTargets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include)
 if(WIN32)
-	set_property(TARGET BeaconDnsLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_link_libraries(BeaconDnsLib Dnscommunication SocketHandler PipeHandler MemoryModule SocksServer )
+        set_property(TARGET BeaconDnsLib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        target_link_libraries(BeaconDnsLib PRIVATE
+                $<BUILD_INTERFACE:Dnscommunication>
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>)
 else()
-	target_link_libraries(BeaconDnsLib Dnscommunication SocketHandler PipeHandler MemoryModule SocksServer dl)
+        target_link_libraries(BeaconDnsLib PRIVATE
+                $<BUILD_INTERFACE:Dnscommunication>
+                $<BUILD_INTERFACE:SocketHandler>
+                $<BUILD_INTERFACE:PipeHandler>
+                $<BUILD_INTERFACE:MemoryModule>
+                $<BUILD_INTERFACE:SocksServer>
+                $<BUILD_INTERFACE:dl>)
 endif()
 # add_custom_command(TARGET BeaconDnsLib POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 # $<TARGET_FILE:BeaconDnsLib> "${CMAKE_SOURCE_DIR}/Release/Beacons/$<TARGET_FILE_NAME:BeaconDnsLib>")
