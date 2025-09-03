@@ -176,7 +176,7 @@ add_subdirectory(beacon)
 add_subdirectory(modules)
 
 install(
-  DIRECTORY beacon/ listener/ modules/
+  DIRECTORY beacon/ listener/ modules/ModuleCmd/
             ${sockethandler_SOURCE_DIR}/src/
             ${pipehandler_SOURCE_DIR}/src/
             ${memorymodule_SOURCE_DIR}/src/

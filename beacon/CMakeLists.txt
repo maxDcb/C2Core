@@ -1,4 +1,5 @@
 include_directories(../modules/ModuleCmd)
+include_directories(../listener)
 
 
 set(SOURCES_BEACON_HTTP_EXE

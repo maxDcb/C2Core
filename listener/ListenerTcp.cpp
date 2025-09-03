@@ -1,4 +1,5 @@
 #include "ListenerTcp.hpp"
+#include <SocketServer.hpp>
 
 using namespace std;
 using json = nlohmann::json;
