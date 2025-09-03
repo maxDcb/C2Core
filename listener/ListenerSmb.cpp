@@ -1,4 +1,5 @@
 #include "ListenerSmb.hpp"
+#include <PipeHandler.hpp>
 
 
 using namespace std;

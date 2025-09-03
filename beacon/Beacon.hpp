@@ -1,8 +1,7 @@
 #pragma once
 
-#include <listener/ListenerTcp.hpp>
-#include <listener/ListenerSmb.hpp>
-#include "SocksTunnelClient.hpp"
+#include <ListenerTcp.hpp>
+#include <ListenerSmb.hpp>
 
 #include <queue>
 #include <string>
@@ -13,6 +12,9 @@
 #include <nlohmann/json.hpp>
 
 #include "Common.hpp"
+
+
+#include <SocksTunnelClient.hpp>
 
 
 class Beacon

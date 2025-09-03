@@ -1,9 +1,12 @@
 #pragma once
 
-#include <server.hpp>
-#include <client.hpp>
 #include "Listener.hpp"
 
+
+namespace dns
+{
+	class Server;
+}
 
 class ListenerDns : public Listener
 {
@@ -15,7 +18,7 @@ public:
 private:
 	void launchDnsListener();
 
-	dns::Server m_serverDns;
+	dns::Server* m_serverDns;
 
 	bool m_stopThread;
 	std::unique_ptr<std::thread> m_dnsListener;

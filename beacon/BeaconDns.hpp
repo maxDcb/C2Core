@@ -1,8 +1,11 @@
 #pragma once
 
-#include <client.hpp>
 #include "Beacon.hpp"
 
+namespace dns
+{
+	class Client;
+}
 
 class BeaconDns : public Beacon
 {

@@ -5,9 +5,9 @@
 #include <mutex>
 #include <vector>
 
-#include "CommonCommand.hpp"
-#include "Session.hpp"
-#include "Common.hpp"
+#include <CommonCommand.hpp>
+#include <Session.hpp>
+#include <Common.hpp>
 
 #ifdef BUILD_TEAMSERVER
 #include "spdlog/spdlog.h"
