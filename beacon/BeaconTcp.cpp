@@ -1,4 +1,5 @@
 #include "BeaconTcp.hpp"
+#include <SocketClient.hpp>
 
 using namespace std;
 
