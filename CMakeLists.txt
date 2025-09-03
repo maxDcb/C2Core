@@ -154,4 +154,20 @@ if(C2CORE_BUILD_TESTS)
   add_subdirectory(listener/tests)
 endif()
 
+add_subdirectory(beacon)
 add_subdirectory(modules)
+
+install(
+  DIRECTORY beacon/ listener/ modules/
+  DESTINATION include
+  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
+include(CMakePackageConfigHelpers)
+install(EXPORT C2CoreTargets FILE C2CoreTargets.cmake NAMESPACE "" DESTINATION lib/cmake/C2Core)
+configure_package_config_file(
+  cmake/C2CoreConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/C2CoreConfig.cmake
+  INSTALL_DESTINATION lib/cmake/C2Core
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/C2CoreConfig.cmake DESTINATION lib/cmake/C2Core)
