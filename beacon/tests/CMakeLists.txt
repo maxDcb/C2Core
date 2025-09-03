@@ -1,4 +1,5 @@
 include_directories(..)
+include_directories(../..)
 include_directories(../../modules/ModuleCmd)
 
 # Unit tests using Catch2

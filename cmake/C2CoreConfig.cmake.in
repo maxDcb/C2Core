@@ -1,12 +1,8 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(SocketHandler)
-find_dependency(PipeHandler)
-find_dependency(MemoryModule)
-find_dependency(SocksServer)
-find_dependency(Dnscommunication)
 find_dependency(OpenSSL)
+find_dependency(Threads)
 
 include("${CMAKE_CURRENT_LIST_DIR}/C2CoreTargets.cmake")
 
