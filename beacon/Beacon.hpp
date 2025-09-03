@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../listener/ListenerTcp.hpp"
-#include "../listener/ListenerSmb.hpp"
+#include <ListenerTcp.hpp>
+#include <ListenerSmb.hpp>
 #include "SocksTunnelClient.hpp"
 
 #include <queue>
