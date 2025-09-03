@@ -36,6 +36,8 @@ FetchContent_Declare(
   GIT_TAG master
 )
 FetchContent_MakeAvailable(Dnscommunication)
+set_target_properties(Dnscommunication PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${dnscommunication_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
 
 FetchContent_Declare(
   SocketHandler
@@ -43,6 +45,9 @@ FetchContent_Declare(
   GIT_TAG master
 )
 FetchContent_MakeAvailable(SocketHandler)
+set_target_properties(SocketHandler PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${sockethandler_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
+
 
 # PipeHandler and MemoryModule have platform-specific sources
 if(WIN32)
@@ -73,6 +78,17 @@ endif()
 
 FetchContent_MakeAvailable(PipeHandler)
 FetchContent_MakeAvailable(MemoryModule)
+if(WIN32)
+  set(_pipe_inc ${pipehandler_SOURCE_DIR}/src)
+  set(_mm_inc   ${memorymodule_SOURCE_DIR}/src)
+else()
+  set(_pipe_inc ${pipehandler_SOURCE_DIR}/libs/libPipeHandlerDumy/src)
+  set(_mm_inc   ${memorymodule_SOURCE_DIR}/libs/libMemoryModuleDumy/src)
+endif()
+set_target_properties(PipeHandler PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${_pipe_inc}>;$<INSTALL_INTERFACE:include>")
+set_target_properties(MemoryModule PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${_mm_inc}>;$<INSTALL_INTERFACE:include>")
 
 FetchContent_Declare(
   SocksServer
@@ -80,6 +96,8 @@ FetchContent_Declare(
   GIT_TAG master
 )
 FetchContent_MakeAvailable(SocksServer)
+set_target_properties(SocksServer PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${socksserver_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
 
 if(WIN32)
   FetchContent_Declare(
@@ -159,6 +177,11 @@ add_subdirectory(modules)
 
 install(
   DIRECTORY beacon/ listener/ modules/
+            ${sockethandler_SOURCE_DIR}/src/
+            ${pipehandler_SOURCE_DIR}/src/
+            ${memorymodule_SOURCE_DIR}/src/
+            ${socksserver_SOURCE_DIR}/src/
+            ${dnscommunication_SOURCE_DIR}/src/
   DESTINATION include
   FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
