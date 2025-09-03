@@ -48,7 +48,6 @@ FetchContent_MakeAvailable(SocketHandler)
 set_target_properties(SocketHandler PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${sockethandler_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
 
-
 # PipeHandler and MemoryModule have platform-specific sources
 if(WIN32)
   FetchContent_Declare(
