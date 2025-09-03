@@ -3,3 +3,8 @@ modules/ModuleCmd/nlohmann/
 modules/Release/
 modules/Tests/
 modules/build/
+Release/
+Tests/
+build/
+package/
+thirdParty/
