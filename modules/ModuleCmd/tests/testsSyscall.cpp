@@ -29,7 +29,8 @@ int test()
 int main()
 {
 #ifdef _WIN32
-    void *remoteBuffer;
+    // need to be set to zero
+    void *remoteBuffer = NULL;
     SIZE_T sizeToAlloc=100;
     NTSTATUS status = Sw3NtAllocateVirtualMemory_(GetCurrentProcess(), &remoteBuffer, 0, &sizeToAlloc, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if(status!=0)
@@ -38,10 +39,13 @@ int main()
         return -1;
     }
 
+	
+
+    std::string destinationBuffer = "test";
     std::string payload = "test";
     SIZE_T sizePayload=payload.size();
     SIZE_T NumberOfBytesWritten;
-    status = Sw3NtWriteVirtualMemory_(GetCurrentProcess(), remoteBuffer, (PVOID)payload.data(), sizePayload, &NumberOfBytesWritten);
+    status = Sw3NtWriteVirtualMemory_(GetCurrentProcess(), (PVOID)destinationBuffer.data(), (PVOID)payload.data(), sizePayload, &NumberOfBytesWritten);
     if(status!=0)
     {
         std::cout << "Fail Sw3NtWriteVirtualMemory_" << std::endl;
