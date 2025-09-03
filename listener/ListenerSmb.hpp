@@ -1,8 +1,12 @@
 #pragma once
 
-#include <PipeHandler.hpp>
 #include "Listener.hpp"
 
+
+namespace PipeHandler
+{
+	class Server;
+}
 
 class ListenerSmb : public Listener
 {

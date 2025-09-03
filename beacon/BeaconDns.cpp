@@ -1,4 +1,6 @@
 #include "BeaconDns.hpp"
+#include <client.hpp>
+
 
 using namespace std;
 using namespace dns;

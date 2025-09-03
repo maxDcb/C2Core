@@ -1,4 +1,5 @@
 #include "BeaconSmb.hpp"
+#include <PipeHandler.hpp>
 
 using namespace std;
 using namespace PipeHandler;

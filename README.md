@@ -24,3 +24,11 @@ This repository is intended to be used as a dependency in both Windows and Linux
 - C++17 compatible compiler (e.g., `g++`, or MSVC)
 
 This repo is not supposed to be built on its own.
+
+## Build
+
+```
+cmake -S . -B build
+cmake --build build
+cmake --install build --prefix <install_root>
+```

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <SocketServer.hpp>
 #include "Listener.hpp"
 
+
+class SocketServer;
 
 class ListenerTcp : public Listener
 {

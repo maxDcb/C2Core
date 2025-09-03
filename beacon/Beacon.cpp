@@ -17,6 +17,7 @@
 
 #include <MemoryModule.h>
 
+
 typedef ModuleCmd* (*constructProc)();
 
 #elif _WIN32

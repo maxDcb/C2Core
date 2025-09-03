@@ -1,8 +1,12 @@
 #pragma once
 
-#include <PipeHandler.hpp>
 #include "Beacon.hpp"
 
+
+namespace PipeHandler
+{
+	class Client;
+}
 
 class BeaconSmb : public Beacon
 {
