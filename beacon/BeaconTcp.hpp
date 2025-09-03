@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SocketClient.hpp>
 #include "Beacon.hpp"
+
+class SocketTunnelClient;
 
 
 class BeaconTcp : public Beacon
