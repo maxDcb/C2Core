@@ -1,0 +1,71 @@
+name: C2Core Release (Windows)
+
+on: 
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+      
+jobs:
+  test-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Configure CMake (Release, no tests)
+        run: cmake -G "Visual Studio 17 2022" -A x64 -S . -B build -DC2CORE_BUILD_TESTS=OFF
+
+      - name: Build (Release)
+        run: cmake --build build --config Release --parallel
+
+      - name: Install to package/
+        run: cmake --install build --config Release --prefix "${{ github.workspace }}\\package"
+
+      - name: Prepare release bundle (installed files + Modules)
+        shell: pwsh
+        run: |
+          $ws   = $env:GITHUB_WORKSPACE
+          $pkg  = Join-Path $ws 'package'
+          $dest = Join-Path $pkg 'WindowsModules'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+          # Try common places the Modules output might land
+          $candidates = @(
+            Join-Path $ws 'Release\Modules',
+          )
+
+          $found = $false
+          foreach ($c in $candidates) {
+            if (Test-Path $c) {
+              Write-Host "Found Modules at: $c"
+              Copy-Item -Recurse -Force -Path (Join-Path $c '*') -Destination $dest
+              $found = $true
+              break
+            }
+          }
+          if (-not $found) {
+            Write-Warning "Modules directory not found in known locations; WindowsModules will be empty."
+          }
+
+          # Zip the installed tree
+          $zip = Join-Path $ws 'C2Core-Windows.zip'
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path (Join-Path $pkg '*') -DestinationPath $zip
+          Write-Host "Created $zip"
+
+      - name: Upload GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: C2Core-Windows.zip
+          asset_name: C2Core-Windows.zip
+          tag: windows-${{ github.run_number }}
+          overwrite: true
+          body: "C2Core Windows release: installed files + WindowsModules."

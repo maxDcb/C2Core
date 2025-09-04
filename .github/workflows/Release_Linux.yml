@@ -1,0 +1,68 @@
+name: C2Core Release (Linux)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ curl make libssl-dev libsmbclient-dev pkg-config
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DC2CORE_BUILD_TESTS=OFF
+
+      - name: Build Release
+        run: cmake --build build --parallel
+
+      - name: Install to package/
+        run: cmake --install build --prefix "$GITHUB_WORKSPACE/package"
+
+      - name: Prepare release bundle (installed files + Modules)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ws="$GITHUB_WORKSPACE"
+          pkg="$ws/package"
+          dest="$pkg/LinuxModules"
+          mkdir -p "$dest"
+
+          # Try common places the Modules output might land
+          found=""
+          for c in "$ws/Release/Modules"; do
+            if [[ -d "$c" ]]; then
+              echo "Found Modules at: $c"
+              shopt -s dotglob nullglob
+              cp -a "$c"/* "$dest"/ || true
+              found="yes"
+              break
+            fi
+          done
+          if [[ -z "$found" ]]; then
+            echo "::warning::Modules directory not found in known locations; LinuxModules will be empty."
+          fi
+
+          # Tar the installed tree
+          tarball="$ws/C2Core-Linux.tar.gz"
+          tar -C "$pkg" -czf "$tarball" .
+          echo "Created $tarball"
+
+      - name: Upload GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: C2Core-Linux.tar.gz
+          asset_name: C2Core-Linux.tar.gz
+          tag: linux-${{ github.run_number }}
+          overwrite: true
+          body: "C2Core Linux release: installed files + LinuxModules."
