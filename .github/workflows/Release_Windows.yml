@@ -38,7 +38,7 @@ jobs:
 
           # Try common places the Modules output might land
           $candidates = @(
-            Join-Path $ws 'Release\Modules',
+            Join-Path $ws 'Release\Modules'
           )
 
           $found = $false

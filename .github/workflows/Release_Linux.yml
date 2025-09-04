@@ -23,7 +23,7 @@ jobs:
         run: cmake -S . -B build -DC2CORE_BUILD_TESTS=OFF
 
       - name: Build Release
-        run: cmake --build build --parallel
+        run: cmake --build build -j$(nproc)
 
       - name: Install to package/
         run: cmake --install build --prefix "$GITHUB_WORKSPACE/package"
