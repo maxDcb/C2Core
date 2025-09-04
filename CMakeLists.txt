@@ -175,14 +175,18 @@ add_subdirectory(beacon)
 add_subdirectory(modules)
 
 install(
-  DIRECTORY beacon/ listener/ modules/ModuleCmd/
-            ${sockethandler_SOURCE_DIR}/src/
-            ${pipehandler_SOURCE_DIR}/src/
-            ${memorymodule_SOURCE_DIR}/src/
-            ${socksserver_SOURCE_DIR}/src/
-            ${dnscommunication_SOURCE_DIR}/src/
+  DIRECTORY beacon/ listener/ modules/ModuleCmd/ ${socksserver_SOURCE_DIR}/src/
   DESTINATION include
-  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+  FILES_MATCHING PATTERN "Beacon*.hpp" 
+                 PATTERN "Listener*.hpp" 
+                 PATTERN "CommonCommand.hpp" 
+                 PATTERN "ModuleCmd.hpp" 
+                 PATTERN "C2Message.hpp"
+                 PATTERN "Session.hpp"
+                 PATTERN "Common.hpp"
+                 PATTERN "nlohmann/json.hpp"
+                 PATTERN "SocksDef.hpp"
+                 PATTERN "SocksTunnelClient.hpp"
 )
 
 include(CMakePackageConfigHelpers)
