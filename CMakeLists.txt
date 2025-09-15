@@ -107,7 +107,7 @@ if(WIN32)
   FetchContent_Declare(
     CoffLoader
     GIT_REPOSITORY https://github.com/maxDcb/COFFLoader.git
-    GIT_TAG main
+    GIT_TAG dev
   )
   FetchContent_MakeAvailable(CoffPacker CoffLoader)
 endif()
