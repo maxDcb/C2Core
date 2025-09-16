@@ -8,13 +8,7 @@ endif()
 
 set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-if(C2CORE_BUILD_TESTS)
-    message(STATUS "[+] AssemblyExec Tests are enable.")
-    target_link_libraries(AssemblyExec PRIVATE Donut)
-else()
-    message(STATUS "[-] AssemblyExec Tests are disable.")    
-    target_link_libraries(AssemblyExec PRIVATE Donut)
-endif()
+target_link_libraries(AssemblyExec PRIVATE Donut)
 
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")

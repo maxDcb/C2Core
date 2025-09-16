@@ -8,13 +8,7 @@ endif()
 
 set_property(TARGET Inject PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-if(C2CORE_BUILD_TESTS)
-    message(STATUS "[+] Inject Tests are enable.")
-    target_link_libraries(Inject PRIVATE Donut )
-else()
-    message(STATUS "[-] Inject Tests are disable.")   
-    target_link_libraries(Inject PRIVATE Donut ) 
-endif()
+target_link_libraries(Inject PRIVATE Donut )
 
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")

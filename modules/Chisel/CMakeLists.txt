@@ -1,13 +1,10 @@
 include_directories(../)
 add_library(Chisel SHARED Chisel.cpp)
+
 set_property(TARGET Chisel PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-if(C2CORE_BUILD_TESTS)
-    message(STATUS "[+] Chisel Tests are enable.")
-    target_link_libraries(Chisel PRIVATE Donut )
-else()
-    message(STATUS "[-] Chisel Tests are disable.")    
-    target_link_libraries(Chisel PRIVATE Donut )
-endif()
+
+target_link_libraries(Chisel PRIVATE Donut )
+
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Chisel>")
 
