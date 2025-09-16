@@ -10,10 +10,10 @@ set_property(TARGET Inject PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
 if(C2CORE_BUILD_TESTS)
     message(STATUS "[+] Inject Tests are enable.")
-    target_link_libraries(Inject ${Donut} )
+    target_link_libraries(Inject PRIVATE Donut )
 else()
     message(STATUS "[-] Inject Tests are disable.")   
-    target_link_libraries(Inject ${Donut} ) 
+    target_link_libraries(Inject PRIVATE Donut ) 
 endif()
 
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
@@ -22,10 +22,10 @@ $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:In
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
        add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
-        target_link_libraries(testsInject ${Donut} )
+        target_link_libraries(testsInject PRIVATE Donut )
     else()
         add_executable(testsInject tests/testsInject.cpp Inject.cpp)
-        target_link_libraries(testsInject ${Donut} ${aplib64} )
+        target_link_libraries(testsInject PRIVATE Donut ${aplib64} )
     endif()
 
     add_custom_command(TARGET testsInject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

@@ -26,18 +26,21 @@ This repository is intended to be used as a dependency in both Windows and Linux
 ## Build, Tests and Package
 
 ```
-cmake -S . -B build
-cmake --build build
-cmake --install build --prefix <install_root>
-ctest --test-dir build --output-on-failure
+# testing
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" -DC2CORE_BUILD_TESTS=ON ..
+msbuild .\C2Core.sln /property:Configuration=Release -m
+cd ..
+ctest --test-dir build -C Release
 ```
 
 ```
+# package
 mkdir build
 cd build
 cmake -G "Visual Studio 17 2022" ..
 msbuild .\C2Core.sln /property:Configuration=Release -m
 cmake --install . --prefix <install_root>
 cd ..
-ctest --test-dir build -C Release
 ```

@@ -120,17 +120,43 @@ FetchContent_Declare(
   GIT_TAG 82147d6d89636217b870f54ec07ddd3e544d5f69
   SOURCE_DIR ${BASE64_SRC_DIR}
 )
-FetchContent_Populate(base64)
+FetchContent_MakeAvailable(base64)
 include_directories(${BASE64_SRC_DIR})
 
 set(DONUT_SRC_DIR ${CMAKE_SOURCE_DIR}/thirdParty/donut)
 FetchContent_Declare(
-  donut
+  Donut
   GIT_REPOSITORY https://github.com/maxDcb/donut.git
   GIT_TAG master
   SOURCE_DIR ${DONUT_SRC_DIR}
 )
-FetchContent_Populate(donut)
+FetchContent_MakeAvailable(Donut)
+
+add_custom_target(donut_build ALL
+    COMMAND nmake -f Makefile.msvc
+    WORKING_DIRECTORY ${DONUT_SRC_DIR}
+    COMMENT "Building donut with nmake / Makefile.msvc"
+)
+
+# ---- Import the produced lib / exe ----
+add_library(Donut SHARED IMPORTED)
+set_target_properties(Donut PROPERTIES
+    IMPORTED_IMPLIB "${DONUT_SRC_DIR}/lib/donut.lib"   # linker uses this
+    IMPORTED_LOCATION "${DONUT_SRC_DIR}/lib/donut.dll" # runtime DLL
+)
+
+include_directories(${DONUT_SRC_DIR}/include)
+
+set(DONUT_DLL "${DONUT_SRC_DIR}/lib/donut.dll")
+set(TEST_DIR "${CMAKE_SOURCE_DIR}/Tests")
+
+add_custom_target(copy_donut ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${DONUT_DLL}"
+            "${TEST_DIR}/donut.dll"
+    COMMENT "Copying donut.dll to ${TEST_DIR}"
+)
+add_dependencies(copy_donut donut_build)
 
 # Additional third party libraries
 FetchContent_Declare(
@@ -152,6 +178,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 if(C2CORE_BUILD_TESTS)
+  add_definitions(-DBUILD_TESTS)
   enable_testing()
 
   FetchContent_Declare(
