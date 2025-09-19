@@ -23,7 +23,7 @@ typedef ModuleCmd* (*constructProc)();
 #elif _WIN32
 
 #include <wtsapi32.h>
-#include <MemoryModule.h>
+#include <MemoryModule.hpp>
 
 
 #define INFO_BUFFER_SIZE 32767
