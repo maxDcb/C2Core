@@ -75,6 +75,18 @@ Sw3NtDeviceIoControlFile PROC
 	jmp pipo  
 Sw3NtDeviceIoControlFile ENDP
 
+Sw3NtCreateKey PROC
+	jmp pipo  
+Sw3NtCreateKey ENDP
+
+Sw3NtSetValueKey PROC
+	jmp pipo  
+Sw3NtSetValueKey ENDP
+
+Sw3NtCreateFile PROC
+	jmp pipo  
+Sw3NtCreateFile ENDP
+
 pipo PROC
 	mov [rsp +8], rcx          
 	mov [rsp+16], rdx

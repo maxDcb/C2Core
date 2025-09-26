@@ -156,6 +156,40 @@ EXTERN_C NTSTATUS Sw3NtDeviceIoControlFile(
     IN ULONG OutputBufferLength
 );
 
+EXTERN_C NTSTATUS Sw3NtCreateKey(
+    OUT PHANDLE KeyHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    IN ULONG TitleIndex,
+    IN PUNICODE_STRING Class OPTIONAL,
+    IN ULONG CreateOptions,
+    OUT PULONG Disposition OPTIONAL
+);
+
+EXTERN_C NTSTATUS Sw3NtSetValueKey(
+    IN HANDLE KeyHandle,
+    IN PUNICODE_STRING ValueName,
+    IN ULONG TitleIndex,
+    IN ULONG Type,
+    IN PVOID Data,
+    IN ULONG DataSize
+);
+
+EXTERN_C NTSTATUS Sw3NtCreateFile(
+    OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PLARGE_INTEGER AllocationSize OPTIONAL,
+    IN ULONG FileAttributes,
+    IN ULONG ShareAccess,
+    IN ULONG CreateDisposition,
+    IN ULONG CreateOptions,
+    IN PVOID EaBuffer OPTIONAL,
+    IN ULONG EaLength
+);
+
+
 template <typename... Args>
 NTSTATUS Sw3NtAllocateVirtualMemory_(Args&&... args) 
 {
@@ -360,6 +394,40 @@ NTSTATUS Sw3NtDeviceIoControlFile_(Args&&... args)
 	GlobalHash = 1830534599;
     return Sw3NtDeviceIoControlFile(std::forward<Args>(args)...);
 }
+
+template <typename... Args>
+NTSTATUS Sw3NtCreateKey_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwCreateKey";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 1519667297;
+    return Sw3NtCreateKey(std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+NTSTATUS Sw3NtSetValueKey_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwSetValueKey";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 3718251598;
+    return Sw3NtSetValueKey(std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+NTSTATUS Sw3NtCreateFile_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwCreateFile";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 2061785324;
+    return Sw3NtCreateFile(std::forward<Args>(args)...);
+}
+
 
 class Entry
 {
