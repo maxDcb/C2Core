@@ -48,8 +48,8 @@ void ListenerDns::launchDnsListener()
 				return;
 
 			SPDLOG_DEBUG("receiving");
-	
-			string input = m_serverDns->getMsg();
+			
+			auto [clientId, input] = m_serverDns->getAvailableMessage();
 
 			SPDLOG_DEBUG("received input.size {0}",std::to_string(input.size()));
 
@@ -61,7 +61,7 @@ void ListenerDns::launchDnsListener()
 				SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
 
 				if(!output.empty())
-					m_serverDns->setMsg(output);
+					m_serverDns->setMessageToSend(output, clientId);
 			}
 			
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));

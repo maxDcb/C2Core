@@ -33,7 +33,7 @@ include(FetchContent)
 FetchContent_Declare(
   Dnscommunication
   GIT_REPOSITORY https://github.com/maxDcb/Dnscommunication.git
-  GIT_TAG master
+  GIT_TAG develop
 )
 FetchContent_MakeAvailable(Dnscommunication)
 set_target_properties(Dnscommunication PROPERTIES

