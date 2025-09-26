@@ -114,7 +114,60 @@ int main()
         return -1;
     }
 
+
+    // Open or create file
+    HANDLE hFile = CreateFileW(
+        L"C:\\Users\\Public\\ntwrite_example.txt",
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        std::cerr << "CreateFileW failed: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    const char* text = "Hello from NtWriteFile!\n";
+    DWORD len = static_cast<DWORD>(strlen(text));
+
+    IO_STATUS_BLOCK ioStatus = {};
+    NTSTATUS status;
+
+    // Passing NULL ByteOffset -> use current file pointer
+    IO_STATUS_BLOCK ioStatus = {};
+    HANDLE Event = NULL;
+    PIO_APC_ROUTINE ApcRoutine = NULL;
+    PVOID ApcContext = NULL;
+    PLARGE_INTEGER ByteOffset = NULL;
+    PULONG Key = NULL;
+    status = Sw3NtWriteFile_(
+        hFile,
+        Event,          // Event
+        ApcRoutine,          // ApcRoutine
+        ApcContext,          // ApcContext
+        &ioStatus,
+        (PVOID)text,
+        len,
+        ByteOffset,          // ByteOffset (NULL = append at current)
+        Key           // Key
+    );
+
+    if (status == 0 /* STATUS_SUCCESS */) {
+        std::cout << "NtWriteFile succeeded, bytes written: "
+                  << ioStatus.Information << "\n";
+    } else {
+        std::cerr << "NtWriteFile failed, NTSTATUS = 0x"
+                  << std::hex << status << "\n";
+    }
+
+    CloseHandle(hFile);
+
     std::cout << "Success" << std::endl;
+
+
 #endif
     return 0;
 }

@@ -127,6 +127,34 @@ OUT PVOID Buffer,
 IN SIZE_T BufferSize,
 OUT PSIZE_T NumberOfBytesRead OPTIONAL);
 
+EXTERN_C NTSTATUS Sw3NtWriteFile(
+IN HANDLE FileHandle,
+IN HANDLE Event OPTIONAL,
+IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+IN PVOID ApcContext OPTIONAL,
+OUT PIO_STATUS_BLOCK IoStatusBlock,
+IN PVOID Buffer,
+IN ULONG Length,
+IN PLARGE_INTEGER ByteOffset OPTIONAL,
+IN PULONG Key OPTIONAL
+);
+
+EXTERN_C NTSTATUS Sw3NtLoadDriver(
+	PUNICODE_STRING DriverServiceName
+);
+
+EXTERN_C NTSTATUS Sw3NtDeviceIoControlFile(
+    IN HANDLE FileHandle,
+    IN HANDLE Event OPTIONAL,
+    IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+    IN PVOID ApcContext OPTIONAL,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN ULONG IoControlCode,
+    IN PVOID InputBuffer OPTIONAL,
+    IN ULONG InputBufferLength,
+    OUT PVOID OutputBuffer OPTIONAL,
+    IN ULONG OutputBufferLength
+);
 
 template <typename... Args>
 NTSTATUS Sw3NtAllocateVirtualMemory_(Args&&... args) 
@@ -298,6 +326,40 @@ NTSTATUS Sw3NtReadVirtualMemory_(Args&&... args)
     return Sw3NtReadVirtualMemory(std::forward<Args>(args)...);
 }
 
+
+template <typename... Args>
+NTSTATUS Sw3NtWriteFile_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwWriteFile";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 4125819791;
+    return Sw3NtWriteFile(std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+NTSTATUS Sw3NtLoadDriver_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwLoadDriver";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 910764656;
+    return Sw3NtLoadDriver(std::forward<Args>(args)...);
+}
+
+
+template <typename... Args>
+NTSTATUS Sw3NtDeviceIoControlFile_(Args&&... args) 
+{
+	// PCSTR FunctionName = "ZwDeviceIoControlFile";
+	// GlobalHash = SW3_HashSyscall(FunctionName);
+	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+
+	GlobalHash = 1830534599;
+    return Sw3NtDeviceIoControlFile(std::forward<Args>(args)...);
+}
 
 class Entry
 {

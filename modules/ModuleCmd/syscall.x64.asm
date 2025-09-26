@@ -63,6 +63,18 @@ Sw3NtReadVirtualMemory PROC
 	jmp pipo                                  
 Sw3NtReadVirtualMemory ENDP
 
+Sw3NtWriteFile PROC
+	jmp pipo  
+Sw3NtWriteFile ENDP
+
+Sw3NtLoadDriver PROC
+	jmp pipo  
+Sw3NtLoadDriver ENDP
+
+Sw3NtDeviceIoControlFile PROC
+	jmp pipo  
+Sw3NtDeviceIoControlFile ENDP
+
 pipo PROC
 	mov [rsp +8], rcx          
 	mov [rsp+16], rdx
