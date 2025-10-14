@@ -10,8 +10,8 @@ class ListenerHttp : public Listener
 {
 
 public:
-	ListenerHttp(const std::string& ip, int localport, const nlohmann::json& config, bool isHttps=false);
-	~ListenerHttp();
+        ListenerHttp(const std::string& ip, int localport, const nlohmann::json& config, bool isHttps=false);
+        ~ListenerHttp();
 
 	int init();
 
@@ -23,8 +23,8 @@ private:
 
 	std::string m_host;
 	int m_port;
-	bool m_isHttps;
-	nlohmann::json m_config;
+        bool m_isHttps;
+        nlohmann::json m_listenerConfig;
 
 	std::unique_ptr<httplib::Server> m_svr;
 	std::unique_ptr<std::thread> m_httpServ;

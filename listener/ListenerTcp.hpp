@@ -9,7 +9,7 @@ class ListenerTcp : public Listener
 {
 
 public:
-	ListenerTcp(const std::string& ip, int localport);
+        ListenerTcp(const std::string& ip, int localport, const nlohmann::json& config = nlohmann::json::object());
 	~ListenerTcp();
 	
 	int init();

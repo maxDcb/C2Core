@@ -12,7 +12,7 @@ class ListenerDns : public Listener
 {
 
 public:
-	ListenerDns(const std::string& domainToResolve, int port);
+        ListenerDns(const std::string& domainToResolve, int port, const nlohmann::json& config = nlohmann::json::object());
 	~ListenerDns();
 
 private:
