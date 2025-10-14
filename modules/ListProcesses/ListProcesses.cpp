@@ -267,21 +267,21 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
         result += "\n";
     }
     else
-	{
-		std::string account="";
-		std::string arch = "   ";
-		
-		result += account;
-		int size = max(1, (int)(30 - account.size()));
-		result += std::string(size, ' ');
-		result += arch;
-		result += " ";
-		result += processName;
-		size = max(1, (int)(40 - processName.size()));
-		result += std::string(size, ' ');
-		result += std::to_string(processID);
-		result += "\n";
-	}
+    {
+        std::string account="";
+        std::string arch = "   ";
+        
+        result += account;
+        int size = max(1, (int)(30 - account.size()));
+        result += std::string(size, ' ');
+        result += arch;
+        result += " ";
+        result += processName;
+        size = max(1, (int)(40 - processName.size()));
+        result += std::string(size, ' ');
+        result += std::to_string(processID);
+        result += "\n";
+    }
 
     CloseHandle( hProcess );
 
@@ -294,41 +294,41 @@ std::string GetProcess()
     std::string result;
 
     int pid = 0;
-	PVOID buffer = NULL;
-	DWORD bufSize = 0;
-	
-	NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
-	pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, 0, 0, &bufSize);
-	
-	if (bufSize == 0)
-		return "GetProcess Failed";
-	
-	buffer = VirtualAlloc(0, bufSize, MEM_COMMIT, PAGE_READWRITE);
-		
-	SYSTEM_PROCESS_INFORMATION * sysproc_info = (SYSTEM_PROCESS_INFORMATION *) buffer;
-	if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize)) 
+    PVOID buffer = NULL;
+    DWORD bufSize = 0;
+    
+    NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
+    pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, 0, 0, &bufSize);
+    
+    if (bufSize == 0)
+        return "GetProcess Failed";
+    
+    buffer = VirtualAlloc(0, bufSize, MEM_COMMIT, PAGE_READWRITE);
+        
+    SYSTEM_PROCESS_INFORMATION * sysproc_info = (SYSTEM_PROCESS_INFORMATION *) buffer;
+    if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize)) 
         return "pNtQuerySystemInformation Failed";
 
 
     while (TRUE) 
-	{		
-		std::string processName;
-		for(int i=0; i<sysproc_info->ImageName.Length; i++)
-		{
-			if((char)sysproc_info->ImageName.Buffer[i]=='\0')
-				break;
-			processName.push_back((char)sysproc_info->ImageName.Buffer[i]);
-		}
-		
-		result += getProcessInfos((DWORD)sysproc_info->UniqueProcessId, processName);
-				
-		if (!sysproc_info->NextEntryOffset)
-			break;
-		
-		sysproc_info = (SYSTEM_PROCESS_INFORMATION *)((ULONG_PTR) sysproc_info + sysproc_info->NextEntryOffset);
-	}
-	
-	VirtualFree(buffer, bufSize, MEM_RELEASE);
+    {        
+        std::string processName;
+        for(int i=0; i<sysproc_info->ImageName.Length; i++)
+        {
+            if((char)sysproc_info->ImageName.Buffer[i]=='\0')
+                break;
+            processName.push_back((char)sysproc_info->ImageName.Buffer[i]);
+        }
+        
+        result += getProcessInfos((DWORD)sysproc_info->UniqueProcessId, processName);
+                
+        if (!sysproc_info->NextEntryOffset)
+            break;
+        
+        sysproc_info = (SYSTEM_PROCESS_INFORMATION *)((ULONG_PTR) sysproc_info + sysproc_info->NextEntryOffset);
+    }
+    
+    VirtualFree(buffer, bufSize, MEM_RELEASE);
 
     return result;
 }
@@ -359,9 +359,9 @@ __attribute__((visibility("default")))  ListProcesses* ListProcessesConstructor(
 
 ListProcesses::ListProcesses()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -372,7 +372,7 @@ ListProcesses::~ListProcesses()
 
 std::string ListProcesses::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "ListProcesses Module:\n";
     info += "List all running processes on the victim machine.\n";
@@ -380,26 +380,26 @@ std::string ListProcesses::getInfo()
     info += "\nExamples:\n";
     info += "- ps\n";
 #endif
-	return info;
+    return info;
 }
 
 int ListProcesses::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd("");
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_cmd("");
 
-	return 0;
+    return 0;
 }
 
 int ListProcesses::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	std::string outCmd = listProcesses();
+    std::string outCmd = listProcesses();
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd("");
-	c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_returnvalue(outCmd);
 
-	return 0;
+    return 0;
 }
 
 
@@ -417,5 +417,5 @@ std::string ListProcesses::listProcesses()
 
 #endif
 
-	return result;
+    return result;
 }

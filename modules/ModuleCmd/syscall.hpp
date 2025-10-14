@@ -140,7 +140,7 @@ IN PULONG Key OPTIONAL
 );
 
 EXTERN_C NTSTATUS Sw3NtLoadDriver(
-	PUNICODE_STRING DriverServiceName
+    PUNICODE_STRING DriverServiceName
 );
 
 EXTERN_C NTSTATUS Sw3NtDeviceIoControlFile(
@@ -193,12 +193,12 @@ EXTERN_C NTSTATUS Sw3NtCreateFile(
 template <typename... Args>
 NTSTATUS Sw3NtAllocateVirtualMemory_(Args&&... args) 
 {
-	// need to put Zw for the syscall
-	// char *FunctionName = "ZwAllocateVirtualMemory";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
+    // need to put Zw for the syscall
+    // char *FunctionName = "ZwAllocateVirtualMemory";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
 
-	GlobalHash = 806327511;
+    GlobalHash = 806327511;
     return Sw3NtAllocateVirtualMemory(std::forward<Args>(args)...);
 }
 
@@ -206,61 +206,61 @@ NTSTATUS Sw3NtAllocateVirtualMemory_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtWaitForSingleObject_(Args&&... args) 
 {
-	// char *FunctionName = "ZwWaitForSingleObject";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwWaitForSingleObject " << GlobalHash << std::endl;
+    // char *FunctionName = "ZwWaitForSingleObject";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwWaitForSingleObject " << GlobalHash << std::endl;
 
-	GlobalHash = 3941435821;
-	return Sw3NtWaitForSingleObject(std::forward<Args>(args)...);
+    GlobalHash = 3941435821;
+    return Sw3NtWaitForSingleObject(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtClose_(Args&&... args) 
 {
-	// 	char *FunctionName = "ZwClose";
-	// 	GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwClose " << GlobalHash << std::endl;
+    //     char *FunctionName = "ZwClose";
+    //     GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwClose " << GlobalHash << std::endl;
 
-	GlobalHash = 745328858;
-	return Sw3NtClose(std::forward<Args>(args)...);
+    GlobalHash = 745328858;
+    return Sw3NtClose(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtWriteVirtualMemory_(Args&&... args) 
 {
-	// char *FunctionName = "ZwWriteVirtualMemory";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwWriteVirtualMemory " << GlobalHash << std::endl;
+    // char *FunctionName = "ZwWriteVirtualMemory";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwWriteVirtualMemory " << GlobalHash << std::endl;
 
-	GlobalHash = 4080026747;
-	return Sw3NtWriteVirtualMemory(std::forward<Args>(args)...);
+    GlobalHash = 4080026747;
+    return Sw3NtWriteVirtualMemory(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtProtectVirtualMemory_(Args&&... args) 
 {
-	// char *FunctionName = "ZwProtectVirtualMemory";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwProtectVirtualMemory " << GlobalHash << std::endl;
+    // char *FunctionName = "ZwProtectVirtualMemory";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwProtectVirtualMemory " << GlobalHash << std::endl;
 
-	GlobalHash = 699580991;
-	return Sw3NtProtectVirtualMemory(std::forward<Args>(args)...);
+    GlobalHash = 699580991;
+    return Sw3NtProtectVirtualMemory(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtOpenProcess_(Args&&... args) 
 {
-	// char *FunctionName = "ZwOpenProcess";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
+    // char *FunctionName = "ZwOpenProcess";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwAllocateVirtualMemory " << GlobalHash << std::endl;
 
-	GlobalHash = 3548847587;
-	// __debugbreak();
-	return Sw3NtOpenProcess(std::forward<Args>(args)...);
+    GlobalHash = 3548847587;
+    // __debugbreak();
+    return Sw3NtOpenProcess(std::forward<Args>(args)...);
 
 }
 
@@ -268,59 +268,59 @@ NTSTATUS Sw3NtOpenProcess_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtCreateThreadEx_(Args&&... args) 
 {
-	// char *FunctionName = "ZwCreateThreadEx";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwCreateThreadEx " << GlobalHash << std::endl;
+    // char *FunctionName = "ZwCreateThreadEx";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwCreateThreadEx " << GlobalHash << std::endl;
 
-	GlobalHash = 3653557611;
-	return Sw3NtCreateThreadEx(std::forward<Args>(args)...);
+    GlobalHash = 3653557611;
+    return Sw3NtCreateThreadEx(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtCreateProcess_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwCreateProcess";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwCreateProcess " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwCreateProcess";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwCreateProcess " << GlobalHash << std::endl;
 
-	GlobalHash = 1768521463;
-	return Sw3NtCreateProcess(std::forward<Args>(args)...);
+    GlobalHash = 1768521463;
+    return Sw3NtCreateProcess(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtQueueApcThread_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwQueueApcThread";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwQueueApcThread " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwQueueApcThread";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwQueueApcThread " << GlobalHash << std::endl;
 
-	GlobalHash = 735850453;
-	return Sw3NtQueueApcThread(std::forward<Args>(args)...);
+    GlobalHash = 735850453;
+    return Sw3NtQueueApcThread(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtResumeThread_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwResumeThread";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << "ZwResumeThread " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwResumeThread";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << "ZwResumeThread " << GlobalHash << std::endl;
 
-	GlobalHash = 4130550557;
-	return Sw3NtResumeThread(std::forward<Args>(args)...);
+    GlobalHash = 4130550557;
+    return Sw3NtResumeThread(std::forward<Args>(args)...);
 }
 
 
 template <typename... Args>
 NTSTATUS Sw3NtOpenProcessToken_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwOpenProcessToken";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwOpenProcessToken";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 2590718720;
+    GlobalHash = 2590718720;
     return Sw3NtOpenProcessToken(std::forward<Args>(args)...);
 }
 
@@ -328,11 +328,11 @@ NTSTATUS Sw3NtOpenProcessToken_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtAdjustPrivilegesToken_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwAdjustPrivilegesToken";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwAdjustPrivilegesToken";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 2243258122;
+    GlobalHash = 2243258122;
     return Sw3NtAdjustPrivilegesToken(std::forward<Args>(args)...);
 }
 
@@ -340,11 +340,11 @@ NTSTATUS Sw3NtAdjustPrivilegesToken_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtQueryVirtualMemory_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwQueryVirtualMemory";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwQueryVirtualMemory";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 422492770;
+    GlobalHash = 422492770;
     return Sw3NtQueryVirtualMemory(std::forward<Args>(args)...);
 }
 
@@ -352,11 +352,11 @@ NTSTATUS Sw3NtQueryVirtualMemory_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtReadVirtualMemory_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwReadVirtualMemory";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwReadVirtualMemory";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 663422542;
+    GlobalHash = 663422542;
     return Sw3NtReadVirtualMemory(std::forward<Args>(args)...);
 }
 
@@ -364,22 +364,22 @@ NTSTATUS Sw3NtReadVirtualMemory_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtWriteFile_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwWriteFile";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwWriteFile";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 4125819791;
+    GlobalHash = 4125819791;
     return Sw3NtWriteFile(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 NTSTATUS Sw3NtLoadDriver_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwLoadDriver";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwLoadDriver";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 910764656;
+    GlobalHash = 910764656;
     return Sw3NtLoadDriver(std::forward<Args>(args)...);
 }
 
@@ -387,44 +387,44 @@ NTSTATUS Sw3NtLoadDriver_(Args&&... args)
 template <typename... Args>
 NTSTATUS Sw3NtDeviceIoControlFile_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwDeviceIoControlFile";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwDeviceIoControlFile";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 1830534599;
+    GlobalHash = 1830534599;
     return Sw3NtDeviceIoControlFile(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 NTSTATUS Sw3NtCreateKey_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwCreateKey";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwCreateKey";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 1519667297;
+    GlobalHash = 1519667297;
     return Sw3NtCreateKey(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 NTSTATUS Sw3NtSetValueKey_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwSetValueKey";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwSetValueKey";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 3718251598;
+    GlobalHash = 3718251598;
     return Sw3NtSetValueKey(std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 NTSTATUS Sw3NtCreateFile_(Args&&... args) 
 {
-	// PCSTR FunctionName = "ZwCreateFile";
-	// GlobalHash = SW3_HashSyscall(FunctionName);
-	// std::cout << FunctionName << " " << GlobalHash << std::endl;
+    // PCSTR FunctionName = "ZwCreateFile";
+    // GlobalHash = SW3_HashSyscall(FunctionName);
+    // std::cout << FunctionName << " " << GlobalHash << std::endl;
 
-	GlobalHash = 2061785324;
+    GlobalHash = 2061785324;
     return Sw3NtCreateFile(std::forward<Args>(args)...);
 }
 
@@ -432,33 +432,33 @@ NTSTATUS Sw3NtCreateFile_(Args&&... args)
 class Entry
 {
 public:
-	Entry(DWORD hash, DWORD address, PVOID syscallAddress)
-	: m_hash(hash)
-	, m_address(address)
-	, m_syscallAddress(syscallAddress)
-	{
-	}
+    Entry(DWORD hash, DWORD address, PVOID syscallAddress)
+    : m_hash(hash)
+    , m_address(address)
+    , m_syscallAddress(syscallAddress)
+    {
+    }
 
-	DWORD getHash()
-	{
-		return m_hash;
-	}
+    DWORD getHash()
+    {
+        return m_hash;
+    }
 
-	DWORD getAddress()
-	{
-		return m_address;
-	}
+    DWORD getAddress()
+    {
+        return m_address;
+    }
 
-	PVOID getSyscallAddress()
-	{
-		return m_syscallAddress;
-	}
+    PVOID getSyscallAddress()
+    {
+        return m_syscallAddress;
+    }
 
 
 private:
     DWORD m_hash;
     DWORD m_address;
-	PVOID m_syscallAddress;
+    PVOID m_syscallAddress;
 };
 
 
@@ -469,133 +469,133 @@ class SyscallList
 {
 private:
 
-	PVOID getNtdllExportDirectory()
-	{
-		PSW3_PEB Peb = (PSW3_PEB)__readgsqword(0x60);
+    PVOID getNtdllExportDirectory()
+    {
+        PSW3_PEB Peb = (PSW3_PEB)__readgsqword(0x60);
 
-		PSW3_PEB_LDR_DATA Ldr = Peb->Ldr;
-		PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
-		m_dllBase = NULL;
+        PSW3_PEB_LDR_DATA Ldr = Peb->Ldr;
+        PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
+        m_dllBase = NULL;
 
-		// Get the DllBase address of NTDLL.dll. NTDLL is not guaranteed to be the second
-		// in the list, so it's safer to loop through the full list and find it.
-		PSW3_LDR_DATA_TABLE_ENTRY LdrEntry;
-		for (LdrEntry = (PSW3_LDR_DATA_TABLE_ENTRY)Ldr->Reserved2[1]; LdrEntry->DllBase != NULL; LdrEntry = (PSW3_LDR_DATA_TABLE_ENTRY)LdrEntry->Reserved1[0])
-		{
-			m_dllBase = LdrEntry->DllBase;
-			PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)m_dllBase;
-			PIMAGE_NT_HEADERS NtHeaders = SW3_RVA2VA(PIMAGE_NT_HEADERS, m_dllBase, DosHeader->e_lfanew);
-			PIMAGE_DATA_DIRECTORY DataDirectory = (PIMAGE_DATA_DIRECTORY)NtHeaders->OptionalHeader.DataDirectory;
-			DWORD VirtualAddress = DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-			if (VirtualAddress == 0) continue;
+        // Get the DllBase address of NTDLL.dll. NTDLL is not guaranteed to be the second
+        // in the list, so it's safer to loop through the full list and find it.
+        PSW3_LDR_DATA_TABLE_ENTRY LdrEntry;
+        for (LdrEntry = (PSW3_LDR_DATA_TABLE_ENTRY)Ldr->Reserved2[1]; LdrEntry->DllBase != NULL; LdrEntry = (PSW3_LDR_DATA_TABLE_ENTRY)LdrEntry->Reserved1[0])
+        {
+            m_dllBase = LdrEntry->DllBase;
+            PIMAGE_DOS_HEADER DosHeader = (PIMAGE_DOS_HEADER)m_dllBase;
+            PIMAGE_NT_HEADERS NtHeaders = SW3_RVA2VA(PIMAGE_NT_HEADERS, m_dllBase, DosHeader->e_lfanew);
+            PIMAGE_DATA_DIRECTORY DataDirectory = (PIMAGE_DATA_DIRECTORY)NtHeaders->OptionalHeader.DataDirectory;
+            DWORD VirtualAddress = DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+            if (VirtualAddress == 0) continue;
 
-			ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)SW3_RVA2VA(ULONG_PTR, m_dllBase, VirtualAddress);
+            ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)SW3_RVA2VA(ULONG_PTR, m_dllBase, VirtualAddress);
 
-			// If this is NTDLL.dll, exit loop.
-			PCHAR DllName = SW3_RVA2VA(PCHAR, m_dllBase, ExportDirectory->Name);
+            // If this is NTDLL.dll, exit loop.
+            PCHAR DllName = SW3_RVA2VA(PCHAR, m_dllBase, ExportDirectory->Name);
 
-			if ((*(ULONG*)DllName | 0x20202020) != 0x6c64746e) 
-				continue;
-			if ((*(ULONG*)(DllName + 4) | 0x20202020) == 0x6c642e6c) 
-				break;
-		}
+            if ((*(ULONG*)DllName | 0x20202020) != 0x6c64746e) 
+                continue;
+            if ((*(ULONG*)(DllName + 4) | 0x20202020) == 0x6c642e6c) 
+                break;
+        }
 
-		if (!ExportDirectory) 
-			return NULL;
+        if (!ExportDirectory) 
+            return NULL;
 
-		return (PVOID)ExportDirectory;
-	}
+        return (PVOID)ExportDirectory;
+    }
 
-	void fillSyscallEntryList(PVOID add)
-	{
-		PIMAGE_EXPORT_DIRECTORY ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)add;
-		DWORD NumberOfNames = ExportDirectory->NumberOfNames;
-		PDWORD Functions = SW3_RVA2VA(PDWORD, m_dllBase, ExportDirectory->AddressOfFunctions);
-		PDWORD Names = SW3_RVA2VA(PDWORD, m_dllBase, ExportDirectory->AddressOfNames);
-		PWORD Ordinals = SW3_RVA2VA(PWORD, m_dllBase, ExportDirectory->AddressOfNameOrdinals);
+    void fillSyscallEntryList(PVOID add)
+    {
+        PIMAGE_EXPORT_DIRECTORY ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)add;
+        DWORD NumberOfNames = ExportDirectory->NumberOfNames;
+        PDWORD Functions = SW3_RVA2VA(PDWORD, m_dllBase, ExportDirectory->AddressOfFunctions);
+        PDWORD Names = SW3_RVA2VA(PDWORD, m_dllBase, ExportDirectory->AddressOfNames);
+        PWORD Ordinals = SW3_RVA2VA(PWORD, m_dllBase, ExportDirectory->AddressOfNameOrdinals);
 
-		// Populate SW3_SyscallList with unsorted Zw* entries.
-		do
-		{
-			PCHAR FunctionName = SW3_RVA2VA(PCHAR, m_dllBase, Names[NumberOfNames - 1]);
+        // Populate SW3_SyscallList with unsorted Zw* entries.
+        do
+        {
+            PCHAR FunctionName = SW3_RVA2VA(PCHAR, m_dllBase, Names[NumberOfNames - 1]);
 
-			// Is this a system call?
-			// start with Zw
-			if (*(USHORT*)FunctionName == 0x775a)
-			{
-				DWORD Hash = SW3_HashSyscall(FunctionName);
+            // Is this a system call?
+            // start with Zw
+            if (*(USHORT*)FunctionName == 0x775a)
+            {
+                DWORD Hash = SW3_HashSyscall(FunctionName);
 
-				DWORD Address = Functions[Ordinals[NumberOfNames - 1]];
-				PVOID SyscallAddress = SC_Address(SW3_RVA2VA(PVOID, m_dllBase, Address));
+                DWORD Address = Functions[Ordinals[NumberOfNames - 1]];
+                PVOID SyscallAddress = SC_Address(SW3_RVA2VA(PVOID, m_dllBase, Address));
 
-				Entry newEntry(Hash, Address, SyscallAddress);
-				m_syscallEntry.push_back(std::move(newEntry));
+                Entry newEntry(Hash, Address, SyscallAddress);
+                m_syscallEntry.push_back(std::move(newEntry));
 
-			}
-		} while (--NumberOfNames);
+            }
+        } while (--NumberOfNames);
 
-		// sort for the getSyscallNumber
-		std::sort(m_syscallEntry.begin(), m_syscallEntry.end(), compareEntry); 
-	}
+        // sort for the getSyscallNumber
+        std::sort(m_syscallEntry.begin(), m_syscallEntry.end(), compareEntry); 
+    }
 
-	
-	PVOID SC_Address(PVOID NtApiAddress)
-	{
-		DWORD searchLimit = 512;
-		PVOID SyscallAddress;
+    
+    PVOID SC_Address(PVOID NtApiAddress)
+    {
+        DWORD searchLimit = 512;
+        PVOID SyscallAddress;
 
-		// If the process is 64-bit on a 64-bit OS, we need to search for syscall
-		BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
-		ULONG distance_to_syscall = 0x12;
+        // If the process is 64-bit on a 64-bit OS, we need to search for syscall
+        BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
+        ULONG distance_to_syscall = 0x12;
 
-		// we don't really care if there is a 'jmp' between
-		// NtApiAddress and the 'syscall; ret' instructions
-		SyscallAddress = SW3_RVA2VA(PVOID, NtApiAddress, distance_to_syscall);
+        // we don't really care if there is a 'jmp' between
+        // NtApiAddress and the 'syscall; ret' instructions
+        SyscallAddress = SW3_RVA2VA(PVOID, NtApiAddress, distance_to_syscall);
 
-		if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
-		{
-			// we can use the original code for this system call :)
-			return SyscallAddress;
-		}
+        if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
+        {
+            // we can use the original code for this system call :)
+            return SyscallAddress;
+        }
 
-		// the 'syscall; ret' intructions have not been found,
-		// we will try to use one near it, similarly to HalosGate
-		for (ULONG32 num_jumps = 1; num_jumps < searchLimit; num_jumps++)
-		{
-			// let's try with an Nt* API below our syscall
-			SyscallAddress = SW3_RVA2VA(
-				PVOID,
-				NtApiAddress,
-				distance_to_syscall + num_jumps * 0x20);
+        // the 'syscall; ret' intructions have not been found,
+        // we will try to use one near it, similarly to HalosGate
+        for (ULONG32 num_jumps = 1; num_jumps < searchLimit; num_jumps++)
+        {
+            // let's try with an Nt* API below our syscall
+            SyscallAddress = SW3_RVA2VA(
+                PVOID,
+                NtApiAddress,
+                distance_to_syscall + num_jumps * 0x20);
 
-			if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
-			{
-				return SyscallAddress;
-			}
+            if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
+            {
+                return SyscallAddress;
+            }
 
-			// let's try with an Nt* API above our syscall
-			SyscallAddress = SW3_RVA2VA(
-				PVOID,
-				NtApiAddress,
-				distance_to_syscall - num_jumps * 0x20);
+            // let's try with an Nt* API above our syscall
+            SyscallAddress = SW3_RVA2VA(
+                PVOID,
+                NtApiAddress,
+                distance_to_syscall - num_jumps * 0x20);
 
-			if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
-			{
-				return SyscallAddress;
-			}
-		}
+            if (!memcmp((PVOID)syscall_code, SyscallAddress, sizeof(syscall_code)))
+            {
+                return SyscallAddress;
+            }
+        }
 
-		return NULL;
-	}
+        return NULL;
+    }
 
-	PVOID m_dllBase;
-	std::vector<Entry> m_syscallEntry;
+    PVOID m_dllBase;
+    std::vector<Entry> m_syscallEntry;
 
 protected:
     SyscallList()
     {
-		PVOID add = getNtdllExportDirectory();
-		fillSyscallEntryList(add);
+        PVOID add = getNtdllExportDirectory();
+        fillSyscallEntryList(add);
     }
 
     static SyscallList* singleton_;
@@ -606,28 +606,28 @@ public:
     void operator=(const SyscallList &) = delete;
     static SyscallList *GetInstance();
 
-	// need to be sorted to be able to get the syscall number from the entry index
+    // need to be sorted to be able to get the syscall number from the entry index
     DWORD getSyscallNumber(DWORD hash)
     {
-		for(int i=0; i<m_syscallEntry.size(); i++)
-		{
-			if(m_syscallEntry[i].getHash() == hash)
-			{
-				return i;
-			}
-		}
+        for(int i=0; i<m_syscallEntry.size(); i++)
+        {
+            if(m_syscallEntry[i].getHash() == hash)
+            {
+                return i;
+            }
+        }
         return -1;
     }
 
-	PVOID getSyscallAddress(DWORD hash)
+    PVOID getSyscallAddress(DWORD hash)
     {
         for(int i=0; i<m_syscallEntry.size(); i++)
-		{
-			if(m_syscallEntry[i].getHash() == hash)
-			{
-				return m_syscallEntry[i].getSyscallAddress();
-			}
-		}
+        {
+            if(m_syscallEntry[i].getHash() == hash)
+            {
+                return m_syscallEntry[i].getSyscallAddress();
+            }
+        }
         return NULL;
     }
 };

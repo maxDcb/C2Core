@@ -39,7 +39,7 @@ int main()
         return -1;
     }
 
-	
+    
 
     std::string destinationBuffer = "test";
     std::string payload = "test";
@@ -98,7 +98,7 @@ int main()
     static OBJECT_ATTRIBUTES zoa = { sizeof(zoa) };
     CLIENT_ID pid;
     pid.UniqueProcess = (HANDLE)dwPid;
-	pid.UniqueThread = 0;
+    pid.UniqueThread = 0;
     status = Sw3NtOpenProcess_(&handle, PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, &zoa, (CLIENT_ID*)&pid);
     if(status!=0)
     {

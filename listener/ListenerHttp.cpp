@@ -127,7 +127,7 @@ ListenerHttp::~ListenerHttp()
 
 void ListenerHttp::launchHttpServ()
 {
-	httplib::Response res;
+    httplib::Response res;
 
         json uri = json::array();
         std::string uriFileDownload = m_listenerConfig.value("uriFileDownload", std::string{});
@@ -159,7 +159,7 @@ void ListenerHttp::launchHttpServ()
         }
 #endif
 
-	// Filter to match the URI of the config file or the file download URI
+    // Filter to match the URI of the config file or the file download URI
         m_svr->set_post_routing_handler([&, uriFileDownload](const auto& req, auto& res)
         {
                 bool isUri = false;
@@ -239,16 +239,16 @@ void ListenerHttp::launchHttpServ()
 #ifdef BUILD_TEAMSERVER
                                 // m_logger->info("Get connection: {0}", req.path);
 #endif
-				if (req.has_header("Authorization")) 
-				{
-					// jwt should contained Bearer b64data.b6data.beaconData
-					std::string jwt = req.get_header_value("Authorization");
+                if (req.has_header("Authorization")) 
+                {
+                    // jwt should contained Bearer b64data.b6data.beaconData
+                    std::string jwt = req.get_header_value("Authorization");
 
-					std::string data;
-					char delimiter = '.';
-					size_t pos = jwt.find_last_of(delimiter);
-					if (pos != std::string::npos) 
-						data = jwt.substr(pos + 1);
+                    std::string data;
+                    char delimiter = '.';
+                    size_t pos = jwt.find_last_of(delimiter);
+                    if (pos != std::string::npos) 
+                        data = jwt.substr(pos + 1);
 
                                         if(!data.empty())
                                         {
@@ -292,38 +292,38 @@ void ListenerHttp::launchHttpServ()
                 });
         }
 
-	// File Server
-	if(!uriFileDownload.empty())
-	{
-		std::string fileDownloadReg = uriFileDownload;
-		fileDownloadReg+=":filename";
-		m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
-		{
-			bool deleteFile=false;
-			auto it = req.headers.find("OneTimeDownload");
-			if (it != req.headers.end()) 
-			{
-				std::string header_value = it->second;
-				deleteFile=true;
-			} 
+    // File Server
+    if(!uriFileDownload.empty())
+    {
+        std::string fileDownloadReg = uriFileDownload;
+        fileDownloadReg+=":filename";
+        m_svr->Get(fileDownloadReg, [&](const Request& req, Response& res) 
+        {
+            bool deleteFile=false;
+            auto it = req.headers.find("OneTimeDownload");
+            if (it != req.headers.end()) 
+            {
+                std::string header_value = it->second;
+                deleteFile=true;
+            } 
 
 #ifdef BUILD_TEAMSERVER
                         if(m_logger && m_logger->should_log(spdlog::level::debug))
                                 m_logger->debug("File server connection: {}, OneTimeDownload {}", req.path, deleteFile);
 #endif
 
-			std::string filename = req.path_params.at("filename");
-			std::string filePath = downloadFolder;
-			filePath+="/";
-			filePath+=filename;
-			std::ifstream file(filePath, std::ios::binary);
+            std::string filename = req.path_params.at("filename");
+            std::string filePath = downloadFolder;
+            filePath+="/";
+            filePath+=filename;
+            std::ifstream file(filePath, std::ios::binary);
 
-			if (file) 
-			{
+            if (file) 
+            {
                                 
 
-				std::string buffer;
-				buffer.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+                std::string buffer;
+                buffer.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 
 #ifdef BUILD_TEAMSERVER
                                 std::string md5 = computeBufferMd5(buffer);
@@ -335,38 +335,38 @@ void ListenerHttp::launchHttpServ()
                                 );
 #endif
 
-				res.set_content(buffer, "application/x-binary");
+                res.set_content(buffer, "application/x-binary");
 
-				file.close();
-				if(deleteFile)
-				{
+                file.close();
+                if(deleteFile)
+                {
 #ifdef BUILD_TEAMSERVER
                                         if(m_logger)
                                                 m_logger->info("Delete file {}", filePath);
 #endif
-					// std::string backUpFile = filePath+".DELETED";
-					// std::rename(filePath.data(), backUpFile.data());
-					std::remove(filePath.data());
-				}
-			} 
-			else 
-			{
+                    // std::string backUpFile = filePath+".DELETED";
+                    // std::rename(filePath.data(), backUpFile.data());
+                    std::remove(filePath.data());
+                }
+            } 
+            else 
+            {
 #ifdef BUILD_TEAMSERVER
                                 if(m_logger)
                                         m_logger->warn("File server: File not found at {}", filePath);
 #endif
-				res.status = 404;
-			}
-		});
-	}
+                res.status = 404;
+            }
+        });
+    }
 
-	m_svr->listen(m_host.c_str(), m_port);
+    m_svr->listen(m_host.c_str(), m_port);
 }
 
 
 int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& res)
 {
-	string input = req.body;
+    string input = req.body;
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -376,11 +376,11 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
         }
 #endif
 
-	string output;
-	bool ret = handleMessages(input, output);
+    string output;
+    bool ret = handleMessages(input, output);
 
 
-	json httpHeaders;
+    json httpHeaders;
         try
         {
                 httpHeaders = m_listenerConfig.at("server").at("headers");
@@ -394,22 +394,22 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
                 return -1;
         }
 
-	httplib::Headers httpServerHeaders;
-	for (auto& it : httpHeaders.items())
-		httpServerHeaders.insert({(it).key(), (it).value()});
-	res.headers = httpServerHeaders;
+    httplib::Headers httpServerHeaders;
+    for (auto& it : httpHeaders.items())
+        httpServerHeaders.insert({(it).key(), (it).value()});
+    res.headers = httpServerHeaders;
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
                 m_logger->trace("output.size {}", std::to_string(output.size()));
 #endif
 
-	if(ret)
-		res.body = output;
-	else
-		res.status = 200;
+    if(ret)
+        res.body = output;
+    else
+        res.status = 200;
 
-	return 0;
+    return 0;
 }
 
 
@@ -423,11 +423,11 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
         }
 #endif
 
-	string output;
-	bool ret = handleMessages(requestData, output);
+    string output;
+    bool ret = handleMessages(requestData, output);
 
 
-	json httpHeaders;
+    json httpHeaders;
         try
         {
                 httpHeaders = m_listenerConfig.at("server").at("headers");
@@ -441,20 +441,20 @@ int ListenerHttp::HandleCheckIn(const std::string& requestData, httplib::Respons
                 return -1;
         }
 
-	httplib::Headers httpServerHeaders;
-	for (auto& it : httpHeaders.items())
-		httpServerHeaders.insert({(it).key(), (it).value()});
-	res.headers = httpServerHeaders;
+    httplib::Headers httpServerHeaders;
+    for (auto& it : httpHeaders.items())
+        httpServerHeaders.insert({(it).key(), (it).value()});
+    res.headers = httpServerHeaders;
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
                 m_logger->trace("output.size {}", std::to_string(output.size()));
 #endif
 
-	if(ret)
-		res.body = output;
-	else
-		res.status = 200;
+    if(ret)
+        res.body = output;
+    else
+        res.status = 200;
 
-	return 0;
+    return 0;
 }

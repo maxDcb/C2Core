@@ -6,7 +6,7 @@ DWORD GlobalHash = 0x0;
 
 EXTERN_C DWORD getGlobalHash()
 {
-	return GlobalHash;
+    return GlobalHash;
 }
 
 
@@ -17,7 +17,7 @@ DWORD SW3_HashSyscall(const char *FunctionName)
 
     int c;
     while (c = *FunctionName++) 
-	{
+    {
         Hash ^= c;                 // XOR the byte into the lowest byte of the hash
         Hash *= FNV_prime;          // Multiply by FNV prime
     }
@@ -44,14 +44,14 @@ SyscallList *SyscallList::GetInstance()
 
 EXTERN_C DWORD SW3_GetSyscallNumber(DWORD FunctionHash)
 {
-	SyscallList* singleton = SyscallList::GetInstance();
-	return singleton->getSyscallNumber(FunctionHash);
+    SyscallList* singleton = SyscallList::GetInstance();
+    return singleton->getSyscallNumber(FunctionHash);
 }
 
 
 EXTERN_C PVOID SW3_GetSyscallAddress(DWORD FunctionHash)
 {
-	SyscallList* singleton = SyscallList::GetInstance();
-	return singleton->getSyscallAddress(FunctionHash);
+    SyscallList* singleton = SyscallList::GetInstance();
+    return singleton->getSyscallAddress(FunctionHash);
 }
 

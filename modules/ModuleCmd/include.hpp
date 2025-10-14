@@ -7,91 +7,91 @@
 #define SW3_RVA2VA(Type, DllBase, Rva) (Type)((ULONG_PTR) DllBase + Rva)
 
 typedef struct _SW3_PEB_LDR_DATA {
-	BYTE Reserved1[8];
-	PVOID Reserved2[3];
-	LIST_ENTRY InMemoryOrderModuleList;
+    BYTE Reserved1[8];
+    PVOID Reserved2[3];
+    LIST_ENTRY InMemoryOrderModuleList;
 } SW3_PEB_LDR_DATA, *PSW3_PEB_LDR_DATA;
 
 typedef struct _SW3_LDR_DATA_TABLE_ENTRY {
-	PVOID Reserved1[2];
-	LIST_ENTRY InMemoryOrderLinks;
-	PVOID Reserved2[2];
-	PVOID DllBase;
+    PVOID Reserved1[2];
+    LIST_ENTRY InMemoryOrderLinks;
+    PVOID Reserved2[2];
+    PVOID DllBase;
 } SW3_LDR_DATA_TABLE_ENTRY, *PSW3_LDR_DATA_TABLE_ENTRY;
 
 typedef struct _SW3_PEB {
-	BYTE Reserved1[2];
-	BYTE BeingDebugged;
-	BYTE Reserved2[1];
-	PVOID Reserved3[2];
-	PSW3_PEB_LDR_DATA Ldr;
+    BYTE Reserved1[2];
+    BYTE BeingDebugged;
+    BYTE Reserved2[1];
+    PVOID Reserved3[2];
+    PSW3_PEB_LDR_DATA Ldr;
 } SW3_PEB, *PSW3_PEB;
 
 typedef struct _PS_ATTRIBUTE
 {
-	ULONG  Attribute;
-	SIZE_T Size;
-	union
-	{
-		ULONG Value;
-		PVOID ValuePtr;
-	} u1;
-	PSIZE_T ReturnLength;
+    ULONG  Attribute;
+    SIZE_T Size;
+    union
+    {
+        ULONG Value;
+        PVOID ValuePtr;
+    } u1;
+    PSIZE_T ReturnLength;
 } PS_ATTRIBUTE, *PPS_ATTRIBUTE;
 
 // typedef struct _UNICODE_STRING
 // {
-// 	USHORT Length;
-// 	USHORT MaximumLength;
-// 	PWSTR  Buffer;
+//     USHORT Length;
+//     USHORT MaximumLength;
+//     PWSTR  Buffer;
 // } UNICODE_STRING, *PUNICODE_STRING;
 
 // typedef struct _OBJECT_ATTRIBUTES
 // {
-// 	ULONG           Length;
-// 	HANDLE          RootDirectory;
-// 	PUNICODE_STRING ObjectName;
-// 	ULONG           Attributes;
-// 	PVOID           SecurityDescriptor;
-// 	PVOID           SecurityQualityOfService;
+//     ULONG           Length;
+//     HANDLE          RootDirectory;
+//     PUNICODE_STRING ObjectName;
+//     ULONG           Attributes;
+//     PVOID           SecurityDescriptor;
+//     PVOID           SecurityQualityOfService;
 // } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
 
 // typedef struct _CLIENT_ID
 // {
-// 	HANDLE UniqueProcess;
-// 	HANDLE UniqueThread;
+//     HANDLE UniqueProcess;
+//     HANDLE UniqueThread;
 // } CLIENT_ID, *PCLIENT_ID;
 
 typedef struct _PS_ATTRIBUTE_LIST
 {
-	SIZE_T       TotalLength;
-	PS_ATTRIBUTE Attributes[1];
+    SIZE_T       TotalLength;
+    PS_ATTRIBUTE Attributes[1];
 } PS_ATTRIBUTE_LIST, *PPS_ATTRIBUTE_LIST;
 
 typedef enum _MEMORY_INFORMATION_CLASS
 {
-	MemoryBasicInformation,
-	MemoryWorkingSetInformation,
-	MemoryMappedFilenameInformation,
-	MemoryRegionInformation,
-	MemoryWorkingSetExInformation,
-	MemorySharedCommitInformation,
-	MemoryImageInformation,
-	MemoryRegionInformationEx,
-	MemoryPrivilegedBasicInformation,
-	MemoryEnclaveImageInformation,
-	MemoryBasicInformationCapped
+    MemoryBasicInformation,
+    MemoryWorkingSetInformation,
+    MemoryMappedFilenameInformation,
+    MemoryRegionInformation,
+    MemoryWorkingSetExInformation,
+    MemorySharedCommitInformation,
+    MemoryImageInformation,
+    MemoryRegionInformationEx,
+    MemoryPrivilegedBasicInformation,
+    MemoryEnclaveImageInformation,
+    MemoryBasicInformationCapped
 } MEMORY_INFORMATION_CLASS, *PMEMORY_INFORMATION_CLASS;
 
 
 #ifndef InitializeObjectAttributes
 #define InitializeObjectAttributes( p, n, a, r, s ) { \
-	(p)->Length = sizeof( OBJECT_ATTRIBUTES );        \
-	(p)->RootDirectory = r;                           \
-	(p)->Attributes = a;                              \
-	(p)->ObjectName = n;                              \
-	(p)->SecurityDescriptor = s;                      \
-	(p)->SecurityQualityOfService = NULL;             \
+    (p)->Length = sizeof( OBJECT_ATTRIBUTES );        \
+    (p)->RootDirectory = r;                           \
+    (p)->Attributes = a;                              \
+    (p)->ObjectName = n;                              \
+    (p)->SecurityDescriptor = s;                      \
+    (p)->SecurityQualityOfService = NULL;             \
 }
 #endif
 

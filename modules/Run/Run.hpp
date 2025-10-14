@@ -3,7 +3,7 @@
 #include "ModuleCmd.hpp"
 
 #ifdef _WIN32
-	#include <Windows.h>
+    #include <Windows.h>
 #endif
 
 
@@ -11,25 +11,25 @@ class Run : public ModuleCmd
 {
 
 public:
-	Run();
-	~Run();
+    Run();
+    ~Run();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_LINUX | OS_WINDOWS;
     }
 
 private:
-	std::string execBash(const std::string& cmd);
+    std::string execBash(const std::string& cmd);
 
 #ifdef _WIN32
-	bool m_isProcessRuning;
-	HANDLE m_processHandle;
-	int killProcess();
+    bool m_isProcessRuning;
+    HANDLE m_processHandle;
+    int killProcess();
 #endif
 };
 

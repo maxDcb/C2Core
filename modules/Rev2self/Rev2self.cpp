@@ -35,9 +35,9 @@ __attribute__((visibility("default"))) Rev2self* Rev2selfConstructor()
 
 Rev2self::Rev2self()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -48,14 +48,14 @@ Rev2self::~Rev2self()
 
 std::string Rev2self::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "rev2self:\n";
-	info += "Drop the impersonation of a token, created with makeToken\n";
-	info += "exemple:\n";
-	info += "- rev2self\n";
+    info += "rev2self:\n";
+    info += "Drop the impersonation of a token, created with makeToken\n";
+    info += "exemple:\n";
+    info += "- rev2self\n";
 #endif
-	return info;
+    return info;
 }
 
 int Rev2self::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -63,7 +63,7 @@ int Rev2self::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("");
 
-	return 0;
+    return 0;
 }
 
 
@@ -72,16 +72,16 @@ int Rev2self::process(C2Message &c2Message, C2Message &c2RetMessage)
     std::string out = rev2self();
 
     c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd("");
-	c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_returnvalue(out);
 
-	return 0;
+    return 0;
 }
 
 
 std::string Rev2self::rev2self()
 {
-	std::string result;
+    std::string result;
 
 #ifdef __linux__ 
 
@@ -94,5 +94,5 @@ std::string Rev2self::rev2self()
         result += "Fail to revert to self.\n";
 #endif
 
-	return result;
+    return result;
 }

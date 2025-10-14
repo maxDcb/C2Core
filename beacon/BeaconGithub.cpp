@@ -70,8 +70,8 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
 
         json httpHeaders = {
             { "Accept", "application/vnd.github+json" },
-			{ "Authorization", auth },
-			{ "Cookie", "logged_in=no" }
+            { "Authorization", auth },
+            { "Cookie", "logged_in=no" }
             };
 
         for (auto& it : httpHeaders.items())
@@ -115,9 +115,9 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
             // Check for available data.
             dwSize = 0;
             if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-			{
+            {
                 // printf("Error %u in WinHttpQueryDataAvailable.\n", GetLastError());
-			}
+            }
 
             // Allocate space for the buffer.
             pszOutBuffer = new char[dwSize + 1];
@@ -133,9 +133,9 @@ int BeaconGithub::GithubPost(const string& domain, const string& url, const stri
 
                 DWORD dwDownloaded = 0;
                 if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
-				{
+                {
                     // printf("Error %u in WinHttpReadData.\n", GetLastError());
-				}
+                }
                 else
                 {
                     // printf("%s", pszOutBuffer);
@@ -198,8 +198,8 @@ int BeaconGithub::GithubGet(const string& domain, const string& url, string& res
 
         json httpHeaders = {
             { "Accept", "application/vnd.github+json" },
-			{ "Authorization", auth },
-			{ "Cookie", "logged_in=no" }
+            { "Authorization", auth },
+            { "Cookie", "logged_in=no" }
             };
 
         for (auto& it : httpHeaders.items())
@@ -239,9 +239,9 @@ int BeaconGithub::GithubGet(const string& domain, const string& url, string& res
             // Check for available data.
             dwSize = 0;
             if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-			{
+            {
                 // printf("Error %u in WinHttpQueryDataAvailable.\n", GetLastError());
-			}
+            }
 
             // Allocate space for the buffer.
             pszOutBuffer = new char[dwSize + 1];
@@ -257,9 +257,9 @@ int BeaconGithub::GithubGet(const string& domain, const string& url, string& res
 
                 DWORD dwDownloaded = 0;
                 if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
-				{
+                {
                     // printf("Error %u in WinHttpReadData.\n", GetLastError());
-				}
+                }
                 else
                 {
                     // printf("%s", pszOutBuffer);
@@ -307,9 +307,9 @@ int BeaconGithub::HandleRequest(const string& domain, const string& url)
             if(nbComments!=0)
             {
                 std::string issueEndpoint = "/repos/";
-                issueEndpoint += m_project;	
+                issueEndpoint += m_project;    
                 issueEndpoint += "/issues/";
-                issueEndpoint += std::to_string(number);	
+                issueEndpoint += std::to_string(number);    
                 issueEndpoint += "/comments";
 
                 statusCode = GithubGet(domain, issueEndpoint, response);
@@ -351,9 +351,9 @@ int BeaconGithub::HandleRequest(const string& domain, const string& url)
 
                 // close the issue
                 std::string issueEndpoint = "/repos/";
-                issueEndpoint += m_project;	
+                issueEndpoint += m_project;    
                 issueEndpoint += "/issues/";
-                issueEndpoint += std::to_string(number);	
+                issueEndpoint += std::to_string(number);    
 
                 // Post data
                 json responseData = {{"state", "closed"}};
@@ -372,7 +372,7 @@ int BeaconGithub::HandleRequest(const string& domain, const string& url)
 
 
 BeaconGithub::BeaconGithub(std::string& config, const std::string& project, const std::string& token)
-	: Beacon()
+    : Beacon()
     , m_project(project)
     , m_token(token)
 {
@@ -409,8 +409,8 @@ void BeaconGithub::checkIn()
     // httplib::Client cli(url);
 
     // std::string endpoint = "/repos/";
-    // endpoint += m_project;	
-    // endpoint += "/issues";	
+    // endpoint += m_project;    
+    // endpoint += "/issues";    
 
     // std::cout << "endpoint " << endpoint << std::endl;
 
@@ -462,13 +462,13 @@ void BeaconGithub::checkIn()
 
     //             std::string number = issue["number"];
     //             std::string issueEndpoint = "/repos/";
-    //             issueEndpoint += m_project;	
+    //             issueEndpoint += m_project;    
     //             issueEndpoint += "/issues/";
-    //             issueEndpoint += number;	
+    //             issueEndpoint += number;    
     //             // auto response = cli.Post(issueEndpoint, headers, data, contentType);
     //         }
     //     }
-    // }	
+    // }    
 
 
 #elif _WIN32
@@ -476,13 +476,13 @@ void BeaconGithub::checkIn()
     std::string url = "api.github.com";
 
     std::string endPoint = "/repos/";
-    endPoint += m_project;	
-    endPoint += "/issues";	
+    endPoint += m_project;    
+    endPoint += "/issues";    
 
     std::cout << "endPoint " << endPoint << std::endl;
 
-	std::string output;
-	taskResultsToCmd(output);
+    std::string output;
+    taskResultsToCmd(output);
 
     // Sent response
     // TODO handle big response with multiple comments

@@ -50,11 +50,11 @@ bool testInject()
         output += "\n";
         std::cout << output << std::endl;
 
-	HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-	if (hProc) {
-    		TerminateProcess(hProc, 0);
-    		CloseHandle(hProc);
-	}
+    HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+    if (hProc) {
+            TerminateProcess(hProc, 0);
+            CloseHandle(hProc);
+    }
 #endif
     }
 

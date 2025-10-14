@@ -16,11 +16,11 @@ ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName, con
 {
         m_listenerHash = random_string(SizeListenerHash);
 
-	json metadata;
+    json metadata;
     metadata["1"] = ListenerSmbType;
     metadata["2"] = ip;
     metadata["3"] = pipeName;
-	m_metadata = metadata.dump();
+    m_metadata = metadata.dump();
 
         m_serverSmb = new PipeHandler::Server(pipeName);
 
@@ -50,8 +50,8 @@ ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName, con
 
 ListenerSmb::~ListenerSmb()
 {
-	m_stopThread=true;
-	m_smbServ->join();
+    m_stopThread=true;
+    m_smbServ->join();
 
         delete m_serverSmb;
 
@@ -64,12 +64,12 @@ ListenerSmb::~ListenerSmb()
 
 void ListenerSmb::launchSmbServ()
 {
-	try 
+    try 
     {
-		while(1)
-		{
-			if(m_stopThread)
-				return;
+        while(1)
+        {
+            if(m_stopThread)
+                return;
 
                         m_serverSmb->initServer();
 
@@ -105,13 +105,13 @@ void ListenerSmb::launchSmbServ()
 #endif
                                 }
                         }
-		}
-	}
+        }
+    }
     catch (...)
     {
         return;
     }
 
-	return;
+    return;
 }
 

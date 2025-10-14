@@ -7,29 +7,29 @@ class Evasion : public ModuleCmd
 {
 
 public:
-	Evasion();
-	~Evasion();
+    Evasion();
+    ~Evasion();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 
 private:
 
 #ifdef _WIN32
-	int checkHooks(std::string& result);
-	int unhookFreshCopy(std::string& result);
-	int unhookPerunsFart(std::string& result);
-	int amsiBypass(std::string& result);
-	int introspection(std::string& result, std::string& moduleName);
-	int patchMemory(std::string& result, const std::string& hexAddress, const std::string& patch);
-	int readMemory(std::string& result, const std::string& hexAddress, const int size);
-	int remotePatch(std::string& result);
+    int checkHooks(std::string& result);
+    int unhookFreshCopy(std::string& result);
+    int unhookPerunsFart(std::string& result);
+    int amsiBypass(std::string& result);
+    int introspection(std::string& result, std::string& moduleName);
+    int patchMemory(std::string& result, const std::string& hexAddress, const std::string& patch);
+    int readMemory(std::string& result, const std::string& hexAddress, const int size);
+    int remotePatch(std::string& result);
 #endif
 
 };

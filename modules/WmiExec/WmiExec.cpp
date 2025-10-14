@@ -50,9 +50,9 @@ __attribute__((visibility("default"))) WmiExec* WmiExecConstructor()
 
 WmiExec::WmiExec()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -65,7 +65,7 @@ WmiExec::~WmiExec()
 
 std::string WmiExec::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "WmiExec Module:\n";
     info += "Execute a remote command using Windows Management Instrumentation (WMI).\n";
@@ -81,7 +81,7 @@ std::string WmiExec::getInfo()
     info += "\nNote:\n";
     info += " The command and arguments following the target are passed to the remote process.\n";
 #endif
-	return info;
+    return info;
 }
 
 
@@ -89,8 +89,8 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
    if (splitedCmd.size() >= 5)
-	{
-		string mode = splitedCmd[1];
+    {
+        string mode = splitedCmd[1];
 
         if(mode=="-u")
         {
@@ -170,18 +170,18 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         else
         {
             c2Message.set_returnvalue(getInfo());
-		    return -1;
+            return -1;
         }
 
         c2Message.set_instruction(splitedCmd[0]);
-	}
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+    }
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 
@@ -189,7 +189,7 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 // https://vimalshekar.github.io/codesamples/Launching-a-process-on-remote-machine
 int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	std::string cmd = c2Message.cmd();
+    std::string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedList;
     std::string delimitator;
@@ -558,10 +558,10 @@ int WmiExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     cmd += " ";
     cmd += data;
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(cmd);
-	c2RetMessage.set_returnvalue(result);
-	return 0;
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue(result);
+    return 0;
 }
 
 

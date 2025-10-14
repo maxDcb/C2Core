@@ -44,9 +44,9 @@ __attribute__((visibility("default"))) CoffLoader* CoffConstructor()
 
 CoffLoader::CoffLoader()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -57,24 +57,24 @@ CoffLoader::~CoffLoader()
 
 std::string CoffLoader::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "coffLoader:\n";
-	info += "Load a .o coff file and execute it.\n";
+    info += "coffLoader:\n";
+    info += "Load a .o coff file and execute it.\n";
     info += "Coff take packed argument as entry, you get to specify the type as a string of [Z,z,s,i] for wstring, string, short, int.\n";
-	info += "exemple:\n";
-	info += "- coffLoader ./dir.x64.o go Zs c:\\ 0\n";
+    info += "exemple:\n";
+    info += "- coffLoader ./dir.x64.o go Zs c:\\ 0\n";
     info += "- coffLoader ./whoami.x64.o\n";
 #endif
-	return info;
+    return info;
 }
 
 int CoffLoader::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
     if (splitedCmd.size() < 3)
     {
-		c2Message.set_returnvalue(getInfo());
-		return -1;
+        c2Message.set_returnvalue(getInfo());
+        return -1;
     }
 
     c2Message.set_instruction(splitedCmd[0]);
@@ -116,22 +116,22 @@ int CoffLoader::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
     }
 
 
-	return 0;
+    return 0;
 }
 
 
 int CoffLoader::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	std::string payload = c2Message.data();
+    std::string payload = c2Message.data();
     std::string functionName = c2Message.cmd();
     std::string args = c2Message.args();
 
-	std::string result = coffLoader(payload, functionName, args);
+    std::string result = coffLoader(payload, functionName, args);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_returnvalue(result);
 
-	return 0;
+    return 0;
 }
 
 
@@ -191,5 +191,5 @@ std::string CoffLoader::coffLoader(std::string& payload, std::string& functionNa
     }
 #endif
 
-	return result;
+    return result;
 }
