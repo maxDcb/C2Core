@@ -1,9 +1,27 @@
 #include "ListenerHttp.hpp"
+#include <openssl/md5.h>
 
 using namespace std;
 using namespace httplib;
 using json = nlohmann::json;
 
+
+static std::string computeBufferMd5(const std::string& buffer)
+{
+    if (buffer.empty()) return "";
+
+    unsigned char result[MD5_DIGEST_LENGTH];
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, buffer.data(), buffer.size());
+    MD5_Final(result, &ctx);
+
+    std::ostringstream oss;
+    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i)
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)result[i];
+
+    return oss.str();
+}
 
 ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann::json& config, bool isHttps)
         : Listener(ip, std::to_string(localPort), (isHttps==true) ? ListenerHttpsType : ListenerHttpType)
@@ -302,8 +320,20 @@ void ListenerHttp::launchHttpServ()
 
 			if (file) 
 			{
+                                
+
 				std::string buffer;
 				buffer.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+
+#ifdef BUILD_TEAMSERVER
+                                std::string md5 = computeBufferMd5(buffer);
+                                m_logger->info(
+                                        "File served: '{}' | size={} bytes | MD5={}",
+                                        filePath,
+                                        buffer.size(),
+                                        md5
+                                );
+#endif
 
 				res.set_content(buffer, "application/x-binary");
 
