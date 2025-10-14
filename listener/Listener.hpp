@@ -8,6 +8,7 @@
 #include <CommonCommand.hpp>
 #include <Session.hpp>
 #include <Common.hpp>
+#include <nlohmann/json.hpp>
 
 #ifdef BUILD_TEAMSERVER
 #include "spdlog/spdlog.h"
@@ -64,10 +65,10 @@ public:
 	}
 
 protected:
-	bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	bool handleMessages(const std::string& input, std::string& output);
+        bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+        bool handleMessages(const std::string& input, std::string& output);
 
-	std::string m_key;
+        std::string m_key;
 	std::string m_param1;
 	std::string m_param2;
 	std::string m_type;
@@ -82,7 +83,10 @@ protected:
 	std::vector<std::shared_ptr<SocksSession>> m_socksSessions;
 
 #ifdef BUILD_TEAMSERVER
-	std::shared_ptr<spdlog::logger> m_logger;
+        std::shared_ptr<spdlog::logger> m_logger;
+        static spdlog::level::level_enum resolveLogLevel(const nlohmann::json& globalConfig,
+                                                         const nlohmann::json* listenerConfig = nullptr,
+                                                         spdlog::level::level_enum fallback = spdlog::level::info);
 #endif
 
 private:

@@ -5,9 +5,9 @@ using namespace std;
 using json = nlohmann::json;
 
 
-ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
-	: Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
-	, m_stopThread(true)
+ListenerTcp::ListenerTcp(const std::string& ip, int localPort, const nlohmann::json& config)
+        : Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
+        , m_stopThread(true)
 {
 	m_listenerHash = random_string(SizeListenerHash);
 
@@ -25,17 +25,19 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort)
 	// Logger
 	std::vector<spdlog::sink_ptr> sinks;
 
-	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console_sink->set_level(spdlog::level::info);
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        auto logLevel = resolveLogLevel(config);
+        console_sink->set_level(logLevel);
     sinks.push_back(console_sink);
 
 
-	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
-	file_sink->set_level(spdlog::level::debug);
+        auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
+        file_sink->set_level(spdlog::level::trace);
 	sinks.push_back(file_sink);
 
     m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerTcpType+"_"+std::to_string(localPort)+"_"+m_listenerHash.substr(0,8), begin(sinks), end(sinks));
-	m_logger->set_level(spdlog::level::debug);
+        m_logger->set_level(logLevel);
+        m_logger->info("Initializing TCP listener on port {}", localPort);
 #endif
 }
 
@@ -57,7 +59,8 @@ int ListenerTcp::init()
 			{			
 				// std::cout << "Unable to start the SocksServer on port " << m_port << " after " << maxAttempt << " attempts" << std::endl;
 #ifdef BUILD_TEAMSERVER
-				m_logger->error("Unable to start the SocksServer on port {0}", m_port);
+                                if(m_logger)
+                                        m_logger->error("Unable to start the SocksServer on port {}", m_port);
 #endif
 			}
 		}
@@ -69,7 +72,8 @@ int ListenerTcp::init()
 		}
 
 #ifdef BUILD_TEAMSERVER
-		m_logger->info("Server started on port {0}", m_port);
+                if(m_logger)
+                        m_logger->info("TCP listener started on port {}", m_port);
 #endif
 
 		m_stopThread=false;
@@ -79,7 +83,8 @@ int ListenerTcp::init()
 	{
 		// std::cout << e.what() << '\n';
 #ifdef BUILD_TEAMSERVER
-		m_logger->error("{0}", e.what());
+                if(m_logger)
+                        m_logger->error("TCP listener initialization failure: {}", e.what());
 #endif
 		return -1;
 	}
@@ -99,7 +104,8 @@ ListenerTcp::~ListenerTcp()
 	delete m_serverTcp;
 
 #ifdef BUILD_TEAMSERVER
-		m_logger->info("Server stoped on port {0}", m_port);
+        if(m_logger)
+                m_logger->info("TCP listener stopped on port {}", m_port);
 #endif
 }
 
@@ -137,10 +143,14 @@ void ListenerTcp::launchTcpServ()
 					std::string input;
 					int res = m_serverTcp->m_socketTunnelServers[i]->recv(input);
 
-					if(res<0)
-					{
-						m_serverTcp->m_socketTunnelServers[i].reset(nullptr);
-					}
+                                        if(res<0)
+                                        {
+                                                m_serverTcp->m_socketTunnelServers[i].reset(nullptr);
+#ifdef BUILD_TEAMSERVER
+                                                if(m_logger)
+                                                        m_logger->warn("Closed TCP tunnel {} due to read failure", i);
+#endif
+                                        }
 					else if(!input.empty())
 					{
 						std::vector<std::string> trames;

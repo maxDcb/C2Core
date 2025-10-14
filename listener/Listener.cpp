@@ -1,5 +1,9 @@
 #include "Listener.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <optional>
+
 #ifdef __linux__
 #include <unistd.h>
 #elif _WIN32
@@ -16,6 +20,59 @@ constexpr std::string_view mainKeyConfig = ".CRT$XCL";
 
 // compile time encryption
 constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
+
+#ifdef BUILD_TEAMSERVER
+namespace
+{
+spdlog::level::level_enum levelFromString(const std::string& levelStr, spdlog::level::level_enum fallback)
+{
+        std::string lowered = levelStr;
+        std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c)
+        {
+                return static_cast<char>(std::tolower(c));
+        });
+
+        if(lowered == "trace")
+                return spdlog::level::trace;
+        if(lowered == "debug")
+                return spdlog::level::debug;
+        if(lowered == "info")
+                return spdlog::level::info;
+        if(lowered == "warning" || lowered == "warn")
+                return spdlog::level::warn;
+        if(lowered == "error")
+                return spdlog::level::err;
+        if(lowered == "fatal" || lowered == "critical")
+                return spdlog::level::critical;
+
+        return fallback;
+}
+}
+
+spdlog::level::level_enum Listener::resolveLogLevel(const nlohmann::json& globalConfig,
+                                                    const nlohmann::json* listenerConfig,
+                                                    spdlog::level::level_enum fallback)
+{
+        auto readLevel = [](const nlohmann::json& cfg) -> std::optional<std::string>
+        {
+                auto it = cfg.find("LogLevel");
+                if(it != cfg.end() && it->is_string())
+                        return it->get<std::string>();
+                return std::nullopt;
+        };
+
+        if(listenerConfig)
+        {
+                if(auto level = readLevel(*listenerConfig))
+                        return levelFromString(*level, fallback);
+        }
+
+        if(auto level = readLevel(globalConfig))
+                return levelFromString(*level, fallback);
+
+        return fallback;
+}
+#endif
 
 
 Listener::Listener(const std::string& param1, const std::string& param2, const std::string& type)
@@ -166,9 +223,18 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
 
                         // Add the listener to the matching session if it doesn't already exist.
                         (*it)->addListener(listenerHash, type, param1, param2);
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger)
+                                m_logger->info("Listener {} registered child listener {} ({})", beaconHash, listenerHash, type);
+#endif
                         break;
                 }
         }
+
+#ifdef BUILD_TEAMSERVER
+        if(!sessionExist && m_logger)
+                m_logger->warn("Unable to register listener {} for beacon {} - session not found", listenerHash, beaconHash);
+#endif
 
         // Return true if the session was found and updated, false otherwise.
         return sessionExist;
@@ -186,9 +252,17 @@ bool Listener::rmSessionListener(const std::string& beaconHash, const std::strin
                 {
                         sessionExist=true;
                         (*it)->rmListener(listenerHash);
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger)
+                                m_logger->info("Removed listener {} from beacon {}", listenerHash, beaconHash);
+#endif
                         break;
                 }
         }
+#ifdef BUILD_TEAMSERVER
+        if(!sessionExist && m_logger)
+                m_logger->warn("Unable to remove listener {} for beacon {} - session not found", listenerHash, beaconHash);
+#endif
         return sessionExist;
 }
 
@@ -216,6 +290,10 @@ bool Listener::markSessionKilled(const std::string& beaconHash)
                 {
                         sessionExist=true;
                         (*it)->setSessionKilled();
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger)
+                                m_logger->info("Marked session for beacon {} as terminated", beaconHash);
+#endif
                         break;
                 }
         }
@@ -240,9 +318,17 @@ bool Listener::addTask(const C2Message& task, const std::string& beaconHash)
                 {
                         sessionExist=true;
                         (*it)->addTask(task);
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger && m_logger->should_log(spdlog::level::debug))
+                                m_logger->debug("Queued task for beacon {}", beaconHash);
+#endif
                         break;
                 }
         }
+#ifdef BUILD_TEAMSERVER
+        if(!sessionExist && m_logger)
+                m_logger->warn("Failed to queue task for beacon {} - session not found", beaconHash);
+#endif
         return sessionExist;
 }
 
@@ -276,9 +362,17 @@ bool Listener::addTaskResult(const C2Message& taskResult, const std::string& bea
                 {
                         sessionExist=true;
                         (*it)->addTaskResult(taskResult);
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger)
+                                m_logger->info("Received task result for beacon {}", beaconHash);
+#endif
                         break;
                 }
         }
+#ifdef BUILD_TEAMSERVER
+        if(!sessionExist && m_logger)
+                m_logger->warn("Failed to add task result for beacon {} - session not found", beaconHash);
+#endif
         return sessionExist;
 }
 
@@ -329,9 +423,17 @@ bool Listener::addSocksTaskResult(const C2Message& taskResult, const std::string
                 {
                         sessionExist=true;
                         (*it)->addTaskResult(taskResult);
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger && m_logger->should_log(spdlog::level::debug))
+                                m_logger->debug("Queued socks task result for beacon {}", beaconHash);
+#endif
                         break;
                 }
         }
+#ifdef BUILD_TEAMSERVER
+        if(!sessionExist && m_logger)
+                m_logger->warn("Failed to queue socks task result for beacon {} - session not found", beaconHash);
+#endif
         return sessionExist;
 }
 
@@ -389,10 +491,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 		bool isExist = isSessionExist(beaconHash, listenerhash);
 
 		// If the session does not exist, create a new one
-		if(isExist==false)
-		{
-			// TODO if no info are provided, queu a getInfo cmd
-                        SPDLOG_DEBUG("beaconHash {0}, listenerhash {1}", beaconHash, listenerhash);
+                if(isExist==false)
+                {
+                        // TODO if no info are provided, queu a getInfo cmd
+#ifdef BUILD_TEAMSERVER
+                        if(m_logger)
+                                m_logger->info("Registering new session for beacon {} handled by listener {}", beaconHash, listenerhash);
+#endif
 
 			std::string username = bundleC2Message->username();
 			std::string hostname = bundleC2Message->hostname();
@@ -421,7 +526,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 		{
 			const C2Message& c2Message = bundleC2Message->c2messages(j);
 
-			addTaskResult(c2Message, beaconHash);
+                        addTaskResult(c2Message, beaconHash);
 
 			// Handle instruction that have impact on this Listener
 			// Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
@@ -450,6 +555,10 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
                                 {
                                         std::shared_ptr<SocksSession> session = std::make_shared<SocksSession>(listenerhash, beaconHash);
                                         m_socksSessions.push_back(std::move(session));
+#ifdef BUILD_TEAMSERVER
+                                        if(m_logger)
+                                                m_logger->info("Created socks session for beacon {} via listener {}", beaconHash, listenerhash);
+#endif
                                 }
 
 				addSocksTaskResult(c2Message, beaconHash);

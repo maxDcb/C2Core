@@ -5,11 +5,11 @@ using namespace httplib;
 using json = nlohmann::json;
 
 
-ListenerGithub::ListenerGithub(const std::string& project, const std::string& token)
-	: Listener(project, token, ListenerGithubType)
-	, m_project(project)
-	, m_token(token)
-{	
+ListenerGithub::ListenerGithub(const std::string& project, const std::string& token, const nlohmann::json& config)
+        : Listener(project, token, ListenerGithubType)
+        , m_project(project)
+        , m_token(token)
+{
 	m_listenerHash = random_string(SizeListenerHash);
 
 	json metadata;
@@ -22,20 +22,22 @@ ListenerGithub::ListenerGithub(const std::string& project, const std::string& to
 	this->m_githubFetcher = std::make_unique<std::thread>(&ListenerGithub::checkGithubIssues, this);
 
 #ifdef BUILD_TEAMSERVER
-	// Logger
-	std::vector<spdlog::sink_ptr> sinks;
+        // Logger
+        std::vector<spdlog::sink_ptr> sinks;
 
-	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	console_sink->set_level(spdlog::level::info);
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        auto logLevel = resolveLogLevel(config);
+        console_sink->set_level(logLevel);
     sinks.push_back(console_sink);
 
 
-	auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerGithubType+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
-	file_sink->set_level(spdlog::level::debug);
-	sinks.push_back(file_sink);
+        auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/Listener_"+ListenerGithubType+"_"+m_listenerHash+".txt", 1024*1024*10, 3);
+        file_sink->set_level(spdlog::level::trace);
+        sinks.push_back(file_sink);
 
     m_logger = std::make_shared<spdlog::logger>("Listener_"+ListenerGithubType+"_"+m_listenerHash.substr(0,8), begin(sinks), end(sinks));
-	m_logger->set_level(spdlog::level::debug);
+        m_logger->set_level(logLevel);
+        m_logger->info("Initializing GitHub listener for project {}", project);
 #endif
 }
 
@@ -46,7 +48,8 @@ ListenerGithub::~ListenerGithub()
 	m_githubFetcher->join();
 
 #ifdef BUILD_TEAMSERVER
-		m_logger->info("Listener Github stoped");
+        if(m_logger)
+                m_logger->info("Listener Github stopped");
 #endif
 }
 

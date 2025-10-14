@@ -10,7 +10,7 @@ class ListenerGithub : public Listener
 {
 
 public:
-	ListenerGithub(const std::string& project, const std::string& token);
+        ListenerGithub(const std::string& project, const std::string& token, const nlohmann::json& config = nlohmann::json::object());
 	~ListenerGithub();
 
 private:
