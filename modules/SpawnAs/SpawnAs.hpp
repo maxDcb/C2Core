@@ -7,15 +7,15 @@ class SpawnAs : public ModuleCmd
 {
 
 public:
-	SpawnAs();
-	~SpawnAs();
+    SpawnAs();
+    ~SpawnAs();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 

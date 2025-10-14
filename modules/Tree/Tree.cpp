@@ -34,9 +34,9 @@ __attribute__((visibility("default"))) Tree * TreeConstructor()
 
 Tree::Tree()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -47,7 +47,7 @@ Tree::~Tree()
 
 std::string Tree::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "Tree Module:\n";
     info += "Recursively list the directory structure of a given path on the victim machine.\n";
@@ -56,7 +56,7 @@ std::string Tree::getInfo()
     info += "- tree /tmp\n";
     info += "- tree C:\\Users\\Public\n";
 #endif
-	return info;
+    return info;
 }
 
 int Tree::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -70,23 +70,23 @@ int Tree::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         path+=splitedCmd[idx];
     }
 
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd(path);
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_cmd(path);
 #endif
 
-	return 0;
+    return 0;
 }
 
 int Tree::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	string path = c2Message.cmd();
-	std::string outCmd = iterProcess(path, 0);
+    string path = c2Message.cmd();
+    std::string outCmd = iterProcess(path, 0);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(path);
-	c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(path);
+    c2RetMessage.set_returnvalue(outCmd);
 
-	return 0;
+    return 0;
 }
 
 
@@ -137,11 +137,11 @@ std::string Tree::iterProcess(const std::string& path, int depth)
         }
     }
     catch (const std::exception &exc)
-	{
-	    result += "Error: ";
+    {
+        result += "Error: ";
         result += exc.what();
         result += "\n";
     }
 
-	return result;
+    return result;
 }

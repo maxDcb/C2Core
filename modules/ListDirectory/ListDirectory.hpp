@@ -7,20 +7,20 @@ class ListDirectory : public ModuleCmd
 {
 
 public:
-	ListDirectory();
-	~ListDirectory();
+    ListDirectory();
+    ~ListDirectory();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_LINUX | OS_WINDOWS;
     }
 
 private:
-	std::string listDirectory(const std::string& path);
+    std::string listDirectory(const std::string& path);
 
 };
 

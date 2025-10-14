@@ -5,7 +5,7 @@
 
 namespace PipeHandler
 {
-	class Server;
+    class Server;
 }
 
 class ListenerSmb : public Listener
@@ -13,13 +13,13 @@ class ListenerSmb : public Listener
 
 public:
         ListenerSmb(const std::string& ip, const std::string& pipeName, const nlohmann::json& config = nlohmann::json::object());
-	~ListenerSmb();
+    ~ListenerSmb();
 
 private:
-	void launchSmbServ();
+    void launchSmbServ();
 
-	PipeHandler::Server* m_serverSmb;
+    PipeHandler::Server* m_serverSmb;
 
-	bool m_stopThread;
-	std::unique_ptr<std::thread> m_smbServ;
+    bool m_stopThread;
+    std::unique_ptr<std::thread> m_smbServ;
 };

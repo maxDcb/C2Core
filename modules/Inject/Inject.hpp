@@ -3,29 +3,29 @@
 #include "ModuleCmd.hpp"
 
 #ifdef _WIN32
-	#include <Windows.h>
+    #include <Windows.h>
 #endif
 
 class Inject : public ModuleCmd
 {
 
 public:
-	Inject();
-	~Inject();
+    Inject();
+    ~Inject();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int initConfig(const nlohmann::json &config);
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int initConfig(const nlohmann::json &config);
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 
 private:
-	std::string m_processToSpawn;
-	bool m_useSyscall;
+    std::string m_processToSpawn;
+    bool m_useSyscall;
 
 };
 

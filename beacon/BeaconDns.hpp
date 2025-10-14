@@ -4,18 +4,18 @@
 
 namespace dns
 {
-	class Client;
+    class Client;
 }
 
 class BeaconDns : public Beacon
 {
 
 public:
-	BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain);
-	~BeaconDns();
+    BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain);
+    ~BeaconDns();
 
 private:
-	void checkIn();
+    void checkIn();
 
-	dns::Client* m_client;
+    dns::Client* m_client;
 };

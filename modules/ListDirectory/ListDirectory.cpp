@@ -33,9 +33,9 @@ __attribute__((visibility("default"))) ListDirectory * ListDirectoryConstructor(
 
 ListDirectory::ListDirectory()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -46,7 +46,7 @@ ListDirectory::~ListDirectory()
 
 std::string ListDirectory::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "ListDirectory Module:\n";
     info += "List the contents of a directory on the victim machine.\n";
@@ -55,7 +55,7 @@ std::string ListDirectory::getInfo()
     info += "- ls /tmp\n";
     info += "- ls C:\\Users\\Public\n";
 #endif
-	return info;
+    return info;
 }
 
 int ListDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -68,22 +68,22 @@ int ListDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Messa
         path+=splitedCmd[idx];
     }
 
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd(path);
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_cmd(path);
 
-	return 0;
+    return 0;
 }
 
 int ListDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	string path = c2Message.cmd();
-	std::string outCmd = listDirectory(path);
+    string path = c2Message.cmd();
+    std::string outCmd = listDirectory(path);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(path);
-	c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(path);
+    c2RetMessage.set_returnvalue(outCmd);
 
-	return 0;
+    return 0;
 }
 
 struct HumanReadable {
@@ -179,11 +179,11 @@ std::string ListDirectory::listDirectory(const std::string& path)
         }
     }
     catch (const std::exception &exc)
-	{
-	    result += "Error: ";
+    {
+        result += "Error: ";
         result += exc.what();
         result += "\n";
     }
 
-	return result;
+    return result;
 }

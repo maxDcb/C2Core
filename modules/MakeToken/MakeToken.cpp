@@ -46,9 +46,9 @@ __attribute__((visibility("default"))) MakeToken* MakeTokenConstructor()
 
 MakeToken::MakeToken()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -59,14 +59,14 @@ MakeToken::~MakeToken()
 
 std::string MakeToken::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "makeToken:\n";
-	info += "Create a token from user and password and impersonate it. \n";
-	info += "exemple:\n";
-	info += "- makeToken DOMAIN\\Username Password\n";
+    info += "makeToken:\n";
+    info += "Create a token from user and password and impersonate it. \n";
+    info += "exemple:\n";
+    info += "- makeToken DOMAIN\\Username Password\n";
 #endif
-	return info;
+    return info;
 }
 
 int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -104,13 +104,13 @@ int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         c2Message.set_cmd(cmd);
     }
     else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
 
-	return 0;
+    return 0;
 }
 
 
@@ -147,7 +147,7 @@ int MakeToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 // https://github.com/rapid7/meterpreter/blob/master/source/extensions/kiwi/mimikatz/modules/kuhl_m_token.c
 std::string MakeToken::makeToken(const std::string& username, const std::string& domain, const std::string& password)
 {
-	std::string result;
+    std::string result;
 
 #ifdef __linux__ 
 

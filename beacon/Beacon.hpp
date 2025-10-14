@@ -23,29 +23,29 @@ public:
         Beacon();
         virtual ~Beacon() = default;
 
-	bool initConfig(const std::string& config);
-	void run();
+    bool initConfig(const std::string& config);
+    void run();
 
 protected:
-	virtual void  checkIn() = 0;
-	bool runTasks();
-	void sleep();
+    virtual void  checkIn() = 0;
+    bool runTasks();
+    void sleep();
 
-	bool execInstruction(C2Message& c2Message, C2Message& c2RetMessage);
-	bool cmdToTasks(const std::string& input);
-	bool taskResultsToCmd(std::string& output);
+    bool execInstruction(C2Message& c2Message, C2Message& c2RetMessage);
+    bool cmdToTasks(const std::string& input);
+    bool taskResultsToCmd(std::string& output);
 
-	int m_aliveTimerMs;
+    int m_aliveTimerMs;
 
-	std::string m_beaconHash;
-	std::string m_hostname;
-	std::string m_username;
-	std::string m_arch;
-	std::string m_privilege;
-	std::string m_os;
-	std::string m_ips;
-	std::string m_pid;
-	std::string m_additionalInfo;
+    std::string m_beaconHash;
+    std::string m_hostname;
+    std::string m_username;
+    std::string m_arch;
+    std::string m_privilege;
+    std::string m_os;
+    std::string m_ips;
+    std::string m_pid;
+    std::string m_additionalInfo;
 
         std::queue<C2Message> m_tasks;
         std::queue<C2Message> m_taskResult;

@@ -7,20 +7,20 @@ class CoffLoader : public ModuleCmd
 {
 
 public:
-	CoffLoader();
-	~CoffLoader();
+    CoffLoader();
+    ~CoffLoader();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 
 private:
-	std::string coffLoader(std::string& payload, std::string& functionName, std::string& argsCompressed);
+    std::string coffLoader(std::string& payload, std::string& functionName, std::string& argsCompressed);
 
 };
 

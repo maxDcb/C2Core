@@ -7,20 +7,20 @@ class Rev2self : public ModuleCmd
 {
 
 public:
-	Rev2self();
-	~Rev2self();
+    Rev2self();
+    ~Rev2self();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 
 private:
-	std::string rev2self();
+    std::string rev2self();
 };
 
 

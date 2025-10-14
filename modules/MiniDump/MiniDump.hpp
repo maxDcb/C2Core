@@ -7,21 +7,21 @@
 class MiniDump : public ModuleCmd
 {
 public:
-	MiniDump();
-	~MiniDump();
+    MiniDump();
+    ~MiniDump();
 
-	std::string getInfo();
+    std::string getInfo();
 
-	int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-	int process(C2Message& c2Message, C2Message& c2RetMessage);
-	int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
-	int osCompatibility() 
-	{
+    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int process(C2Message& c2Message, C2Message& c2RetMessage);
+    int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
+    int osCompatibility() 
+    {
         return OS_WINDOWS;
     }
 
 private:
-	
+    
 };
 
 

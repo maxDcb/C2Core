@@ -126,9 +126,9 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
             // Check for available data.
             dwSize = 0;
             if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-			{
+            {
                 // printf("Error %u in WinHttpQueryDataAvailable.\n", GetLastError());
-			}
+            }
 
             // Allocate space for the buffer.
             pszOutBuffer = new char[dwSize + 1];
@@ -144,9 +144,9 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
 
                 DWORD dwDownloaded = 0;
                 if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
-				{
+                {
                     // printf("Error %u in WinHttpReadData.\n", GetLastError());
-				}
+                }
                 else
                 {
                     // printf("%s", pszOutBuffer);
@@ -260,9 +260,9 @@ string HttpsWebRequestGet(const string& domain, int port, const string& url, con
             // Check for available data.
             dwSize = 0;
             if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-			{
+            {
                 // printf("Error %u in WinHttpQueryDataAvailable.\n", GetLastError());
-			}
+            }
 
             // Allocate space for the buffer.
             pszOutBuffer = new char[dwSize + 1];
@@ -278,9 +278,9 @@ string HttpsWebRequestGet(const string& domain, int port, const string& url, con
 
                 DWORD dwDownloaded = 0;
                 if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
-				{
+                {
                     // printf("Error %u in WinHttpReadData.\n", GetLastError());
-				}
+                }
                 else
                 {
                     // printf("%s", pszOutBuffer);
@@ -313,7 +313,7 @@ string HttpsWebRequestGet(const string& domain, int port, const string& url, con
 
 
 BeaconHttp::BeaconHttp(std::string& config, std::string& ip, int port, bool isHttps)
-	: Beacon()
+    : Beacon()
     , m_isHttps(isHttps)
 {
     srand(time(NULL));
@@ -420,8 +420,8 @@ void BeaconHttp::checkIn()
         endPoint = httpUri[ rand() % httpUri.size() ];
     }
 
-	std::string output;
-	taskResultsToCmd(output);
+    std::string output;
+    taskResultsToCmd(output);
 
     nlohmann::json httpHeaders;
     if(!m_isHttps)

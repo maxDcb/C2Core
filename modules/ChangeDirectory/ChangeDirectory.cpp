@@ -32,9 +32,9 @@ __attribute__((visibility("default"))) ChangeDirectory* ChangeDirectoryConstruct
 
 ChangeDirectory::ChangeDirectory()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -45,16 +45,16 @@ ChangeDirectory::~ChangeDirectory()
 
 std::string ChangeDirectory::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "ChangeDirectory Module:\n";
-	info += "Change the current working directory on the victim machine.\n";
-	info += "This affects the context for relative file paths in subsequent commands.\n";
-	info += "\nExample:\n";
-	info += "- cd /tmp\n";
-	info += "- cd C:\\Users\\Public\n";
+    info += "ChangeDirectory Module:\n";
+    info += "Change the current working directory on the victim machine.\n";
+    info += "This affects the context for relative file paths in subsequent commands.\n";
+    info += "\nExample:\n";
+    info += "- cd /tmp\n";
+    info += "- cd C:\\Users\\Public\n";
 #endif
-	return info;
+    return info;
 }
 
 int ChangeDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
@@ -68,29 +68,29 @@ int ChangeDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Mes
         path+=splitedCmd[idx];
     }
 
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd(path);
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_cmd(path);
 #endif
-	return 0;
+    return 0;
 }
 
 
 int ChangeDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	string path = c2Message.cmd();
-	std::string outCmd = changeDirectory(path);
+    string path = c2Message.cmd();
+    std::string outCmd = changeDirectory(path);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(path);
-	c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(path);
+    c2RetMessage.set_returnvalue(outCmd);
 
-	return 0;
+    return 0;
 }
 
 
 std::string ChangeDirectory::changeDirectory(const std::string& path)
 {
-	std::error_code ec;
+    std::error_code ec;
     try
     {
         if(!path.empty())
@@ -102,5 +102,5 @@ std::string ChangeDirectory::changeDirectory(const std::string& path)
     std::string result;
     result=std::filesystem::current_path(ec).string();
 
-	return result;
+    return result;
 }

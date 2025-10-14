@@ -7,16 +7,16 @@ class BeaconHttp : public Beacon
 {
 
 public:
-	BeaconHttp(std::string& config, std::string& ip, int port, bool https=false);
-	~BeaconHttp();
+    BeaconHttp(std::string& config, std::string& ip, int port, bool https=false);
+    ~BeaconHttp();
 
-	void checkIn();
+    void checkIn();
 
 private:
-	std::string m_ip;
-	int m_port;
+    std::string m_ip;
+    int m_port;
 
-	nlohmann::json m_beaconHttpConfig;
-	bool m_isHttps;
+    nlohmann::json m_beaconHttpConfig;
+    bool m_isHttps;
 
 };

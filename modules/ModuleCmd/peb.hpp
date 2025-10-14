@@ -630,8 +630,8 @@ typedef struct _INVERTED_FUNCTION_TABLE_KERNEL_MODE
 
 typedef enum _SECTION_INHERIT
 {
-	ViewShare = 1,
-	ViewUnmap = 2
+    ViewShare = 1,
+    ViewUnmap = 2
 } SECTION_INHERIT, *PSECTION_INHERIT;
 
 

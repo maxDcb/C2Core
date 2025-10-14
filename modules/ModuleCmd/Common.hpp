@@ -162,15 +162,15 @@ inline constexpr std::array<char, N> compileTimeXOR(const std::string_view data,
 
 void static inline XOR(std::string& data, const std::string& key) 
 {
-	int j = 0;
-	for (int i = 0; i < data.size(); i++) 
-	{
-		if (j == key.size()) 
-			j = 0;
+    int j = 0;
+    for (int i = 0; i < data.size(); i++) 
+    {
+        if (j == key.size()) 
+            j = 0;
 
-		data[i] = data[i] ^ key[j];
-		j++;
-	}
+        data[i] = data[i] ^ key[j];
+        j++;
+    }
 }
 
 
@@ -194,24 +194,24 @@ std::string static inline random_string(std::size_t length)
 
 bool static inline isNumber(const std::string& str)
 {
-	for (char const& c : str) {
-		if (std::isdigit(c) == 0) return false;
-	}
-	return true;
+    for (char const& c : str) {
+        if (std::isdigit(c) == 0) return false;
+    }
+    return true;
 }
 
 
 void static inline splitList(std::string list, const std::string& delimiter, std::vector<std::string>& splitedList)
 {
-	size_t pos = 0;
-	std::string token;
-	while ((pos = list.find(delimiter)) != std::string::npos)
-	{
-		token = list.substr(0, pos);
-		splitedList.push_back(token);
-		list.erase(0, pos + delimiter.length());
-	}
-	splitedList.push_back(list);
+    size_t pos = 0;
+    std::string token;
+    while ((pos = list.find(delimiter)) != std::string::npos)
+    {
+        token = list.substr(0, pos);
+        splitedList.push_back(token);
+        list.erase(0, pos + delimiter.length());
+    }
+    splitedList.push_back(list);
 }
 
 

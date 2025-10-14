@@ -14,11 +14,11 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port, const nlo
 
         m_listenerHash = random_string(SizeListenerHash);
 
-	json metadata;
+    json metadata;
     metadata["1"] = ListenerDnsType;
     metadata["2"] = domainToResolve;
     metadata["3"] = std::to_string(port);
-	m_metadata = metadata.dump();
+    m_metadata = metadata.dump();
 
 #ifdef BUILD_TEAMSERVER
         // Logger
@@ -69,12 +69,12 @@ ListenerDns::~ListenerDns()
 
 void ListenerDns::launchDnsListener()
 {
-	try 
+    try 
     {
-		while(1)
-		{
-			if(m_stopThread)
-				return;
+        while(1)
+        {
+            if(m_stopThread)
+                return;
 
                         auto [clientId, input] = m_serverDns->getAvailableMessage();
 
@@ -96,15 +96,15 @@ void ListenerDns::launchDnsListener()
                                 if(!output.empty())
                                         m_serverDns->setMessageToSend(output, clientId);
                         }
-			
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		}
-	}
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+    }
     catch (...)
     {
         return;
     }
 
-	return;
+    return;
 }
 

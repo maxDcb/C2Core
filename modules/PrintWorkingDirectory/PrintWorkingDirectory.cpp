@@ -33,9 +33,9 @@ __attribute__((visibility("default"))) PrintWorkingDirectory* PrintWorkingDirect
 
 PrintWorkingDirectory::PrintWorkingDirectory()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -46,41 +46,41 @@ PrintWorkingDirectory::~PrintWorkingDirectory()
 
 std::string PrintWorkingDirectory::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "PrintWorkingDirectory Module:\n";
-	info += "Print the current working directory on the victim machine.\n";
-	info += "\nExample:\n";
-	info += "- pwd\n";
+    info += "PrintWorkingDirectory Module:\n";
+    info += "Print the current working directory on the victim machine.\n";
+    info += "\nExample:\n";
+    info += "- pwd\n";
 #endif
-	return info;
+    return info;
 }
 
 int PrintWorkingDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-	c2Message.set_instruction(splitedCmd[0]);
-	c2Message.set_cmd("");
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_cmd("");
 
-	return 0;
+    return 0;
 }
 
 
 int PrintWorkingDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	std::string outCmd = printWorkingDirectory();
+    std::string outCmd = printWorkingDirectory();
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd("");
-	c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_returnvalue(outCmd);
 
-	return 0;
+    return 0;
 }
 
 
 std::string PrintWorkingDirectory::printWorkingDirectory()
 {
-	std::string result;
+    std::string result;
     result = filesystem::current_path().string();
 
-	return result;
+    return result;
 }

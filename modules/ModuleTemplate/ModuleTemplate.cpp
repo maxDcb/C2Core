@@ -31,9 +31,9 @@ __attribute__((visibility("default"))) ModuleTemplate* ModuleTemplateConstructor
 
 ModuleTemplate::ModuleTemplate()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -46,15 +46,15 @@ ModuleTemplate::~ModuleTemplate()
 
 std::string ModuleTemplate::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "moduleTemplate:\n";
-	info += "ModuleTemplate for easy developement of new modules\n";
-	info += "This is the help that will be display when you do 'ModuleTemplate help' or when their is an error during the init methode\n";
-	info += "exemple:\n";
-	info += "- moduleTemplate args\n";
+    info += "moduleTemplate:\n";
+    info += "ModuleTemplate for easy developement of new modules\n";
+    info += "This is the help that will be display when you do 'ModuleTemplate help' or when their is an error during the init methode\n";
+    info += "exemple:\n";
+    info += "- moduleTemplate args\n";
 #endif
-	return info;
+    return info;
 }
 
 
@@ -62,22 +62,22 @@ std::string ModuleTemplate::getInfo()
 int ModuleTemplate::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	if (splitedCmd.size() >= 2 )
-	{
-		string args = "args from the splited command line";
-		args = splitedCmd[1];
+    if (splitedCmd.size() >= 2 )
+    {
+        string args = "args from the splited command line";
+        args = splitedCmd[1];
 
-		c2Message.set_instruction(splitedCmd[0]);
-		c2Message.set_data(args);
-	}
-	else
-	{
-		// error message deiplay if something is wrong
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+        c2Message.set_instruction(splitedCmd[0]);
+        c2Message.set_data(args);
+    }
+    else
+    {
+        // error message deiplay if something is wrong
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 
@@ -86,13 +86,13 @@ int ModuleTemplate::init(std::vector<std::string> &splitedCmd, C2Message &c2Mess
 int ModuleTemplate::followUp(const C2Message &c2RetMessage)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
-	// check if there is an error
-	if(c2RetMessage.errorCode()==-1)
-	{
-		std::string args = c2RetMessage.args();
-	}
+    // check if there is an error
+    if(c2RetMessage.errorCode()==-1)
+    {
+        std::string args = c2RetMessage.args();
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 
@@ -102,20 +102,20 @@ int ModuleTemplate::followUp(const C2Message &c2RetMessage)
 // Method that will be trigged beacon side, the main processing method
 int ModuleTemplate::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
 
-	std::string data = c2Message.data();
-	if( data == "arg1" ) 
-	{
-		std::string buffer = "return value that will be shown in the client";
-		c2RetMessage.set_returnvalue(buffer);
-	}
-	else
-	{
-		c2RetMessage.set_errorCode(ERROR_CODE_1);
-	}
+    std::string data = c2Message.data();
+    if( data == "arg1" ) 
+    {
+        std::string buffer = "return value that will be shown in the client";
+        c2RetMessage.set_returnvalue(buffer);
+    }
+    else
+    {
+        c2RetMessage.set_errorCode(ERROR_CODE_1);
+    }
 
-	return 0;
+    return 0;
 }
 
 
@@ -123,12 +123,12 @@ int ModuleTemplate::process(C2Message &c2Message, C2Message &c2RetMessage)
 int ModuleTemplate::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
 #ifdef BUILD_TEAMSERVER
-	int errorCode = c2RetMessage.errorCode();
-	if(errorCode>0)
-	{
-		if(errorCode==ERROR_CODE_1)
-			errorMsg = "Failed: An error occured and that is the error message that will be display to the user";
-	}
+    int errorCode = c2RetMessage.errorCode();
+    if(errorCode>0)
+    {
+        if(errorCode==ERROR_CODE_1)
+            errorMsg = "Failed: An error occured and that is the error message that will be display to the user";
+    }
 #endif
-	return 0;
+    return 0;
 }

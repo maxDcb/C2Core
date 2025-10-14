@@ -6,17 +6,17 @@
 
 LONG WINAPI hanlderToTrigger(EXCEPTION_POINTERS * ExceptionInfo) 
 {
-	if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
-	{
-		BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"Kernel32", TRUE, NULL), (PCHAR)"GetProcessVersion", 0);
-		if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
-		{			
+    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    {
+        BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"Kernel32", TRUE, NULL), (PCHAR)"GetProcessVersion", 0);
+        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+        {            
             std::cout << "Hello from GetProcessVersion " << std::endl;
-			ExceptionInfo->ContextRecord->Rip++;						// or skip the breakpoint via instruction pointer
-		}		
-		return EXCEPTION_CONTINUE_EXECUTION;
-	}
-	return EXCEPTION_CONTINUE_SEARCH;
+            ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
+        }        
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
 }
 
 
@@ -29,7 +29,7 @@ int main()
 
     int indexHWBP = 0;
     HANDLE bp;
-	set_hwbp(GetCurrentThread(), baseAddress, hanlderToTrigger, indexHWBP, &bp);
+    set_hwbp(GetCurrentThread(), baseAddress, hanlderToTrigger, indexHWBP, &bp);
 
     std::cout << "bp " << bp << std::endl;
 

