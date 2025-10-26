@@ -6,6 +6,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#define WSMAN_API_VERSION_1_1 1
 #include <wsman.h>
 #endif
 
@@ -328,7 +329,7 @@ namespace
 
         if (operationHandle != nullptr)
         {
-            WSManCloseOperation(operationHandle);
+            WSManCloseOperation(operationHandle, 0);
         }
 
         if (shellContext->eventHandle != nullptr)
@@ -363,7 +364,7 @@ namespace
 
         if (operationHandle != nullptr)
         {
-            WSManCloseOperation(operationHandle);
+            WSManCloseOperation(operationHandle, 0);
         }
 
         if (commandContext->eventHandle != nullptr)
@@ -419,7 +420,7 @@ namespace
 
         if (operationHandle != nullptr)
         {
-            WSManCloseOperation(operationHandle);
+            WSManCloseOperation(operationHandle, 0);
         }
 
         if (receiveContext->eventHandle != nullptr)
@@ -479,7 +480,7 @@ std::string WinRM::runCommand(const Parameters& params) const
     shellContext.eventHandle = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (shellContext.eventHandle == nullptr)
     {
-        WSManCloseSession(session);
+        WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
         return "Failed to create synchronization event for WinRM shell.\n";
     }
@@ -505,7 +506,7 @@ std::string WinRM::runCommand(const Parameters& params) const
         std::string message = shellContext.message.empty() ? formatWin32Error(shellContext.errorCode, nullptr)
                                                             : shellContext.message + "\n";
         CloseHandle(shellContext.eventHandle);
-        WSManCloseSession(session);
+        WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
         return message;
     }
@@ -514,9 +515,9 @@ std::string WinRM::runCommand(const Parameters& params) const
     commandContext.eventHandle = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (commandContext.eventHandle == nullptr)
     {
-        WSManCloseShell(shellHandle, 0);
+        WSManCloseShell(shellHandle, 0, NULL);
         CloseHandle(shellContext.eventHandle);
-        WSManCloseSession(session);
+        WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
         return "Failed to create synchronization event for WinRM command.\n";
     }
@@ -541,12 +542,12 @@ std::string WinRM::runCommand(const Parameters& params) const
                                                              : commandContext.message + "\n";
         if (commandContext.commandHandle != nullptr)
         {
-            WSManCloseCommand(commandContext.commandHandle, 0);
+            WSManCloseCommand(commandContext.commandHandle, 0, NULL);
         }
         CloseHandle(commandContext.eventHandle);
-        WSManCloseShell(shellHandle, 0);
+        WSManCloseShell(shellHandle, 0, NULL);
         CloseHandle(shellContext.eventHandle);
-        WSManCloseSession(session);
+        WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
         return message;
     }
@@ -555,11 +556,11 @@ std::string WinRM::runCommand(const Parameters& params) const
     receiveContext.eventHandle = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (receiveContext.eventHandle == nullptr)
     {
-        WSManCloseCommand(commandContext.commandHandle, 0);
+        WSManCloseCommand(commandContext.commandHandle, 0, NULL);
         CloseHandle(commandContext.eventHandle);
-        WSManCloseShell(shellHandle, 0);
+        WSManCloseShell(shellHandle, 0, NULL);
         CloseHandle(shellContext.eventHandle);
-        WSManCloseSession(session);
+        WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
         return "Failed to create synchronization event for WinRM output.\n";
     }
@@ -570,8 +571,8 @@ std::string WinRM::runCommand(const Parameters& params) const
 
     WSMAN_STREAM_ID_SET streamSet{};
     PCWSTR streams[2] = { WSMAN_STREAM_ID_STDOUT, WSMAN_STREAM_ID_STDERR };
-    streamSet.streamIds = const_cast<PCWSTR*>(streams);
-    streamSet.streamIdsCount = 2;
+    streamSet.streamIDs = const_cast<PCWSTR*>(streams);
+    streamSet.streamIDsCount = 2;
 
     while (!receiveContext.completed)
     {
@@ -616,14 +617,14 @@ std::string WinRM::runCommand(const Parameters& params) const
 
     if (commandContext.commandHandle != nullptr)
     {
-        WSManCloseCommand(commandContext.commandHandle, 0);
+        WSManCloseCommand(commandContext.commandHandle, 0, NULL);
     }
     CloseHandle(commandContext.eventHandle);
 
-    WSManCloseShell(shellHandle, 0);
+    WSManCloseShell(shellHandle, 0, NULL);
     CloseHandle(shellContext.eventHandle);
 
-    WSManCloseSession(session);
+    WSManCloseSession(session, 0);
     WSManDeinitialize(apiHandle, 0);
 
     return response;

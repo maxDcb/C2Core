@@ -5,8 +5,10 @@
 #include <sstream>
 
 #ifdef _WIN32
+#define MI_API_VERSION 3
 #include <windows.h>
 #include <mi.h>
+#pragma comment(lib, "mi.lib")
 #endif
 
 using namespace std;
@@ -307,7 +309,11 @@ std::string CimExec::invoke(const Parameters& params) const
     }
 
     MI_DestinationOptions destOptions = MI_DESTINATIONOPTIONS_NULL;
-    MI_DestinationOptions_Initialize(&destOptions);
+    result = MI_Application_NewDestinationOptions(&app, &destOptions);
+    if (result != MI_RESULT_OK) {
+        MI_Application_Close(&app);
+        formatMiError(result, nullptr, nullptr);
+    }
     MI_DestinationOptions* destOptionsPtr = nullptr;
 
     std::wstring passwordWide;
@@ -322,17 +328,15 @@ std::string CimExec::invoke(const Parameters& params) const
         credentials.credentials.usernamePassword.username = split.user.c_str();
         credentials.credentials.usernamePassword.password = passwordWide.c_str();
 
-        result = MI_DestinationOptions_SetCredentials(&destOptions,
-                                                      MI_AUTH_TYPE_DEFAULT,
-                                                      &credentials,
-                                                      MI_FALSE,
-                                                      nullptr,
-                                                      nullptr);
-        if (result != MI_RESULT_OK)
-        {
+        // Attach credentials to the destination options
+        // (function name may vary slightly by MI SDK; use the “Add…Credentials” helper for destination)
+        result = MI_DestinationOptions_AddDestinationCredentials(&destOptions, &credentials);
+        if (result != MI_RESULT_OK) {
             MI_Application_Close(&app);
+            formatMiError(result, nullptr, nullptr);
             return formatMiError(result, nullptr, nullptr);
         }
+
 
         destOptionsPtr = &destOptions;
     }
@@ -371,7 +375,7 @@ std::string CimExec::invoke(const Parameters& params) const
     }
 
     MI_Value commandValue;
-    commandValue.string = commandLine.c_str();
+    commandValue.string = (MI_Char*)commandLine.c_str();
     result = MI_Instance_AddElement(inParams, MI_T("CommandLine"), &commandValue, MI_STRING, MI_FLAG_BORROW);
     if (result != MI_RESULT_OK)
     {
@@ -406,11 +410,11 @@ std::string CimExec::invoke(const Parameters& params) const
     do
     {
         getResult = MI_Operation_GetInstance(&operation,
-                                             &outputInstance,
+                                              (const MI_Instance**)&outputInstance,
                                              &moreResults,
                                              &finalResult,
-                                             &errorMessage,
-                                             &errorDetails);
+                                            (const MI_Char**)&errorMessage,
+                                             (const MI_Instance**)&errorDetails);
         if (getResult != MI_RESULT_OK)
         {
             response.str(std::string());
