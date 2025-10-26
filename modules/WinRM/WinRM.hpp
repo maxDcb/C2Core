@@ -22,7 +22,6 @@ public:
         return OS_WINDOWS;
     }
 
-private:
     struct Parameters
     {
         std::string endpoint;
@@ -32,6 +31,8 @@ private:
         std::string password;
         bool useHttps = false;
     };
+private:
+    
 
     std::string packParameters(const Parameters& params) const;
     Parameters unpackParameters(const std::string& data) const;
