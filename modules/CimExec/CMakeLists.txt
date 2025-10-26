@@ -4,8 +4,15 @@ set_property(TARGET CimExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 add_custom_command(TARGET CimExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 $<TARGET_FILE:CimExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:CimExec>")
 
+if(WIN32)
+    target_link_libraries(CimExec PRIVATE mi)
+endif()
+
 if(C2CORE_BUILD_TESTS)
     add_executable(testsCimExec tests/testsCimExec.cpp CimExec.cpp)
+    if(WIN32)
+        target_link_libraries(testsCimExec PRIVATE mi)
+    endif()
     add_custom_command(TARGET testsCimExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:testsCimExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsCimExec>")
 
