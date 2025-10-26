@@ -433,6 +433,8 @@ namespace
 std::string WinRM::runCommand(const Parameters& params) const
 {
     std::string endpoint = buildEndpoint(params);
+    // TODO fix
+    endpoint="http://localhost:5985/wsman";
     std::wstring endpointWide = widen(endpoint);
 
     std::wstring commandLineWide = widen(params.command);
@@ -444,6 +446,7 @@ std::string WinRM::runCommand(const Parameters& params) const
 
     WSMAN_API_HANDLE apiHandle = nullptr;
     DWORD status = WSManInitialize(0, &apiHandle);
+
     if (status != ERROR_SUCCESS)
     {
         return formatWin32Error(status, nullptr);
@@ -526,6 +529,9 @@ std::string WinRM::runCommand(const Parameters& params) const
     commandAsync.operationContext = &commandContext;
     commandAsync.completionFunction = CommandCallback;
 
+    // TODO FIx
+    commandLineWide = L"cmd /c echo ran > C:\\Users\\max\\Desktop\\winrm_test.txt";
+
     WSManRunShellCommand(shellHandle,
                          0,
                          commandLineWide.c_str(),
@@ -577,12 +583,15 @@ std::string WinRM::runCommand(const Parameters& params) const
     while (!receiveContext.completed)
     {
         ResetEvent(receiveContext.eventHandle);
+        WSMAN_OPERATION_HANDLE receiveOp = nullptr;
         WSManReceiveShellOutput(shellHandle,
                                 commandContext.commandHandle,
                                 0,
                                 &streamSet,
                                 &receiveAsync,
-                                nullptr);
+                                &receiveOp);
+
+
         WaitForSingleObject(receiveContext.eventHandle, INFINITE);
 
         if (receiveContext.errorCode != ERROR_SUCCESS)
@@ -610,20 +619,16 @@ std::string WinRM::runCommand(const Parameters& params) const
         response.append(trailer.str());
     }
 
+
     if (receiveContext.eventHandle != nullptr)
-    {
         CloseHandle(receiveContext.eventHandle);
-    }
 
     if (commandContext.commandHandle != nullptr)
-    {
         WSManCloseCommand(commandContext.commandHandle, 0, NULL);
-    }
+    
     CloseHandle(commandContext.eventHandle);
-
     WSManCloseShell(shellHandle, 0, NULL);
     CloseHandle(shellContext.eventHandle);
-
     WSManCloseSession(session, 0);
     WSManDeinitialize(apiHandle, 0);
 
