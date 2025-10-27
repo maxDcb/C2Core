@@ -6,14 +6,39 @@
 
 int main()
 {
-    std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
-    std::vector<std::string> cmd = {"winrm", "-e", "localhost", "-c", "cmd.exe", "-a", "/c hostname"};
-    C2Message message;
-    C2Message ret;
+    {
+        std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
+        std::vector<std::string> cmd = {"winrm", "-n", "http://localhost:5985/wsman", "whoami.exe",  "/all"};
+        C2Message message;
+        C2Message ret;
 
-    module->init(cmd, message);
-    module->process(message, ret);
+        module->init(cmd, message);
+        module->process(message, ret);
 
-    std::cout << ret.returnvalue() << std::endl;
+        std::cout << ret.returnvalue() << std::endl;
+    }
+    {
+        std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
+        std::vector<std::string> cmd = {"winrm", "-n", "http://localhost:5985/wsman", "dir", "C:\\"};
+        C2Message message;
+        C2Message ret;
+
+        module->init(cmd, message);
+        module->process(message, ret);
+
+        std::cout << ret.returnvalue() << std::endl;
+    }
+    {
+        std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
+        std::vector<std::string> cmd = {"winrm", "-u", "root", "root", "http://localhost:5985/wsman", "dir", "C:\\"};
+        C2Message message;
+        C2Message ret;
+
+        module->init(cmd, message);
+        module->process(message, ret);
+
+        std::cout << ret.returnvalue() << std::endl;
+    }
+
     return 0;
 }

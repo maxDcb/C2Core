@@ -77,7 +77,7 @@ std::string WmiExec::getInfo()
     info += " - wmiExec -k DOMAIN\\dc target powershell.exe -nop -w hidden -e <Base64Payload>\n";
     info += "\nOptions:\n";
     info += " -u <user> <password> <target>  Use username and password authentication\n";
-    info += " -k <target>                    Use Kerberos authentication (ticket must be in memory)\n";
+    info += " -k <dc> <target>               Use Kerberos authentication (ticket must be in memory)\n";
     info += "\nNote:\n";
     info += " The command and arguments following the target are passed to the remote process.\n";
 #endif
@@ -89,7 +89,7 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
    if (splitedCmd.size() >= 5)
-    {
+   {
         string mode = splitedCmd[1];
 
         if(mode=="-u")
