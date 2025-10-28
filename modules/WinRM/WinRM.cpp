@@ -147,13 +147,17 @@ int WinRM::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+    int error=0;
     std::string result;
 
 #ifdef _WIN32
-    bool error = runCommand(c2Message, result);
+    error = runCommand(c2Message, result);
 #else
     result = "Only supported on Windows.\n";
 #endif
+
+    if(error)
+        c2RetMessage.set_errorCode(error);
 
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.cmd());
@@ -420,7 +424,7 @@ namespace
 }
 
 
-bool WinRM::runCommand(const C2Message& c2Message, std::string& result) const
+int WinRM::runCommand(const C2Message& c2Message, std::string& result) const
 {
     std::string cmd = c2Message.cmd();
 
