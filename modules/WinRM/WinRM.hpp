@@ -25,7 +25,7 @@ public:
 
 private:
 #ifdef _WIN32
-    bool runCommand(const C2Message& c2Message, std::string& result) const;
+    int runCommand(const C2Message& c2Message, std::string& result) const;
 #endif
 
 };

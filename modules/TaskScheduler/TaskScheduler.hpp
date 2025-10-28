@@ -39,7 +39,7 @@ private:
     Parameters unpackParameters(const std::string& data) const;
 
 #ifdef _WIN32
-    std::string executeTask(const Parameters& params) const;
+    int executeTask(const Parameters& params, std::string& result) const;
 #endif
 };
 
