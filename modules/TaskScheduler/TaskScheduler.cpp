@@ -207,6 +207,10 @@ int TaskScheduler::init(std::vector<std::string>& splitedCmd, C2Message& c2Messa
 
 int TaskScheduler::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+    std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
+    c2RetMessage.set_cmd(cmd); 
+    
     Parameters params = unpackParameters(c2Message.cmd());
 
     int error=0;

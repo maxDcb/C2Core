@@ -242,6 +242,10 @@ int DcomExec::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+    std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
+    c2RetMessage.set_cmd(cmd); 
+    
     Parameters params = unpackParameters(c2Message.cmd());
     std::string result;
     bool error = 0;
@@ -392,6 +396,7 @@ namespace
 //     Executes the remote command on the target
 
 // https://enigma0x3.net/2017/01/23/lateral-movement-via-dcom-round-2/
+// TODO https://github.com/xforcered/ForsHops/blob/main/ForsHops.cpp ?
 int DcomExec::executeRemote(const Parameters& params, std::string& result) const
 {
     DWORD authnSvc = RPC_C_AUTHN_NONE;          // RPC_C_AUTHN_GSS_KERBEROS or RPC_C_AUTHN_WINNT
