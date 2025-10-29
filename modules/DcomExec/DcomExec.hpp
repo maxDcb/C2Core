@@ -30,13 +30,17 @@ private:
         std::string command;
         std::string arguments;
         std::string workingDir;
+        std::string spn;
+        std::string username;
+        std::string password;
+        bool noPassword;
     };
 
     std::string packParameters(const Parameters& params) const;
     Parameters unpackParameters(const std::string& data) const;
 
 #ifdef _WIN32
-    std::string executeRemote(const Parameters& params) const;
+    int executeRemote(const Parameters& params, std::string& result) const;
 #endif
 };
 
@@ -45,3 +49,4 @@ extern "C" __declspec(dllexport) DcomExec* DcomExecConstructor();
 #else
 extern "C" __attribute__((visibility("default"))) DcomExec* DcomExecConstructor();
 #endif
+

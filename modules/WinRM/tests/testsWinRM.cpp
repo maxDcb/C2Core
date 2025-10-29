@@ -15,7 +15,11 @@ int main()
         module->init(cmd, message);
         module->process(message, ret);
 
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
         std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
     }
     {
         std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
@@ -26,7 +30,11 @@ int main()
         module->init(cmd, message);
         module->process(message, ret);
 
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
         std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
     }
     {
         std::unique_ptr<WinRM> module = std::make_unique<WinRM>();
@@ -37,7 +45,11 @@ int main()
         module->init(cmd, message);
         module->process(message, ret);
 
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
         std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
     }
 
     return 0;
