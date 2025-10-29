@@ -147,6 +147,10 @@ int WinRM::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+    std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
+    c2RetMessage.set_cmd(cmd); 
+
     int error=0;
     std::string result;
 

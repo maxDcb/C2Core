@@ -24,23 +24,38 @@ int main()
 
 bool testWmiExec()
 {
-    std::unique_ptr<WmiExec> wmiExec = std::make_unique<WmiExec>();
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("wmiExec");
-        splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back("powershell.exe -NoP -NoL -sta -NonI -Exec Bypass C:\\windows\\system32\\notepad.exe");
-        
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        wmiExec->init(splitedCmd, c2Message);
-        wmiExec->process(c2Message, c2RetMessage);
+        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
+        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test.txt"};
+        C2Message message;
+        C2Message ret;
 
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        module->init(cmd, message);
+        module->process(message, ret);
 
+        std::cout << ret.returnvalue() << std::endl;
+    }
+    {
+        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
+        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
+        C2Message message;
+        C2Message ret;
+
+        module->init(cmd, message);
+        module->process(message, ret);
+
+        std::cout << ret.returnvalue() << std::endl;
+    }
+    {
+        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
+        std::vector<std::string> cmd = {"WmiExec", "-n", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
+        C2Message message;
+        C2Message ret;
+
+        module->init(cmd, message);
+        module->process(message, ret);
+
+        std::cout << ret.returnvalue() << std::endl;
     }
 
     return true;

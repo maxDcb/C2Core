@@ -37,7 +37,7 @@ private:
     Parameters unpackParameters(const std::string& data) const;
 
 #ifdef _WIN32
-    std::string invoke(const Parameters& params) const;
+    int invoke(const Parameters& params, std::string& result) const;
 #endif
 };
 

