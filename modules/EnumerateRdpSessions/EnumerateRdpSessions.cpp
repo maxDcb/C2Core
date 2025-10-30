@@ -81,6 +81,7 @@ EnumerateRdpSessions::Parameters EnumerateRdpSessions::unpackParameters(const st
     return params;
 }
 
+
 int EnumerateRdpSessions::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
@@ -308,7 +309,7 @@ int EnumerateRdpSessions::process(C2Message& c2Message, C2Message& c2RetMessage)
 #else
     (void)c2Message;
     c2RetMessage.set_errorCode(ERROR_WINDOWS_ONLY);
-    c2RetMessage.set_returnvalue("enumerateRdpSessions is only available on Windows.");
+    c2RetMessage.set_returnvalue("Only available on Windows.");
 #endif
     return 0;
 }
