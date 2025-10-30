@@ -26,6 +26,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FetchContent)
 
@@ -165,6 +166,15 @@ FetchContent_Declare(
   GIT_TAG v0.14.1
 )
 FetchContent_MakeAvailable(httplib)
+
+set(LIBSSH2_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LIBSSH2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  libssh2
+  GIT_REPOSITORY https://github.com/libssh2/libssh2.git
+  GIT_TAG libssh2-1.11.0
+)
+FetchContent_MakeAvailable(libssh2)
 
 find_package(OpenSSL REQUIRED)
 add_library(openssl::openssl INTERFACE IMPORTED)
