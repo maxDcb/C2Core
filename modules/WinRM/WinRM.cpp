@@ -36,11 +36,13 @@ WinRM::WinRM()
 {
 }
 
+
 WinRM::~WinRM() = default;
+
 
 std::string WinRM::getInfo()
 {
-    std::ostringstream oss;
+   std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "WinRM Module:\n";
     info += "Execute a command remotely over WS-Man using the native WinRM client API.\n";
@@ -57,7 +59,7 @@ std::string WinRM::getInfo()
     info += "\nNote:\n";
     info += " The command and arguments following the target are passed to the remote process.\n";
 #endif
-    return oss.str();
+    return info;
 }
 
 

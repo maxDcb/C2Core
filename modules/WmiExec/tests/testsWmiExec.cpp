@@ -26,7 +26,7 @@ bool testWmiExec()
 {
     {
         std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test.txt"};
+        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test.txt"};
         C2Message message;
         C2Message ret;
 
@@ -37,7 +37,7 @@ bool testWmiExec()
     }
     {
         std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
+        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
         C2Message message;
         C2Message ret;
 
@@ -48,7 +48,7 @@ bool testWmiExec()
     }
     {
         std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-n", "127.0.0.1", "cmd.exe", "-a", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
+        std::vector<std::string> cmd = {"WmiExec", "-n", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
         C2Message message;
         C2Message ret;
 
