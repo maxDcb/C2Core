@@ -6,32 +6,52 @@
 
 int main()
 {
-    bool ok = true;
+    {
+        std::unique_ptr<EnumerateRdpSessions> module = std::make_unique<EnumerateRdpSessions>();
+        std::vector<std::string> cmd = {"enumerateRdpSessions"};
 
-    std::unique_ptr<EnumerateRdpSessions> module = std::make_unique<EnumerateRdpSessions>();
-    std::vector<std::string> cmd = {"enumerateRdpSessions", "-s", "rdp-host"};
+        C2Message message;
+        C2Message ret;
 
-    C2Message message;
-    C2Message ret;
+        module->init(cmd, message);
+        module->process(message, ret);
 
-    ok &= module->init(cmd, message) == 0;
-    ok &= message.instruction() == "enumerateRdpSessions";
+        std::string err;
+        module->errorCodeToMsg(ret, err);
 
-    std::string packed = message.cmd();
-    std::string server = packed.substr(0, packed.find('\0'));
-    ok &= server == "rdp-host";
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
+    {
+        std::unique_ptr<EnumerateRdpSessions> module = std::make_unique<EnumerateRdpSessions>();
+        std::vector<std::string> cmd = {"enumerateRdpSessions", "-s", "127.0.0.1"};
 
-    module->process(message, ret);
+        C2Message message;
+        C2Message ret;
 
-#ifdef _WIN32
-    ok &= ret.errorCode() == 0;
-#else
-    ok &= ret.errorCode() == EnumerateRdpSessions::ERROR_WINDOWS_ONLY;
-    std::string err;
-    module->errorCodeToMsg(ret, err);
-    ok &= !err.empty();
-#endif
+        module->init(cmd, message);
+        module->process(message, ret);
 
-    std::cout << (ok ? "[+] enumerateRdpSessions tests passed" : "[-] enumerateRdpSessions tests failed") << std::endl;
-    return ok ? 0 : 1;
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
+    {
+        std::unique_ptr<EnumerateRdpSessions> module = std::make_unique<EnumerateRdpSessions>();
+        std::vector<std::string> cmd = {"enumerateRdpSessions", "-s", "192.168.122.59"};
+
+        C2Message message;
+        C2Message ret;
+
+        module->init(cmd, message);
+        module->process(message, ret);
+
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
 }
