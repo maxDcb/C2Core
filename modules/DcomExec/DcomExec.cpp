@@ -411,8 +411,6 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     bool passwordProvided = !params.password.empty();
     bool noPassword = params.noPassword; // -n
     
-    std::cout << "noPassword " << noPassword << std::endl;
-
     spn = std::wstring(params.spn.begin(), params.spn.end()); // copy SPN to wide string for CoSetProxyBlanket later
 
     // Case 1: explicit username + password -> use explicit creds (NTLM)

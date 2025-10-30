@@ -61,6 +61,53 @@ PsExec::~PsExec()
 }
 
 
+// --------------------------------------------------------------------------------
+//  Attacker (TeamServer / Operator)                 Target host (victim)
+//  -----------------------------                    --------------------------
+//  1) Prepare payload (local)                            (no network)
+//     - build or pick payload.exe
+
+//  2) Authenticate & upload payload -> SMB          TCP/445 (SMB)
+//     Attacker --------------------------> \\TARGET\ADMIN$\payload.exe
+//         (WNetAddConnection2 / LogonUser + copy)
+//     - Auth methods: NTLM (SMB), Kerberos (if domain & SPN), explicit creds / impersonation
+//     - Requires write access to ADMIN$ (Administrator)
+//     - Result: binary placed on remote filesystem
+
+//  3) Remote service control (create/start service)  RPC over Named Pipe or RPC/TCP
+//     Attacker  ---[svcctl RPC]-->  \\TARGET\pipe\svcctl  (via SMB/445)
+//                 (or RPC endpoint mapper 135 + dynamic RPC ports)
+//     - OpenSCManager (remote) -> CreateService -> StartService
+//     - Uses Service Control Manager RPC interface (svcctl)
+//     - Auth: same authenticated session (SMB/NTLM/Kerberos) or impersonated token
+//     - Ports: typically SMB (445). If RPC/TCP used, may require 135 + dynamic RPC ports.
+
+//  4) Service process launches locally on target      (no new network)
+//     SCM starts the image path (ImagePath) as a process
+
+//  5) Wait / optionally stop & delete service        svcctl RPC (same as step 3)
+//     Attacker  ---[svcctl RPC]-->  StopService / DeleteService
+
+//  6) Cleanup: remove file via SMB                    TCP/445 (SMB)
+//     Attacker --------------------------> Delete \\TARGET\ADMIN$\payload.exe
+//     - Remove traces (best-effort)
+
+// --------------------------------------------------------------------------------
+// Notes on connectivity & ports:
+//  - SMB (TCP/445): used for file upload to ADMIN$ and often used as transport for RPC named pipes
+//  - RPC endpoint mapper (TCP/135): only needed when RPC/TCP with dynamic ports is used
+//  - RPC dynamic ports: ephemeral ports (default Windows 49152–65535) if RPC/TCP chosen
+//  - In practice many tools use the svcctl named pipe over SMB, so allowing TCP/445 is usually sufficient
+
+// Notes on authentication:
+//  - NTLM over SMB: common for local/admin creds; credentials supplied to SMB session
+//  - Kerberos (domain): use SPN and TGS/ALPN; preferred in domain environments (-k)
+//  - Impersonation / LogonUser: you can obtain a token locally and impersonate before making RPCs
+
+// Permissions required:
+//  - Administrator on target (to write ADMIN$ and create services)
+//  - SMB writable to ADMIN$ or another writeable share
+//  - Firewall must allow required ports (445 + maybe 135 + dynamic RPC)
 std::string PsExec::getInfo()
 {
     std::string info;
