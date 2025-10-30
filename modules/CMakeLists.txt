@@ -47,6 +47,7 @@ add_subdirectory(Whoami)
 add_subdirectory(Netstat)
 add_subdirectory(IpConfig)
 add_subdirectory(EnumerateShares)
+add_subdirectory(EnumerateRdpSessions)
 
 ## Pivot
 add_subdirectory(SpawnAs)
