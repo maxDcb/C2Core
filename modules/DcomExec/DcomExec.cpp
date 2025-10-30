@@ -282,7 +282,7 @@ int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 
 int DcomExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)
     {

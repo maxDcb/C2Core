@@ -24,23 +24,85 @@ int main()
 
 bool testPsExec()
 {
-    std::unique_ptr<PsExec> psExec = std::make_unique<PsExec>();
+    std::unique_ptr<PsExec> module = std::make_unique<PsExec>();
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("psExec");
+        splitedCmd.push_back("-n");
+        splitedCmd.push_back("127.0.0.1");
+        splitedCmd.push_back(".\\TestService.exe");
+
+        C2Message c2Message;
+        C2Message ret;
+        module->init(splitedCmd, c2Message);
+        module->process(c2Message, ret);
+
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
+    {
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("psExec");
+        splitedCmd.push_back("-u");
+        splitedCmd.push_back("root");
+        splitedCmd.push_back("root");
+        splitedCmd.push_back("127.0.0.1");
+        splitedCmd.push_back(".\\TestService.exe");
+
+        C2Message c2Message;
+        C2Message ret;
+        module->init(splitedCmd, c2Message);
+        module->process(c2Message, ret);
+
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
+    {
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("psExec");
+        splitedCmd.push_back("-u");
+        splitedCmd.push_back("root");
+        splitedCmd.push_back("toor");
+        splitedCmd.push_back("127.0.0.1");
+        splitedCmd.push_back(".\\TestService.exe");
+
+        C2Message c2Message;
+        C2Message ret;
+        module->init(splitedCmd, c2Message);
+        module->process(c2Message, ret);
+
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
+    }
+    {
+        std::vector<std::string> splitedCmd;
+        splitedCmd.push_back("psExec");
+        splitedCmd.push_back("-n");
         splitedCmd.push_back("127.0.0.1");
         splitedCmd.push_back("c:\\windows\\system32\\notepad.exe");
 
         C2Message c2Message;
-        C2Message c2RetMessage;
-        psExec->init(splitedCmd, c2Message);
-        psExec->process(c2Message, c2RetMessage);
+        C2Message ret;
+        module->init(splitedCmd, c2Message);
+        module->process(c2Message, ret);
 
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        std::string err;
+        module->errorCodeToMsg(ret, err);
+
+        std::cout << ret.returnvalue() << std::endl;
+        std::cerr << err << std::endl;
     }
+
+
 
     return true;
 }
