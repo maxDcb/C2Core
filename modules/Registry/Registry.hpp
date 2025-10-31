@@ -22,7 +22,6 @@ public:
         return OS_WINDOWS;
     }
 
-private:
     enum class Operation : uint32_t
     {
         SetValue = 0,
@@ -43,6 +42,7 @@ private:
         std::string valueType;
     };
 
+private:
     std::string packParameters(const Parameters& params) const;
     Parameters unpackParameters(const std::string& data) const;
 

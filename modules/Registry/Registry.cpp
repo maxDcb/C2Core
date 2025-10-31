@@ -126,6 +126,8 @@ Registry::Parameters Registry::unpackParameters(const std::string& data) const
     return params;
 }
 
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+
 namespace
 {
     Registry::Operation operationFromString(const std::string& op, bool& valid)
@@ -161,6 +163,8 @@ namespace
         return Registry::Operation::SetValue;
     }
 }
+
+#endif
 
 int Registry::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
@@ -348,6 +352,7 @@ namespace
         return REG_SZ;
     }
 }
+
 
 int Registry::execute(const Parameters& params, std::string& result) const
 {
