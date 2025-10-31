@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <userenv.h>
 #include <string>
+#pragma comment(lib, "advapi32")
+#pragma comment(lib, "userenv")
 #endif
 
 using namespace std;
