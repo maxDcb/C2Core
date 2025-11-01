@@ -2,11 +2,6 @@
 
 #include "ModuleCmd.hpp"
 
-#ifndef _WIN32
-constexpr int LOGON32_LOGON_INTERACTIVE = 2;
-constexpr int LOGON32_LOGON_NEW_CREDENTIALS = 9;
-#endif
-
 
 class SpawnAs : public ModuleCmd
 {
@@ -30,7 +25,7 @@ private:
 
     struct Options
     {
-        int logonType = LOGON32_LOGON_INTERACTIVE;
+        int logonType = 2;       // LOGON32_LOGON_INTERACTIVE 
         bool loadProfile = true;
         bool showWindow = false;
     };
