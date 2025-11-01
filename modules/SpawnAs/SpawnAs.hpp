@@ -2,6 +2,16 @@
 
 #include "ModuleCmd.hpp"
 
+#ifdef __linux__
+#define LOGON32_LOGON_INTERACTIVE 2
+#define LOGON32_LOGON_NETWORK     3
+#define LOGON32_LOGON_BATCH       4
+#define LOGON32_LOGON_SERVICE     5
+#define LOGON32_LOGON_UNLOCK      7
+#define LOGON32_LOGON_NETWORK_CLEARTEXT 8
+#define LOGON32_LOGON_NEW_CREDENTIALS   9
+#endif
+
 
 class SpawnAs : public ModuleCmd
 {
