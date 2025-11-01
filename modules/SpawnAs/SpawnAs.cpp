@@ -155,6 +155,10 @@ std::string SpawnAs::getInfo()
 #ifdef BUILD_TEAMSERVER
     info += "spawnAs:\n";
     info += "Launch a new process as another user, with the given credentials. \n";
+    info += "Three main option are available:. \n";
+    info += "--logon-type 2 --with-profile, the most powerful, need system. \n";
+    info += "--logon-type 2 --no-profile, need admin. \n";
+    info += "--logon-type 9, whoami still shows the caller’s identity; the provided creds are used only for outbound network auth. \n";
     info += "Options:\n";
     info += "  -d, --domain <value>        Override the domain portion of the username.\n";
     info += "  -l, --logon-type <value>    Specify the LogonUser logon type (default 2). Allowed: 2,9.\n";
@@ -424,7 +428,7 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #ifdef __linux__
 
-    result += "SpawnAs don't work in linux.\n";
+    result = "Only supported on Windows.\n";
 
 #elif _WIN32
 
@@ -584,13 +588,11 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
         enablePrivilege(L"SeIncreaseQuotaPrivilege");
         enablePrivilege(L"SeImpersonatePrivilege");
 
-        PROFILEINFO profileInfo;
+        PROFILEINFOW  profileInfo;
         ZeroMemory(&profileInfo, sizeof(profileInfo));
         profileInfo.dwSize = sizeof(profileInfo);
 
-        std::vector<wchar_t> profileUser(usernameW.begin(), usernameW.end());
-        profileUser.push_back(L'\0');
-        profileInfo.lpUserName = profileUser.data();
+        profileInfo.lpUserName = const_cast<LPWSTR>(usernameW.c_str());
 
         bool profileLoaded = false;
         if (options.loadProfile)
