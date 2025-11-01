@@ -56,7 +56,7 @@ std::string TaskScheduler::getInfo()
     oss << "  -t <taskName>         Name of the scheduled task. Defaults to a random name." << '\n';
     oss << "  -c <command>          Executable to run." << '\n';
     oss << "  -a <arguments>        Command line arguments." << '\n';
-    oss << "  -u <user>             Optional DOMAIN\\user for registration." << '\n';
+    oss << "  -u <user>             DOMAIN\\user for registration." << '\n';
     oss << "  -p <password>         Password for the provided user." << '\n';
     oss << "  --no-run              Register the task without running it." << '\n';
     oss << "  --nocleanup           Don't delete the task after it has been started." << '\n';
@@ -161,7 +161,6 @@ int TaskScheduler::init(std::vector<std::string>& splitedCmd, C2Message& c2Messa
         else if (current == "-a" && i + 1 < args.size())
         {
             params.arguments = args[++i];
-            std::cout << "params.arguments " << params.arguments << std::endl;
         }
         else if (current == "-u" && i + 1 < args.size())
         {
@@ -347,17 +346,36 @@ int TaskScheduler::executeTask(const Parameters& params, std::string& result) co
         return ERROR_CO_CREATE_INST;
     }
 
-    _variant_t serverVariant;
-    if (!params.server.empty())
-        serverVariant = _variant_t(toWide(params.server).c_str());
-    _variant_t userVariant;
-    if (!params.username.empty())
-        userVariant = _variant_t(toWide(params.username).c_str());
-    _variant_t passwordVariant;
-    if (!params.password.empty())
-        passwordVariant = _variant_t(toWide(params.password).c_str());
+    // Support DOMAIN\\User 
+    std::wstring serverW;
+    std::wstring userW;
+    std::wstring passW;
+    std::wstring domainW;
+    serverW = std::wstring(params.server.begin(), params.server.end());
+    userW = std::wstring(params.username.begin(), params.username.end());
+    passW = std::wstring(params.password.begin(), params.password.end());
 
-    hr = taskService->Connect(serverVariant, userVariant, passwordVariant, _variant_t());
+    size_t slashPos = userW.find(L'\\');
+    if (slashPos != std::wstring::npos)
+    {
+        domainW = userW.substr(0, slashPos);
+        userW = userW.substr(slashPos + 1);
+    }
+
+    _variant_t domainVariant;
+    // if (!domainW.empty())
+    //     domainVariant = _variant_t(domainW.c_str());
+    _variant_t serverVariant;
+    if (!serverW.empty())
+        serverVariant = _variant_t(serverW.c_str());
+    _variant_t userVariant;
+    if (!userW.empty())
+        userVariant = _variant_t(L"root");
+    _variant_t passwordVariant;
+    if (!passW.empty())
+        passwordVariant = _variant_t(L"root");
+
+    hr = taskService->Connect(serverVariant, userVariant, domainVariant, passwordVariant);
     if (FAILED(hr))
     {
         releaseAll();

@@ -34,6 +34,7 @@ add_subdirectory(MiniDump)
 add_subdirectory(DotnetExec)
 add_subdirectory(PwSh)
 add_subdirectory(Shell)
+add_subdirectory(Registry)
 
 ## Enum
 add_subdirectory(ChangeDirectory)
@@ -47,6 +48,7 @@ add_subdirectory(Whoami)
 add_subdirectory(Netstat)
 add_subdirectory(IpConfig)
 add_subdirectory(EnumerateShares)
+add_subdirectory(EnumerateRdpSessions)
 
 ## Pivot
 add_subdirectory(SpawnAs)
