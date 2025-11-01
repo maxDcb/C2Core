@@ -59,7 +59,7 @@ if(WIN32)
   FetchContent_Declare(
     MemoryModule
     GIT_REPOSITORY https://github.com/maxDcb/MemoryModule.git
-    GIT_TAG master
+    GIT_TAG develop
   )
 else()
   FetchContent_Declare(
@@ -172,7 +172,7 @@ set(LIBSSH2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   libssh2
   GIT_REPOSITORY https://github.com/libssh2/libssh2.git
-  GIT_TAG libssh2-1.11.0
+  GIT_TAG libssh2-1.11.1
 )
 FetchContent_MakeAvailable(libssh2)
 
@@ -199,7 +199,7 @@ if(C2CORE_BUILD_TESTS)
   FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.2
+    GIT_TAG v3.12.0
   )
   FetchContent_MakeAvailable(Catch2 nlohmann_json)
   include_directories(${nlohmann_json_SOURCE_DIR}/include)
