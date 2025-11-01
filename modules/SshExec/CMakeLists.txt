@@ -1,0 +1,20 @@
+include_directories(../)
+add_library(SshExec SHARED SshExec.cpp)
+set_property(TARGET SshExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+target_link_libraries(SshExec PRIVATE libssh2_static)
+if (WIN32)
+    target_link_libraries(SshExec PRIVATE ws2_32)
+endif()
+add_custom_command(TARGET SshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+    $<TARGET_FILE:SshExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:SshExec>")
+
+if(C2CORE_BUILD_TESTS)
+    add_executable(testsSshExec tests/testsSshExec.cpp SshExec.cpp)
+    target_link_libraries(testsSshExec PRIVATE libssh2_static)
+    if (WIN32)
+        target_link_libraries(testsSshExec PRIVATE ws2_32)
+    endif()
+    add_custom_command(TARGET testsSshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE:testsSshExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSshExec>")
+    add_test(NAME testsSshExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSshExec>")
+endif()

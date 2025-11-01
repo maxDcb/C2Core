@@ -34,6 +34,7 @@ add_subdirectory(MiniDump)
 add_subdirectory(DotnetExec)
 add_subdirectory(PwSh)
 add_subdirectory(Shell)
+add_subdirectory(Registry)
 
 ## Enum
 add_subdirectory(ChangeDirectory)
@@ -57,6 +58,4 @@ add_subdirectory(TaskScheduler)
 add_subdirectory(WinRM)
 add_subdirectory(DcomExec)
 add_subdirectory(CimExec)
-
-## Registry
-add_subdirectory(Registry)
+add_subdirectory(SshExec)
