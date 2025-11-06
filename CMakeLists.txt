@@ -167,8 +167,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(httplib)
 
-set(LIBSSH2_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(LIBSSH2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+add_compile_definitions(LIBSSH2_LIBRARY)    # needed for full static lib
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 FetchContent_Declare(
   libssh2
   GIT_REPOSITORY https://github.com/libssh2/libssh2.git

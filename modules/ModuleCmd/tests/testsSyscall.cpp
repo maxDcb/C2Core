@@ -133,9 +133,6 @@ int main()
     const char* text = "Hello from NtWriteFile!\n";
     DWORD len = static_cast<DWORD>(strlen(text));
 
-    IO_STATUS_BLOCK ioStatus = {};
-    NTSTATUS status;
-
     // Passing NULL ByteOffset -> use current file pointer
     IO_STATUS_BLOCK ioStatus = {};
     HANDLE Event = NULL;

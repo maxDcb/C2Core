@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#define LIBSSH2_LIBRARY
 #include <libssh2.h>
 
 #ifdef _WIN32
