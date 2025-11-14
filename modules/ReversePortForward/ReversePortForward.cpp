@@ -7,6 +7,8 @@
 #include <cstring>
 #include <sstream>
 #include <cerrno>
+#include <memory>
+#include <vector>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -50,9 +52,9 @@ namespace
     bool setNonBlocking(int socket)
     {
         int flags = fcntl(socket, F_GETFL, 0);
-        if(flags == -1)
+        if (flags == -1)
             return false;
-        if(fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+        if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
             return false;
         return true;
     }
@@ -83,6 +85,7 @@ ReversePortForward::ReversePortForward()
     , m_listenerActive(false)
     , m_remotePort(0)
     , m_listenerSocket(InvalidSocket)
+    , m_listenerThread()
     , m_nextConnectionId(1)
     , m_socketLayerReady(false)
 #endif
@@ -93,32 +96,33 @@ ReversePortForward::~ReversePortForward()
 {
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     std::lock_guard<std::mutex> lock(m_localMutex);
-    for(auto& entry : m_localConnections)
+    for (auto& entry : m_localConnections)
     {
-        if(entry.second != InvalidSocket)
+        if (entry.second != InvalidSocket)
             closeSocket(entry.second);
     }
     m_localConnections.clear();
-    shutdownSocketLayer();
 #else
     m_running = false;
-    if(m_listenerThread.joinable())
+    if (m_listenerThread.joinable())
         m_listenerThread.join();
 
     {
         std::lock_guard<std::mutex> lock(m_connectionsMutex);
-        for(auto& pair : m_connections)
+        for (auto& pair : m_connections)
         {
             auto& connection = pair.second;
-            if(connection && connection->socket != InvalidSocket)
+            if (connection && connection->socket != InvalidSocket)
                 closeSocket(connection->socket);
         }
         m_connections.clear();
     }
-    if(m_listenerSocket != InvalidSocket)
+
+    if (m_listenerSocket != InvalidSocket)
         closeSocket(m_listenerSocket);
-    shutdownSocketLayer();
 #endif
+
+    shutdownSocketLayer();
 }
 
 std::string ReversePortForward::getInfo()
@@ -150,7 +154,7 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
         m_remotePort = std::stoi(remotePortStr);
         m_localPort = std::stoi(localPortStr);
     }
-    catch(const std::exception&)
+    catch (const std::exception&)
     {
         c2Message.set_returnvalue("Invalid port provided.\n" + formatHelp());
         return -1;
@@ -167,6 +171,9 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("start");
     c2Message.set_args(remotePortStr + " " + localHost + " " + localPortStr);
+#else
+    (void)splitedCmd;
+    (void)c2Message;
 #endif
     return 0;
 }
@@ -200,8 +207,6 @@ int ReversePortForward::errorCodeToMsg(const C2Message& c2RetMessage, std::strin
 #endif
     return 0;
 }
-
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
 
 bool ReversePortForward::ensureSocketLayer()
 {
@@ -241,6 +246,19 @@ void ReversePortForward::closeSocket(SocketHandle socket) const
         ::close(socket);
 #endif
 }
+
+void ReversePortForward::enqueueChunk(int connectionId, const std::string& data, bool closeEvent)
+{
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        m_pendingChunks.push({connectionId, data, closeEvent});
+    }
+#if !(defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS))
+    m_queueCv.notify_all();
+#endif
+}
+
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
 
 bool ReversePortForward::sendAll(SocketHandle socket, const std::string& data) const
 {
@@ -334,12 +352,6 @@ std::string ReversePortForward::receiveAvailable(SocketHandle socket, bool& clos
     return data;
 }
 
-void ReversePortForward::enqueueChunk(int connectionId, const std::string& data, bool closeEvent)
-{
-    std::lock_guard<std::mutex> lock(m_queueMutex);
-    m_pendingChunks.push({connectionId, data, closeEvent});
-}
-
 void ReversePortForward::pollLocalConnections()
 {
     std::vector<PendingChunk> readyChunks;
@@ -370,8 +382,151 @@ void ReversePortForward::pollLocalConnections()
         enqueueChunk(chunk.connectionId, chunk.data, chunk.closeEvent);
 }
 
+#else
+
+ReversePortForward::SocketHandle ReversePortForward::createListener(int port)
+{
+    struct addrinfo hints;
+    std::memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    struct addrinfo* result = nullptr;
+    std::string portStr = std::to_string(port);
+
+    if (::getaddrinfo(nullptr, portStr.c_str(), &hints, &result) != 0)
+        return InvalidSocket;
+
+    SocketHandle listener = InvalidSocket;
+
+    for (auto ptr = result; ptr != nullptr; ptr = ptr->ai_next)
+    {
+        SocketHandle candidate = static_cast<SocketHandle>(::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol));
+        if (candidate == InvalidSocket)
+            continue;
+
+        int enable = 1;
+#ifdef _WIN32
+        ::setsockopt(candidate, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&enable), sizeof(enable));
+#else
+        ::setsockopt(candidate, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+#endif
+        if (::bind(candidate, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen)) == 0)
+        {
+            if (::listen(candidate, SOMAXCONN) == 0)
+            {
+                listener = candidate;
+                break;
+            }
+        }
+        closeSocket(candidate);
+    }
+
+    ::freeaddrinfo(result);
+
+    if (listener != InvalidSocket)
+        setNonBlocking(listener);
+
+    return listener;
+}
+
+ReversePortForward::SocketHandle ReversePortForward::acceptClient(SocketHandle listener)
+{
+    if (listener == InvalidSocket)
+        return InvalidSocket;
+
+#ifdef _WIN32
+    SOCKET client = ::accept(listener, nullptr, nullptr);
+#else
+    int client = ::accept(listener, nullptr, nullptr);
+#endif
+    if (client != InvalidSocket)
+        setNonBlocking(client);
+    return client;
+}
+
+std::shared_ptr<ReversePortForward::RemoteConnection> ReversePortForward::getConnection(int connectionId)
+{
+    std::lock_guard<std::mutex> lock(m_connectionsMutex);
+    auto it = m_connections.find(connectionId);
+    if (it != m_connections.end())
+        return it->second;
+    return nullptr;
+}
+
+void ReversePortForward::handleClient(std::shared_ptr<RemoteConnection> connection)
+{
+    SocketHandle socket = connection->socket;
+    std::vector<char> buffer(4096);
+
+    while (connection->active)
+    {
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(socket, &readSet);
+        timeval tv{1, 0};
+        int ready = ::select(static_cast<int>(socket) + 1, &readSet, nullptr, nullptr, &tv);
+        if (ready > 0 && FD_ISSET(socket, &readSet))
+        {
+            int received = ::recv(socket, buffer.data(), static_cast<int>(buffer.size()), 0);
+            if (received > 0)
+            {
+                std::string data(buffer.data(), received);
+                enqueueChunk(connection->id, data, false);
+            }
+            else
+            {
+                connection->active = false;
+                enqueueChunk(connection->id, std::string(), true);
+                break;
+            }
+        }
+        else if (ready < 0)
+        {
+            connection->active = false;
+            enqueueChunk(connection->id, std::string(), true);
+            break;
+        }
+    }
+
+    closeSocket(socket);
+}
+
+void ReversePortForward::runListener()
+{
+    while (m_running)
+    {
+        SocketHandle client = acceptClient(m_listenerSocket);
+        if (client == InvalidSocket)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            continue;
+        }
+
+        int id = m_nextConnectionId++;
+        auto connection = std::make_shared<RemoteConnection>();
+        connection->id = id;
+        connection->socket = client;
+        connection->active = true;
+
+        {
+            std::lock_guard<std::mutex> lock(m_connectionsMutex);
+            m_connections[id] = connection;
+        }
+
+        connection->reader = std::thread(&ReversePortForward::handleClient, this, connection);
+        connection->reader.detach();
+        enqueueChunk(id, std::string(), false);
+    }
+}
+
+#endif
+
 int ReversePortForward::followUp(const C2Message& c2RetMessage)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     if (!ensureSocketLayer())
         return -1;
 
@@ -497,234 +652,19 @@ int ReversePortForward::followUp(const C2Message& c2RetMessage)
     }
 
     return 0;
-}
-
-int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_args(c2Message.args());
-    c2RetMessage.set_data(c2Message.data());
+#else
+    (void)c2RetMessage;
     return 0;
-}
-
-int ReversePortForward::recurringExec(C2Message& c2RetMessage)
-{
-    pollLocalConnections();
-
-    std::unique_lock<std::mutex> lock(m_queueMutex);
-    if (m_pendingChunks.empty())
-        return 0;
-
-    PendingChunk chunk = m_pendingChunks.front();
-    m_pendingChunks.pop();
-    lock.unlock();
-
-    c2RetMessage.set_instruction(std::to_string(getHash()));
-    if (chunk.closeEvent)
-    {
-        c2RetMessage.set_cmd("close");
-        c2RetMessage.set_args("close:" + std::to_string(chunk.connectionId));
-        c2RetMessage.set_data("");
-    }
-    else
-    {
-        c2RetMessage.set_cmd("send");
-        c2RetMessage.set_args("response:" + std::to_string(chunk.connectionId));
-        c2RetMessage.set_data(chunk.data);
-    }
-
-    return 1;
-}
-
-#else  // Beacon implementation
-
-bool ReversePortForward::ensureSocketLayer()
-{
-#ifdef _WIN32
-    if (m_socketLayerReady)
-        return true;
-
-    WSADATA data;
-    int rc = WSAStartup(MAKEWORD(2, 2), &data);
-    if (rc == 0)
-        m_socketLayerReady = true;
-    return m_socketLayerReady;
-#else
-    m_socketLayerReady = true;
-    return true;
 #endif
-}
-
-void ReversePortForward::shutdownSocketLayer()
-{
-#ifdef _WIN32
-    if (m_socketLayerReady)
-    {
-        WSACleanup();
-        m_socketLayerReady = false;
-    }
-#endif
-}
-
-void ReversePortForward::closeSocket(SocketHandle socket)
-{
-#ifdef _WIN32
-    if (socket != InvalidSocket)
-        closesocket(socket);
-#else
-    if (socket != InvalidSocket)
-        ::close(socket);
-#endif
-}
-
-ReversePortForward::SocketHandle ReversePortForward::createListener(int port)
-{
-    struct addrinfo hints;
-    std::memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
-
-    struct addrinfo* result = nullptr;
-    std::string portStr = std::to_string(port);
-
-    if (::getaddrinfo(nullptr, portStr.c_str(), &hints, &result) != 0)
-        return InvalidSocket;
-
-    SocketHandle listener = InvalidSocket;
-
-    for (auto ptr = result; ptr != nullptr; ptr = ptr->ai_next)
-    {
-        SocketHandle candidate = static_cast<SocketHandle>(::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol));
-        if (candidate == InvalidSocket)
-            continue;
-
-        int enable = 1;
-#ifdef _WIN32
-        ::setsockopt(candidate, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&enable), sizeof(enable));
-#else
-        ::setsockopt(candidate, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
-#endif
-        if (::bind(candidate, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen)) == 0)
-        {
-            if (::listen(candidate, SOMAXCONN) == 0)
-            {
-                listener = candidate;
-                break;
-            }
-        }
-        closeSocket(candidate);
-    }
-
-    ::freeaddrinfo(result);
-
-    if (listener != InvalidSocket)
-        setNonBlocking(listener);
-
-    return listener;
-}
-
-ReversePortForward::SocketHandle ReversePortForward::acceptClient(SocketHandle listener)
-{
-    if (listener == InvalidSocket)
-        return InvalidSocket;
-
-#ifdef _WIN32
-    SOCKET client = ::accept(listener, nullptr, nullptr);
-#else
-    int client = ::accept(listener, nullptr, nullptr);
-#endif
-    if (client != InvalidSocket)
-        setNonBlocking(client);
-    return client;
-}
-
-void ReversePortForward::enqueueChunk(int connectionId, const std::string& data, bool closeEvent)
-{
-    std::lock_guard<std::mutex> lock(m_queueMutex);
-    m_pendingChunks.push({connectionId, data, closeEvent});
-    m_queueCv.notify_all();
-}
-
-std::shared_ptr<ReversePortForward::RemoteConnection> ReversePortForward::getConnection(int connectionId)
-{
-    std::lock_guard<std::mutex> lock(m_connectionsMutex);
-    auto it = m_connections.find(connectionId);
-    if (it != m_connections.end())
-        return it->second;
-    return nullptr;
-}
-
-void ReversePortForward::handleClient(std::shared_ptr<RemoteConnection> connection)
-{
-    SocketHandle socket = connection->socket;
-    std::vector<char> buffer(4096);
-
-    while (connection->active)
-    {
-        fd_set readSet;
-        FD_ZERO(&readSet);
-        FD_SET(socket, &readSet);
-        timeval tv{1, 0};
-        int ready = ::select(static_cast<int>(socket) + 1, &readSet, nullptr, nullptr, &tv);
-        if (ready > 0 && FD_ISSET(socket, &readSet))
-        {
-            int received = ::recv(socket, buffer.data(), static_cast<int>(buffer.size()), 0);
-            if (received > 0)
-            {
-                std::string data(buffer.data(), received);
-                enqueueChunk(connection->id, data, false);
-            }
-            else
-            {
-                connection->active = false;
-                enqueueChunk(connection->id, std::string(), true);
-                break;
-            }
-        }
-        else if (ready < 0)
-        {
-            connection->active = false;
-            enqueueChunk(connection->id, std::string(), true);
-            break;
-        }
-    }
-
-    closeSocket(socket);
-}
-
-void ReversePortForward::runListener()
-{
-    while (m_running)
-    {
-        SocketHandle client = acceptClient(m_listenerSocket);
-        if (client == InvalidSocket)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            continue;
-        }
-
-        int id = m_nextConnectionId++;
-        auto connection = std::make_shared<RemoteConnection>();
-        connection->id = id;
-        connection->socket = client;
-        connection->active = true;
-
-        {
-            std::lock_guard<std::mutex> lock(m_connectionsMutex);
-            m_connections[id] = connection;
-        }
-
-        connection->reader = std::thread(&ReversePortForward::handleClient, this, connection);
-        connection->reader.detach();
-        enqueueChunk(id, std::string(), false);
-    }
 }
 
 int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+    (void)c2Message;
+    (void)c2RetMessage;
+    return 0;
+#else
     c2RetMessage.set_instruction(c2Message.instruction());
 
     std::string cmd = c2Message.cmd();
@@ -881,10 +821,14 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
     }
 
     return 0;
+#endif
 }
 
 int ReversePortForward::recurringExec(C2Message& c2RetMessage)
 {
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+    pollLocalConnections();
+
     std::unique_lock<std::mutex> lock(m_queueMutex);
     if (m_pendingChunks.empty())
         return 0;
@@ -902,18 +846,39 @@ int ReversePortForward::recurringExec(C2Message& c2RetMessage)
     }
     else
     {
-        c2RetMessage.set_cmd("data");
+        c2RetMessage.set_cmd("send");
+        c2RetMessage.set_args("response:" + std::to_string(chunk.connectionId));
+        c2RetMessage.set_data(chunk.data);
+    }
+
+    return 1;
+#else
+    std::unique_lock<std::mutex> lock(m_queueMutex);
+    if (m_pendingChunks.empty())
+    {
+        m_queueCv.wait_for(lock, std::chrono::milliseconds(100));
+        if (m_pendingChunks.empty())
+            return 0;
+    }
+
+    PendingChunk chunk = m_pendingChunks.front();
+    m_pendingChunks.pop();
+    lock.unlock();
+
+    c2RetMessage.set_instruction(std::to_string(getHash()));
+    if (chunk.closeEvent)
+    {
+        c2RetMessage.set_cmd("close");
+        c2RetMessage.set_args("close:" + std::to_string(chunk.connectionId));
+        c2RetMessage.set_data("");
+    }
+    else
+    {
+        c2RetMessage.set_cmd("send");
         c2RetMessage.set_args("data:" + std::to_string(chunk.connectionId));
         c2RetMessage.set_data(chunk.data);
     }
 
     return 1;
-}
-
-int ReversePortForward::followUp(const C2Message& c2RetMessage)
-{
-    (void)c2RetMessage;
-    return 0;
-}
-
 #endif
+}
