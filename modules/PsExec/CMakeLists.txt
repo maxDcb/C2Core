@@ -14,15 +14,19 @@ if(C2CORE_BUILD_TESTS)
 
     add_test(NAME testsPsExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPsExec>")
 
+    if (WIN32)
 
-    # TestService 
-    add_executable(TestService tests/TestService.cpp)
-    target_link_libraries(TestService PRIVATE
-        advapi32
-    )
-    add_custom_command(TARGET TestService POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:TestService>
-            "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:TestService>"
-    )
+        # TestService 
+        add_executable(TestService tests/TestService.cpp)
+        target_link_libraries(TestService PRIVATE
+            advapi32
+        )
+        add_custom_command(TARGET TestService POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                $<TARGET_FILE:TestService>
+                "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:TestService>"
+        )
+
+    endif (WIN32)
+
 endif()
