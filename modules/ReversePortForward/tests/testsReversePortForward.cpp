@@ -6,6 +6,7 @@
 bool testInit();
 bool testInvalidArguments();
 bool testErrorMessages();
+bool test();
 
 int main()
 {
@@ -16,6 +17,7 @@ int main()
     ok &= testInit();
     ok &= testInvalidArguments();
     ok &= testErrorMessages();
+    ok &= test();
 
     if (ok)
         std::cout << "[+] Success" << std::endl;
@@ -82,4 +84,37 @@ bool testErrorMessages()
     ok &= !error.empty();
 
     return ok;
+}
+
+
+bool test()
+{
+    ReversePortForward module;
+    std::vector<std::string> cmd = {"reversePortForward", "8080", "127.0.0.1", "9001"};
+    C2Message message;
+    C2Message ret;
+
+    int rc = module.init(cmd, message);
+
+    module.process(message, ret);
+
+    std::string err;
+    module.errorCodeToMsg(ret, err);
+
+    std::cout << ret.returnvalue() << std::endl;
+    std::cerr << err << std::endl;
+
+    int maxIter = 100;
+    int iter = 0;
+    while (iter < maxIter)
+    {
+        module.followUp(message);
+        module.recurringExec(message);
+
+        iter++;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    return 1;
 }

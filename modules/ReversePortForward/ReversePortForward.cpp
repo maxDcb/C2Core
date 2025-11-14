@@ -74,21 +74,21 @@ extern "C" __attribute__((visibility("default"))) ReversePortForward* ReversePor
 #endif
 
 ReversePortForward::ReversePortForward()
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     : ModuleCmd(std::string(moduleName), moduleHash)
     , m_localPort(0)
     , m_remotePort(0)
     , m_socketLayerReady(false)
-#else
-    : ModuleCmd("", moduleHash)
+// #else
+    // , ModuleCmd("", moduleHash)
     , m_running(false)
     , m_listenerActive(false)
-    , m_remotePort(0)
+    // , m_remotePort(0)
     , m_listenerSocket(InvalidSocket)
     , m_listenerThread()
     , m_nextConnectionId(1)
-    , m_socketLayerReady(false)
-#endif
+    // , m_socketLayerReady(false)
+// #endif
 {
 }
 
@@ -258,7 +258,7 @@ void ReversePortForward::enqueueChunk(int connectionId, const std::string& data,
 #endif
 }
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
 
 bool ReversePortForward::sendAll(SocketHandle socket, const std::string& data) const
 {
@@ -382,7 +382,7 @@ void ReversePortForward::pollLocalConnections()
         enqueueChunk(chunk.connectionId, chunk.data, chunk.closeEvent);
 }
 
-#else
+// #else
 
 ReversePortForward::SocketHandle ReversePortForward::createListener(int port)
 {
@@ -522,11 +522,10 @@ void ReversePortForward::runListener()
     }
 }
 
-#endif
+// #endif
 
 int ReversePortForward::followUp(const C2Message& c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     if (!ensureSocketLayer())
         return -1;
 
@@ -652,19 +651,10 @@ int ReversePortForward::followUp(const C2Message& c2RetMessage)
     }
 
     return 0;
-#else
-    (void)c2RetMessage;
-    return 0;
-#endif
 }
 
 int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
-    (void)c2Message;
-    (void)c2RetMessage;
-    return 0;
-#else
     c2RetMessage.set_instruction(c2Message.instruction());
 
     std::string cmd = c2Message.cmd();
@@ -821,12 +811,13 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
     }
 
     return 0;
-#endif
 }
 
+// TODO, we got an architectural issue here, recurringExec and followUp are not expected to communicate between them without user intervention
+// could be usefull
 int ReversePortForward::recurringExec(C2Message& c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     pollLocalConnections();
 
     std::unique_lock<std::mutex> lock(m_queueMutex);
@@ -852,33 +843,33 @@ int ReversePortForward::recurringExec(C2Message& c2RetMessage)
     }
 
     return 1;
-#else
-    std::unique_lock<std::mutex> lock(m_queueMutex);
-    if (m_pendingChunks.empty())
-    {
-        m_queueCv.wait_for(lock, std::chrono::milliseconds(100));
-        if (m_pendingChunks.empty())
-            return 0;
-    }
+// #else
+    // std::unique_lock<std::mutex> lock(m_queueMutex);
+    // if (m_pendingChunks.empty())
+    // {
+    //     m_queueCv.wait_for(lock, std::chrono::milliseconds(100));
+    //     if (m_pendingChunks.empty())
+    //         return 0;
+    // }
 
-    PendingChunk chunk = m_pendingChunks.front();
-    m_pendingChunks.pop();
-    lock.unlock();
+    // PendingChunk chunk = m_pendingChunks.front();
+    // m_pendingChunks.pop();
+    // lock.unlock();
 
-    c2RetMessage.set_instruction(std::to_string(getHash()));
-    if (chunk.closeEvent)
-    {
-        c2RetMessage.set_cmd("close");
-        c2RetMessage.set_args("close:" + std::to_string(chunk.connectionId));
-        c2RetMessage.set_data("");
-    }
-    else
-    {
-        c2RetMessage.set_cmd("send");
-        c2RetMessage.set_args("data:" + std::to_string(chunk.connectionId));
-        c2RetMessage.set_data(chunk.data);
-    }
+    // c2RetMessage.set_instruction(std::to_string(getHash()));
+    // if (chunk.closeEvent)
+    // {
+    //     c2RetMessage.set_cmd("close");
+    //     c2RetMessage.set_args("close:" + std::to_string(chunk.connectionId));
+    //     c2RetMessage.set_data("");
+    // }
+    // else
+    // {
+    //     c2RetMessage.set_cmd("send");
+    //     c2RetMessage.set_args("data:" + std::to_string(chunk.connectionId));
+    //     c2RetMessage.set_data(chunk.data);
+    // }
 
-    return 1;
-#endif
+    // return 1;
+// #endif
 }

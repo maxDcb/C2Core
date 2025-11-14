@@ -57,7 +57,7 @@ private:
     void closeSocket(SocketHandle socket) const;
     void enqueueChunk(int connectionId, const std::string& data, bool closeEvent);
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
     bool sendAll(SocketHandle socket, const std::string& data) const;
     std::string receiveAvailable(SocketHandle socket, bool& closed) const;
     void pollLocalConnections();
@@ -66,7 +66,7 @@ private:
     int m_localPort;
     std::mutex m_localMutex;
     std::unordered_map<int, SocketHandle> m_localConnections;
-#else
+// #else
     struct RemoteConnection
     {
         int id;
@@ -89,7 +89,7 @@ private:
     std::mutex m_connectionsMutex;
     std::unordered_map<int, std::shared_ptr<RemoteConnection>> m_connections;
     std::condition_variable m_queueCv;
-#endif
+// #endif
 
     int m_remotePort;
     bool m_socketLayerReady;
