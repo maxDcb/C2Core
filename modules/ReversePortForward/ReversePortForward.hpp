@@ -32,6 +32,13 @@ public:
 
 private:
 #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+    struct PendingChunk
+    {
+        int connectionId;
+        std::string data;
+        bool closeEvent;
+    };
+
     using SocketHandle =
     #ifdef _WIN32
         SOCKET;
@@ -50,7 +57,9 @@ private:
     void shutdownSocketLayer();
     void closeSocket(SocketHandle socket) const;
     bool sendAll(SocketHandle socket, const std::string& data) const;
-    std::string receiveAvailable(SocketHandle socket) const;
+    std::string receiveAvailable(SocketHandle socket, bool& closed) const;
+    void enqueueChunk(int connectionId, const std::string& data, bool closeEvent);
+    void pollLocalConnections();
 
     std::string m_localHost;
     int m_localPort;
@@ -58,6 +67,8 @@ private:
     bool m_socketLayerReady;
     std::mutex m_localMutex;
     std::unordered_map<int, SocketHandle> m_localConnections;
+    std::mutex m_queueMutex;
+    std::queue<PendingChunk> m_pendingChunks;
 #else
     using SocketHandle =
     #ifdef _WIN32
