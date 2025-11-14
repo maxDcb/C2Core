@@ -1,6 +1,6 @@
 #include "RawWinRm.hpp"
 
-#include "ModuleCmd/Common.hpp"
+#include "Common.hpp"
 
 #include <algorithm>
 #include <array>
