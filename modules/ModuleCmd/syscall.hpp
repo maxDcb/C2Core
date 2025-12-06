@@ -470,9 +470,13 @@ class SyscallList
 private:
 
     PVOID getNtdllExportDirectory()
-    {
+    {       
+#ifdef _M_IX86 
+        PSW3_PEB Peb = (PSW3_PEB)__readfsdword(0x30);
+#else
         PSW3_PEB Peb = (PSW3_PEB)__readgsqword(0x60);
-
+#endif
+        
         PSW3_PEB_LDR_DATA Ldr = Peb->Ldr;
         PIMAGE_EXPORT_DIRECTORY ExportDirectory = NULL;
         m_dllBase = NULL;

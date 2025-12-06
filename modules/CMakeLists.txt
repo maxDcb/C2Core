@@ -31,8 +31,10 @@ add_subdirectory(KillProcess)
 add_subdirectory(KeyLogger)
 add_subdirectory(ScreenShot)
 add_subdirectory(MiniDump)
-add_subdirectory(DotnetExec)
-add_subdirectory(PwSh)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)    # x64, need some calling convention fixing
+    add_subdirectory(DotnetExec)
+    add_subdirectory(PwSh)
+endif()
 add_subdirectory(Shell)
 add_subdirectory(Registry)
 

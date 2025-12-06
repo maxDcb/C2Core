@@ -1,7 +1,19 @@
 include_directories(../)
 
 if(WIN32)
-    add_library(MiniDump SHARED MiniDump.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+        add_library(MiniDump SHARED
+            MiniDump.cpp
+            ../ModuleCmd/syscall.cpp
+            ../ModuleCmd/syscall.x64.obj
+        )
+    else()                             # 32-bit
+        add_library(MiniDump SHARED
+            MiniDump.cpp
+            ../ModuleCmd/syscall.cpp
+            ../ModuleCmd/syscall.x86.obj
+        )
+    endif()
 else()
     add_library(MiniDump SHARED MiniDump.cpp)
 endif()
@@ -16,7 +28,21 @@ $<TARGET_FILE:MiniDump> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
-        add_executable(testsMiniDump tests/testsMiniDump.cpp MiniDump.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+        if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+            add_executable(testsMiniDump
+                tests/testsMiniDump.cpp
+                MiniDump.cpp
+                ../ModuleCmd/syscall.cpp
+                ../ModuleCmd/syscall.x64.obj
+            )
+        else()                             # 32-bit
+            add_executable(testsMiniDump
+                tests/testsMiniDump.cpp
+                MiniDump.cpp
+                ../ModuleCmd/syscall.cpp
+                ../ModuleCmd/syscall.x86.obj
+            )
+        endif()
     else()
     add_executable(testsMiniDump tests/testsMiniDump.cpp MiniDump.cpp)
     endif()

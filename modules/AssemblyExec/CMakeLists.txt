@@ -1,7 +1,23 @@
 include_directories(../)
 
 if(WIN32)
-    add_library(AssemblyExec SHARED AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj ../ModuleCmd/peb.cpp ../ModuleCmd/hwbp.cpp)
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+        add_library(AssemblyExec SHARED
+            AssemblyExec.cpp
+            ../ModuleCmd/syscall.cpp
+            ../ModuleCmd/syscall.x64.obj
+            ../ModuleCmd/peb.cpp
+            ../ModuleCmd/hwbp.cpp
+        )
+    else()                             # 32-bit (x86)
+        add_library(AssemblyExec SHARED
+            AssemblyExec.cpp
+            ../ModuleCmd/syscall.cpp
+            ../ModuleCmd/syscall.x86.obj
+            ../ModuleCmd/peb.cpp
+            ../ModuleCmd/hwbp.cpp
+        )
+    endif()
 else()
     add_library(AssemblyExec SHARED AssemblyExec.cpp)
 endif()
@@ -15,7 +31,25 @@ $<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_N
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
-        add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj ../ModuleCmd/peb.cpp ../ModuleCmd/hwbp.cpp)
+        if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+            add_executable(testsAssemblyExec
+                tests/testsAssemblyExec.cpp
+                AssemblyExec.cpp
+                ../ModuleCmd/syscall.cpp
+                ../ModuleCmd/syscall.x64.obj
+                ../ModuleCmd/peb.cpp
+                ../ModuleCmd/hwbp.cpp
+            )
+        else()                             # 32-bit
+            add_executable(testsAssemblyExec
+                tests/testsAssemblyExec.cpp
+                AssemblyExec.cpp
+                ../ModuleCmd/syscall.cpp
+                ../ModuleCmd/syscall.x86.obj
+                ../ModuleCmd/peb.cpp
+                ../ModuleCmd/hwbp.cpp
+            )
+        endif()
         target_link_libraries(testsAssemblyExec PRIVATE Donut )
 
         add_executable(testOutputWriter tests/testOutputWriter.cpp)

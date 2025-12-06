@@ -1,7 +1,16 @@
 include_directories(../)
 
 if(WIN32)
-    add_library(Inject SHARED Inject.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+    set(SYSCALL_OBJ "../ModuleCmd/syscall.x86.obj")
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(SYSCALL_OBJ "../ModuleCmd/syscall.x64.obj")
+    endif()
+
+    add_library(Inject SHARED
+        Inject.cpp
+        ../ModuleCmd/syscall.cpp
+        ${SYSCALL_OBJ}
+    )
 else()
     add_library(Inject SHARED Inject.cpp)
 endif()
@@ -15,7 +24,7 @@ $<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:In
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
-       add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
+       add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.cpp ${SYSCALL_OBJ})
         target_link_libraries(testsInject PRIVATE Donut )
     else()
         add_executable(testsInject tests/testsInject.cpp Inject.cpp)
