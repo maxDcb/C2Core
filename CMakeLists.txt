@@ -187,6 +187,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(httplib)
 
+FetchContent_Declare(
+  crow
+  GIT_REPOSITORY https://github.com/CrowCpp/crow.git
+  GIT_TAG v1.1.1
+)
+FetchContent_MakeAvailable(crow)
+include_directories(${crow_SOURCE_DIR}/include)
+
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -204,6 +212,7 @@ FetchContent_MakeAvailable(libssh2)
 find_package(OpenSSL REQUIRED)
 add_library(openssl::openssl INTERFACE IMPORTED)
 target_link_libraries(openssl::openssl INTERFACE OpenSSL::SSL OpenSSL::Crypto)
+add_compile_definitions(CROW_ENABLE_SSL)
 
 # Build tests only when explicitly enabled. Default to ON when C2Core is the
 # top-level project and OFF when included from another build.

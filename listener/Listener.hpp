@@ -22,7 +22,7 @@ class Listener
 
 public:
     Listener(const std::string& param1, const std::string& param2, const std::string& type);
-    virtual ~Listener(){};
+    virtual ~Listener() = default;
 
         const std::string & getParam1() const;
         const std::string & getParam2() const;
