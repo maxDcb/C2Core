@@ -58,37 +58,29 @@ private:
         bool lastBinary{false};
     };
 
-    using CrowApp = crow::App<PathGuardMiddleware>;
-
 private:
     void launchHttpServ();
-    void setupHttpRoutes(const std::vector<std::string>& uri, const std::string& uriFileDownload, const std::string& downloadFolder);
-    void setupWebSocketRoutes(const std::vector<std::string>& wsUris);
-    void startWebSocketMaintenance();
-    void stopWebSocketMaintenance();
 
     int HandleCheckIn(const crow::request& req, crow::response& res);
     int HandleCheckIn(const std::string& requestData, crow::response& res);
     bool processPayload(const std::string& input, std::string& output);
 
-    void registerWebSocket(crow::websocket::connection& conn, const std::string& endpoint);
+    void registerWebSocket(crow::websocket::connection& conn, const std::string& endpoint="");
     void unregisterWebSocket(crow::websocket::connection& conn, const std::string& reason, uint16_t code);
     void forwardWebSocketPayload(crow::websocket::connection& conn, const std::string& payload, bool isBinary);
 
     std::string m_host;
     int m_port;
-        bool m_isHttps;
-        nlohmann::json m_listenerConfig;
+    bool m_isHttps;
+    nlohmann::json m_listenerConfig;
 
-    CrowApp m_app;
+    std::vector<std::string> m_uris;
+    std::vector<std::string> m_wsUris;
+
+    crow::App<PathGuardMiddleware> * m_app;
     std::unique_ptr<std::thread> m_httpServ;
-
-    std::atomic<bool> m_stopRequested{false};
 
     std::unordered_map<crow::websocket::connection*, std::shared_ptr<WebSocketSession>> m_wsSessions;
     std::mutex m_wsMutex;
-    std::unique_ptr<std::thread> m_wsMaintenanceThread;
-    std::chrono::seconds m_wsIdleTimeout{std::chrono::seconds{0}};
-    std::chrono::seconds m_wsPingInterval{std::chrono::seconds{15}};
     uint64_t m_wsMaxMessageSize{1024 * 1024};
 };
