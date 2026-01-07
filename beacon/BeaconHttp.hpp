@@ -43,8 +43,11 @@ private:
 
     nlohmann::json m_beaconHttpConfig;
     bool m_isHttps;
-    
+
+#ifdef _WIN32
     WsClient m_ws;
+#endif
+
     bool m_upgradeToWs;
     bool m_isWsConnected;
 
