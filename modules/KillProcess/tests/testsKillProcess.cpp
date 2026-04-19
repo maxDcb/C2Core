@@ -30,8 +30,8 @@ bool testKillProcess()
 
     int pid;
 #ifdef __linux__
-    pid = launchProcess("sleep 30");
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    pid = launchProcess("sleep 1");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #elif _WIN32
     pid = launchProcess("C:\\Windows\\System32\\notepad.exe");
     Sleep(1000);
