@@ -6,7 +6,7 @@ if(WIN32)
 else()
 endif()
 add_custom_command(TARGET Coff POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:Coff> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Coff>")
+$<TARGET_FILE:Coff> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Coff>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsCoffLoader tests/testsCoffLoader.cpp CoffLoader.cpp)
@@ -18,7 +18,7 @@ if(C2CORE_BUILD_TESTS)
     endif()
 
     add_custom_command(TARGET testsCoffLoader POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsCoffLoader> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsCoffLoader>")
+    $<TARGET_FILE:testsCoffLoader> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCoffLoader>")
 
-    add_test(NAME testsCoffLoader COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsCoffLoader>")
+    add_test(NAME testsCoffLoader COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCoffLoader>")
 endif()

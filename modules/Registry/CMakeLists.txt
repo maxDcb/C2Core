@@ -6,7 +6,7 @@ if (WIN32)
     target_link_libraries(Registry PRIVATE Advapi32)
 endif()
 add_custom_command(TARGET Registry POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:Registry> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Registry>")
+    $<TARGET_FILE:Registry> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Registry>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsRegistry tests/testsRegistry.cpp Registry.cpp)
@@ -15,7 +15,7 @@ if(C2CORE_BUILD_TESTS)
         target_link_libraries(testsRegistry PRIVATE Advapi32)
     endif()
     add_custom_command(TARGET testsRegistry POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:testsRegistry> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsRegistry>")
+        $<TARGET_FILE:testsRegistry> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsRegistry>")
 
-    add_test(NAME testsRegistry COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsRegistry>")
+    add_test(NAME testsRegistry COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsRegistry>")
 endif()

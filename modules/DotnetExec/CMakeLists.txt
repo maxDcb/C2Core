@@ -7,7 +7,7 @@ endif()
 set_property(TARGET DotnetExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(DotnetExec )
 add_custom_command(TARGET DotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:DotnetExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:DotnetExec>")
+$<TARGET_FILE:DotnetExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:DotnetExec>")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
@@ -19,7 +19,7 @@ if(C2CORE_BUILD_TESTS)
     target_link_libraries(testsDotnetExec )
     set_property(TARGET testsDotnetExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     add_custom_command(TARGET testsDotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsDotnetExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDotnetExec>")
+    $<TARGET_FILE:testsDotnetExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDotnetExec>")
 
-    add_test(NAME testsDotnetExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDotnetExec>")
+    add_test(NAME testsDotnetExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDotnetExec>")
 endif()

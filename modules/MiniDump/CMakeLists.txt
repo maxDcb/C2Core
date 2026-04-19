@@ -23,7 +23,7 @@ target_link_libraries(MiniDump ${Donut})
 
 
 add_custom_command(TARGET MiniDump POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:MiniDump> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:MiniDump>")
+$<TARGET_FILE:MiniDump> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:MiniDump>")
 
 
 if(C2CORE_BUILD_TESTS)
@@ -50,7 +50,7 @@ if(C2CORE_BUILD_TESTS)
     target_link_libraries(testsMiniDump ${Donut})
 
     add_custom_command(TARGET testsMiniDump POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsMiniDump> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsMiniDump>")
+    $<TARGET_FILE:testsMiniDump> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMiniDump>")
 
-    add_test(NAME testsMiniDump COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsMiniDump>")
+    add_test(NAME testsMiniDump COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMiniDump>")
 endif()

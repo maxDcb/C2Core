@@ -20,7 +20,7 @@ set_property(TARGET Inject PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(Inject PRIVATE Donut )
 
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:Inject> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:Inject>")
+$<TARGET_FILE:Inject> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Inject>")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
@@ -32,7 +32,7 @@ if(C2CORE_BUILD_TESTS)
     endif()
 
     add_custom_command(TARGET testsInject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsInject> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsInject>")
+    $<TARGET_FILE:testsInject> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsInject>")
 
-    add_test(NAME testsInject COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsInject>")
+    add_test(NAME testsInject COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsInject>")
 endif()

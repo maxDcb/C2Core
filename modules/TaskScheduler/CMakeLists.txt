@@ -6,7 +6,7 @@ if (WIN32)
     target_link_libraries(TaskScheduler PRIVATE Taskschd)
 endif()
 add_custom_command(TARGET TaskScheduler POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-$<TARGET_FILE:TaskScheduler> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:TaskScheduler>")
+$<TARGET_FILE:TaskScheduler> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:TaskScheduler>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsTaskScheduler tests/testsTaskScheduler.cpp TaskScheduler.cpp)
@@ -15,7 +15,7 @@ if(C2CORE_BUILD_TESTS)
         target_link_libraries(testsTaskScheduler PRIVATE Taskschd)
     endif()
     add_custom_command(TARGET testsTaskScheduler POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:testsTaskScheduler> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsTaskScheduler>")
+    $<TARGET_FILE:testsTaskScheduler> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTaskScheduler>")
 
-    add_test(NAME testsTaskScheduler COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsTaskScheduler>")
+    add_test(NAME testsTaskScheduler COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTaskScheduler>")
 endif()

@@ -16,7 +16,7 @@ endif()
 
 
 add_custom_command(TARGET SshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:SshExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:SshExec>")
+    $<TARGET_FILE:SshExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:SshExec>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsSshExec tests/testsSshExec.cpp SshExec.cpp)
@@ -29,6 +29,6 @@ if(C2CORE_BUILD_TESTS)
         )
     endif()
     add_custom_command(TARGET testsSshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:testsSshExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSshExec>")
-    add_test(NAME testsSshExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSshExec>")
+        $<TARGET_FILE:testsSshExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSshExec>")
+    add_test(NAME testsSshExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSshExec>")
 endif()

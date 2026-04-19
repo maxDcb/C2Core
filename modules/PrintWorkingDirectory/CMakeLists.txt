@@ -3,13 +3,13 @@ add_library(PrintWorkingDirectory SHARED PrintWorkingDirectory.cpp)
 set_property(TARGET PrintWorkingDirectory PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PrintWorkingDirectory )
 add_custom_command(TARGET PrintWorkingDirectory POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:PrintWorkingDirectory> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PrintWorkingDirectory>")
+$<TARGET_FILE:PrintWorkingDirectory> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:PrintWorkingDirectory>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsPrintWorkingDirectory tests/testsPrintWorkingDirectory.cpp PrintWorkingDirectory.cpp)
     target_link_libraries(testsPrintWorkingDirectory )
     add_custom_command(TARGET testsPrintWorkingDirectory POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsPrintWorkingDirectory> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPrintWorkingDirectory>")
+    $<TARGET_FILE:testsPrintWorkingDirectory> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPrintWorkingDirectory>")
 
-    add_test(NAME testsPrintWorkingDirectory COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPrintWorkingDirectory>")
+    add_test(NAME testsPrintWorkingDirectory COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPrintWorkingDirectory>")
 endif()

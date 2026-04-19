@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-project(C2Core LANGUAGES CXX)
+
+# C2Core is consumed as source from the parent repository. It no longer
+# exposes a standalone package/install surface from this CMake entrypoint.
 
 # --- Use the static MSVC runtime (/MT, /MTd) everywhere on Windows ---
 if(MSVC)
@@ -28,6 +30,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(NOT DEFINED C2_BASE64_SOURCE_DIR)
+  set(C2_BASE64_SOURCE_DIR "${CMAKE_SOURCE_DIR}/thirdParty/base64")
+endif()
+if(NOT DEFINED C2_DONUT_SOURCE_DIR)
+  set(C2_DONUT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/thirdParty/donut")
+endif()
+
+if(NOT DEFINED C2_RUNTIME_MODULE_OUTPUT_DIR)
+  set(C2_RUNTIME_MODULE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/artifacts/Release/Modules")
+endif()
+if(NOT DEFINED C2_TEST_BIN_OUTPUT_DIR)
+  set(C2_TEST_BIN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/tests/bin")
+endif()
+file(MAKE_DIRECTORY "${C2_RUNTIME_MODULE_OUTPUT_DIR}" "${C2_TEST_BIN_OUTPUT_DIR}")
+
 include(FetchContent)
 
 # External libraries
@@ -38,7 +55,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Dnscommunication)
 set_target_properties(Dnscommunication PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${dnscommunication_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
+  INTERFACE_INCLUDE_DIRECTORIES "${dnscommunication_SOURCE_DIR}/src")
 
 FetchContent_Declare(
   SocketHandler
@@ -47,7 +64,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SocketHandler)
 set_target_properties(SocketHandler PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${sockethandler_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
+  INTERFACE_INCLUDE_DIRECTORIES "${sockethandler_SOURCE_DIR}/src")
 
 # PipeHandler and MemoryModule have platform-specific sources
 if(WIN32)
@@ -86,9 +103,9 @@ else()
   set(_mm_inc   ${memorymodule_SOURCE_DIR}/libs/libMemoryModuleDumy/src)
 endif()
 set_target_properties(PipeHandler PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${_pipe_inc}>;$<INSTALL_INTERFACE:include>")
+  INTERFACE_INCLUDE_DIRECTORIES "${_pipe_inc}")
 set_target_properties(MemoryModule PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${_mm_inc}>;$<INSTALL_INTERFACE:include>")
+  INTERFACE_INCLUDE_DIRECTORIES "${_mm_inc}")
 
 FetchContent_Declare(
   SocksServer
@@ -97,7 +114,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SocksServer)
 set_target_properties(SocksServer PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${socksserver_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:include>")
+  INTERFACE_INCLUDE_DIRECTORIES "${socksserver_SOURCE_DIR}/src")
 
 if(WIN32)
   FetchContent_Declare(
@@ -113,26 +130,17 @@ if(WIN32)
   FetchContent_MakeAvailable(CoffPacker CoffLoader)
 endif()
 
-# Header-only / source dependencies placed in thirdParty for relative includes
-set(BASE64_SRC_DIR ${CMAKE_SOURCE_DIR}/thirdParty/base64)
-FetchContent_Declare(
-  base64
-  GIT_REPOSITORY https://github.com/ReneNyffenegger/cpp-base64.git
-  GIT_TAG 82147d6d89636217b870f54ec07ddd3e544d5f69
-  SOURCE_DIR ${BASE64_SRC_DIR}
-)
-FetchContent_MakeAvailable(base64)
+# Header-only / source dependencies are provided by the parent project.
+set(BASE64_SRC_DIR "${C2_BASE64_SOURCE_DIR}")
+if(NOT EXISTS "${BASE64_SRC_DIR}")
+  message(FATAL_ERROR "C2Core expects C2_BASE64_SOURCE_DIR to point to a checked-out base64 source tree.")
+endif()
 include_directories(${BASE64_SRC_DIR})
 
-set(DONUT_SRC_DIR ${CMAKE_SOURCE_DIR}/thirdParty/donut)
-FetchContent_Declare(
-  Donut
-  GIT_REPOSITORY https://github.com/maxDcb/donut.git
-  GIT_TAG master
-  SOURCE_DIR ${DONUT_SRC_DIR}
-)
-FetchContent_MakeAvailable(Donut)
-
+set(DONUT_SRC_DIR "${C2_DONUT_SOURCE_DIR}")
+if(NOT EXISTS "${DONUT_SRC_DIR}")
+  message(FATAL_ERROR "C2Core expects C2_DONUT_SOURCE_DIR to point to a checked-out donut source tree.")
+endif()
 include_directories(${DONUT_SRC_DIR}/include)
 
 if (WIN32)
@@ -151,7 +159,7 @@ if (WIN32)
   )
 
   set(DONUT_DLL "${DONUT_SRC_DIR}/lib/donut.dll")
-  set(TEST_DIR "${CMAKE_SOURCE_DIR}/Tests")
+  set(TEST_DIR "${C2_TEST_BIN_OUTPUT_DIR}")
 
   add_custom_target(copy_donut ALL
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -214,12 +222,7 @@ add_library(openssl::openssl INTERFACE IMPORTED)
 target_link_libraries(openssl::openssl INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 add_compile_definitions(CROW_ENABLE_SSL)
 
-# Build tests only when explicitly enabled. Default to ON when C2Core is the
-# top-level project and OFF when included from another build.
-option(C2CORE_BUILD_TESTS "Build C2Core unit tests" OFF)
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  set(C2CORE_BUILD_TESTS ON CACHE BOOL "Build C2Core unit tests" FORCE)
-endif()
+option(C2CORE_BUILD_TESTS "Build C2Core unit tests from the parent project" OFF)
 
 if(C2CORE_BUILD_TESTS)
   add_definitions(-DBUILD_TESTS)
@@ -244,27 +247,3 @@ endif()
 
 add_subdirectory(beacon)
 add_subdirectory(modules)
-
-install(
-  DIRECTORY beacon/ listener/ modules/ModuleCmd/ ${socksserver_SOURCE_DIR}/src/
-  DESTINATION include
-  FILES_MATCHING PATTERN "Beacon*.hpp" 
-                 PATTERN "Listener*.hpp" 
-                 PATTERN "CommonCommand.hpp" 
-                 PATTERN "ModuleCmd.hpp" 
-                 PATTERN "C2Message.hpp"
-                 PATTERN "Session.hpp"
-                 PATTERN "Common.hpp"
-                 PATTERN "nlohmann/json.hpp"
-                 PATTERN "SocksDef.hpp"
-                 PATTERN "SocksTunnelClient.hpp"
-)
-
-include(CMakePackageConfigHelpers)
-install(EXPORT C2CoreTargets FILE C2CoreTargets.cmake NAMESPACE "" DESTINATION lib/cmake/C2Core)
-configure_package_config_file(
-  cmake/C2CoreConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/C2CoreConfig.cmake
-  INSTALL_DESTINATION lib/cmake/C2Core
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/C2CoreConfig.cmake DESTINATION lib/cmake/C2Core)
