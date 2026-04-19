@@ -9,7 +9,7 @@ You are an expert C++/CMake contributor tasked with maintaining, and expending *
 
 ## Build Context
 
-`C2Core` is expected to be included from a parent project and is no longer maintained as a standalone CMake entrypoint.
+`C2Core` is consumed from the parent repository and no longer has a top-level standalone `CMakeLists.txt`.
 
 - The parent project owns the top-level `project(...)`, release layout, and vendor source directories.
 - Tests are enabled by the parent through `C2CORE_BUILD_TESTS`.
