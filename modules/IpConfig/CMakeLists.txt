@@ -3,12 +3,12 @@ add_library(IpConfig SHARED IpConfig.cpp)
 set_property(TARGET IpConfig PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(IpConfig )
 add_custom_command(TARGET IpConfig POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:IpConfig> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:IpConfig>")
+    $<TARGET_FILE:IpConfig> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:IpConfig>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsIpConfig tests/testsIpConfig.cpp IpConfig.cpp)
     target_link_libraries(testsIpConfig )
     add_custom_command(TARGET testsIpConfig POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:testsIpConfig> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsIpConfig>")
-    add_test(NAME testsIpConfig COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsIpConfig>")
+        $<TARGET_FILE:testsIpConfig> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsIpConfig>")
+    add_test(NAME testsIpConfig COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsIpConfig>")
 endif()

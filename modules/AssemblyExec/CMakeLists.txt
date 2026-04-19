@@ -27,7 +27,7 @@ set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(AssemblyExec PRIVATE Donut)
 
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:AssemblyExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:AssemblyExec>")
+$<TARGET_FILE:AssemblyExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:AssemblyExec>")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
@@ -61,10 +61,10 @@ if(C2CORE_BUILD_TESTS)
     endif()
 
     add_custom_command(TARGET testsAssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsAssemblyExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsAssemblyExec>")
+    $<TARGET_FILE:testsAssemblyExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsAssemblyExec>")
 
     add_custom_command(TARGET testOutputWriter POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testOutputWriter> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testOutputWriter>")
+    $<TARGET_FILE:testOutputWriter> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testOutputWriter>")
 
-    add_test(NAME testsAssemblyExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsAssemblyExec>")
+    add_test(NAME testsAssemblyExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsAssemblyExec>")
 endif()

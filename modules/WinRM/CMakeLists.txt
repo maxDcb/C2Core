@@ -2,7 +2,7 @@ include_directories(../)
 add_library(WinRM SHARED WinRM.cpp)
 set_property(TARGET WinRM PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 add_custom_command(TARGET WinRM POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-$<TARGET_FILE:WinRM> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:WinRM>")
+$<TARGET_FILE:WinRM> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:WinRM>")
 
 if(WIN32)
     target_link_libraries(WinRM PRIVATE WsmSvc)
@@ -14,7 +14,7 @@ if(C2CORE_BUILD_TESTS)
         target_link_libraries(testsWinRM PRIVATE WsmSvc)
     endif()
     add_custom_command(TARGET testsWinRM POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:testsWinRM> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsWinRM>")
+    $<TARGET_FILE:testsWinRM> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsWinRM>")
 
-    add_test(NAME testsWinRM COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsWinRM>")
+    add_test(NAME testsWinRM COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsWinRM>")
 endif()

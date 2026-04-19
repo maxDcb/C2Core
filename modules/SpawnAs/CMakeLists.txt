@@ -7,7 +7,7 @@ if(WIN32)
     target_link_libraries(SpawnAs advapi32 userenv)
 endif()
 add_custom_command(TARGET SpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:SpawnAs> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:SpawnAs>")
+$<TARGET_FILE:SpawnAs> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:SpawnAs>")
 
 if(C2CORE_BUILD_TESTS)
 add_executable(testsSpawnAs tests/testsSpawnAs.cpp SpawnAs.cpp)
@@ -19,7 +19,7 @@ else()
 endif()
 
 add_custom_command(TARGET testsSpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:testsSpawnAs> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSpawnAs>")
+$<TARGET_FILE:testsSpawnAs> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSpawnAs>")
 
-add_test(NAME testsSpawnAs COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsSpawnAs>")
+add_test(NAME testsSpawnAs COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSpawnAs>")
 endif()

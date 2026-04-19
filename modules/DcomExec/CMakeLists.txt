@@ -6,7 +6,7 @@ if (WIN32)
     target_link_libraries(DcomExec PRIVATE ole32 oleaut32)
 endif()
 add_custom_command(TARGET DcomExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-$<TARGET_FILE:DcomExec> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:DcomExec>")
+$<TARGET_FILE:DcomExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:DcomExec>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsDcomExec tests/testsDcomExec.cpp DcomExec.cpp)
@@ -15,7 +15,7 @@ if(C2CORE_BUILD_TESTS)
         target_link_libraries(testsDcomExec PRIVATE ole32 oleaut32)
     endif()
     add_custom_command(TARGET testsDcomExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:testsDcomExec> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDcomExec>")
+    $<TARGET_FILE:testsDcomExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDcomExec>")
 
-    add_test(NAME testsDcomExec COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsDcomExec>")
+    add_test(NAME testsDcomExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDcomExec>")
 endif()

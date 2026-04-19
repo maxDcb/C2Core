@@ -7,7 +7,7 @@ endif()
 set_property(TARGET PwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PwSh )
 add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:PwSh> "${CMAKE_SOURCE_DIR}/Release/Modules/$<TARGET_FILE_NAME:PwSh>")
+$<TARGET_FILE:PwSh> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:PwSh>")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
@@ -19,7 +19,7 @@ if(C2CORE_BUILD_TESTS)
     target_link_libraries(testsPwSh )
     set_property(TARGET testsPwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     add_custom_command(TARGET testsPwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsPwSh> "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPwSh>")
+    $<TARGET_FILE:testsPwSh> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPwSh>")
 
-    add_test(NAME testsPwSh COMMAND "${CMAKE_SOURCE_DIR}/Tests/$<TARGET_FILE_NAME:testsPwSh>")
+    add_test(NAME testsPwSh COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPwSh>")
 endif()
