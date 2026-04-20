@@ -17,8 +17,7 @@ add_executable(beacon_unit_tests
     ../Beacon.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(beacon_unit_tests
     Catch2::Catch2WithMain
@@ -27,7 +26,8 @@ target_link_libraries(beacon_unit_tests
     SocketHandler
     PipeHandler
     MemoryModule
-    SocksServer)
+    SocksServer
+    c2_base64)
 
 add_test(NAME beacon_unit_tests COMMAND beacon_unit_tests)
 
@@ -38,8 +38,7 @@ add_executable(testBeaconDns
     ../BeaconDns.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(testBeaconDns
     nlohmann_json::nlohmann_json
@@ -47,7 +46,8 @@ target_link_libraries(testBeaconDns
     Dnscommunication
     PipeHandler
     MemoryModule
-    SocksServer)
+    SocksServer
+    c2_base64)
 
 add_test(NAME testBeaconDns COMMAND testBeaconDns)
 
@@ -57,8 +57,7 @@ add_executable(testBeaconGithub
     ../BeaconGithub.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(testBeaconGithub
     nlohmann_json::nlohmann_json
@@ -66,6 +65,7 @@ target_link_libraries(testBeaconGithub
     PipeHandler
     MemoryModule
     SocksServer
+    c2_base64
     ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
 add_test(NAME testBeaconGithub COMMAND testBeaconGithub)
@@ -76,8 +76,7 @@ add_executable(testBeaconHttp
     ../BeaconHttp.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(testBeaconHttp
     nlohmann_json::nlohmann_json
@@ -85,6 +84,7 @@ target_link_libraries(testBeaconHttp
     PipeHandler
     MemoryModule
     SocksServer
+    c2_base64
     ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
 add_test(NAME testBeaconHttp COMMAND testBeaconHttp)
@@ -95,15 +95,15 @@ add_executable(testBeaconSmb
     ../BeaconSmb.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(testBeaconSmb
     nlohmann_json::nlohmann_json
     SocketHandler
     PipeHandler
     MemoryModule
-    SocksServer)
+    SocksServer
+    c2_base64)
 
 add_test(NAME testBeaconSmb COMMAND testBeaconSmb)
 
@@ -113,14 +113,14 @@ add_executable(testBeaconTcp
     ../BeaconTcp.cpp
     ../../listener/Listener.cpp
     ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp
-    ../../../thirdParty/base64/base64.cpp)
+    ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(testBeaconTcp
     nlohmann_json::nlohmann_json
     SocketHandler
     PipeHandler
     MemoryModule
-    SocksServer)
+    SocksServer
+    c2_base64)
 
 add_test(NAME testBeaconTcp COMMAND testBeaconTcp)

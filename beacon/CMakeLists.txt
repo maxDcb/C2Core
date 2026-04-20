@@ -3,7 +3,6 @@ set(C2CORE_BEACON_COMMON_SOURCES
   ../listener/Listener.cpp
   ../listener/ListenerTcp.cpp
   ../listener/ListenerSmb.cpp
-  ../../thirdParty/base64/base64.cpp
 )
 
 set(C2CORE_BEACON_COMMON_LINK_LIBS
@@ -11,6 +10,7 @@ set(C2CORE_BEACON_COMMON_LINK_LIBS
   PipeHandler
   MemoryModule
   SocksServer
+  c2_base64
 )
 
 set(C2CORE_BEACON_HTTP_LINK_LIBS)

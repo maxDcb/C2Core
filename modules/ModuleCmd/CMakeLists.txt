@@ -1,14 +1,13 @@
 
 if(C2CORE_BUILD_TESTS)
-    include_directories(../../../thirdParty/base64)
-    add_executable(testsModuleCmd tests/testsModuleCmd.cpp ../../../thirdParty/base64/base64.cpp)
-    target_link_libraries(testsModuleCmd nlohmann_json::nlohmann_json)
+    add_executable(testsModuleCmd tests/testsModuleCmd.cpp)
+    target_link_libraries(testsModuleCmd nlohmann_json::nlohmann_json c2_base64)
     add_custom_command(TARGET testsModuleCmd POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsModuleCmd> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleCmd>")
     add_test(NAME testsModuleCmd COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleCmd>")
 
-    add_executable(testsTools tests/testsTools.cpp ../../../thirdParty/base64/base64.cpp)
-    target_link_libraries(testsTools nlohmann_json::nlohmann_json)
+    add_executable(testsTools tests/testsTools.cpp)
+    target_link_libraries(testsTools nlohmann_json::nlohmann_json c2_base64)
     add_custom_command(TARGET testsTools POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsTools> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTools>")
     add_test(NAME testsTools COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTools>")
