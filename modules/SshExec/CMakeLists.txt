@@ -2,8 +2,8 @@ include_directories(../)
 add_library(SshExec SHARED SshExec.cpp)
 set_property(TARGET SshExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-# Link against libssh2 and its dependencies
-target_link_libraries(SshExec PRIVATE libssh2_static)
+# Link against Conan-provided static libssh2 and its transitive dependencies.
+target_link_libraries(SshExec PRIVATE Libssh2::libssh2)
 
 # Windows-specific dependencies
 if (WIN32)
@@ -20,7 +20,7 @@ add_custom_command(TARGET SshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsSshExec tests/testsSshExec.cpp SshExec.cpp)
-    target_link_libraries(testsSshExec PRIVATE libssh2_static)
+    target_link_libraries(testsSshExec PRIVATE Libssh2::libssh2)
     if (WIN32)
         target_link_libraries(testsSshExec PRIVATE 
             ws2_32
