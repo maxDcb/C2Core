@@ -13,6 +13,21 @@ set(C2CORE_BEACON_COMMON_LINK_LIBS
   SocksServer
 )
 
+set(C2CORE_BEACON_HTTP_LINK_LIBS)
+set(C2CORE_BEACON_GITHUB_LINK_LIBS)
+
+if(NOT WIN32)
+  list(APPEND C2CORE_BEACON_HTTP_LINK_LIBS
+    openssl::openssl
+    httplib::httplib
+  )
+
+  list(APPEND C2CORE_BEACON_GITHUB_LINK_LIBS
+    openssl::openssl
+    httplib::httplib
+  )
+endif()
+
 function(c2core_add_beacon_library target_name beacon_source)
   add_library(${target_name}
     ${beacon_source}
@@ -39,8 +54,8 @@ function(c2core_add_beacon_library target_name beacon_source)
   endif()
 endfunction()
 
-c2core_add_beacon_library(BeaconHttpLib BeaconHttp.cpp openssl::openssl httplib::httplib)
+c2core_add_beacon_library(BeaconHttpLib BeaconHttp.cpp ${C2CORE_BEACON_HTTP_LINK_LIBS})
 c2core_add_beacon_library(BeaconTcpLib BeaconTcp.cpp)
 c2core_add_beacon_library(BeaconSmbLib BeaconSmb.cpp)
-c2core_add_beacon_library(BeaconGithubLib BeaconGithub.cpp openssl::openssl httplib::httplib)
+c2core_add_beacon_library(BeaconGithubLib BeaconGithub.cpp ${C2CORE_BEACON_GITHUB_LINK_LIBS})
 c2core_add_beacon_library(BeaconDnsLib BeaconDns.cpp Dnscommunication)
