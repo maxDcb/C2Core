@@ -3,6 +3,14 @@ include_directories(../..)
 include_directories(../../listener)
 include_directories(../../modules/ModuleCmd)
 
+set(C2CORE_BEACON_TEST_HTTP_LINK_LIBS)
+
+if(NOT WIN32)
+    list(APPEND C2CORE_BEACON_TEST_HTTP_LINK_LIBS
+        openssl::openssl
+        httplib::httplib)
+endif()
+
 # Unit tests using Catch2
 add_executable(beacon_unit_tests
     testBeacon.cpp
@@ -58,7 +66,7 @@ target_link_libraries(testBeaconGithub
     PipeHandler
     MemoryModule
     SocksServer
-    httplib::httplib)
+    ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
 add_test(NAME testBeaconGithub COMMAND testBeaconGithub)
 
@@ -77,7 +85,7 @@ target_link_libraries(testBeaconHttp
     PipeHandler
     MemoryModule
     SocksServer
-    httplib::httplib)
+    ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
 add_test(NAME testBeaconHttp COMMAND testBeaconHttp)
 
