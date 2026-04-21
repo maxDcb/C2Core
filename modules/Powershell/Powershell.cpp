@@ -212,7 +212,7 @@ std::string Powershell::getInfo()
 
 int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
     if(splitedCmd.size()<2)
     {
         c2Message.set_returnvalue(getInfo());
