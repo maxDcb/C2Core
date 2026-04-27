@@ -2,7 +2,9 @@ include_directories(../)
 
 if(WIN32)
     set(SYSCALL_OBJ "../ModuleCmd/syscall.x86.obj")
-    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+        set(SYSCALL_OBJ "../ModuleCmd/syscall.arm64.obj")
+    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(SYSCALL_OBJ "../ModuleCmd/syscall.x64.obj")
     endif()
 
@@ -17,7 +19,9 @@ endif()
 
 set_property(TARGET Inject PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-target_link_libraries(Inject PRIVATE Donut )
+if(C2CORE_BUILD_TESTS)
+    target_link_libraries(Inject PRIVATE Donut )
+endif()
 
 add_custom_command(TARGET Inject POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Inject> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Inject>")

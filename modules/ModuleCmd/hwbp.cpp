@@ -3,7 +3,20 @@
 #include "peb.hpp"
 
 
-#if _WIN32
+#if defined(_WIN32)
+
+#if defined(_M_ARM64)
+namespace
+{
+    constexpr DWORD ARM64_BCR_ENABLE_SHIFT = 0;
+    constexpr DWORD ARM64_BCR_PMC_SHIFT    = 1;
+    constexpr DWORD ARM64_BCR_BAS_SHIFT    = 5;
+
+    constexpr DWORD ARM64_BCR_ENABLE = 0x1;
+    constexpr DWORD ARM64_BCR_PMC_EL0 = 0x2;
+    constexpr DWORD ARM64_BCR_BAS_A64 = 0xF;
+}
+#endif
 
 
 ULONG_PTR set_bits(
@@ -23,6 +36,18 @@ BOOL enable_breakpoint(
     IN PVOID address,
     IN int index)
 {
+#if defined(_M_ARM64)
+    if (index < 0 || index >= HWBP_MAX_BREAKPOINTS)
+        return FALSE;
+
+    ctx->Bvr[index] = ((DWORD64)address) & ~0x3ull;
+    ctx->Bcr[index] = 0;
+    ctx->Bcr[index] = (DWORD)set_bits(ctx->Bcr[index], ARM64_BCR_ENABLE_SHIFT, 1, ARM64_BCR_ENABLE);
+    ctx->Bcr[index] = (DWORD)set_bits(ctx->Bcr[index], ARM64_BCR_PMC_SHIFT, 2, ARM64_BCR_PMC_EL0);
+    ctx->Bcr[index] = (DWORD)set_bits(ctx->Bcr[index], ARM64_BCR_BAS_SHIFT, 4, ARM64_BCR_BAS_A64);
+
+    return TRUE;
+#else
     switch (index)
     {
         case 0:
@@ -45,6 +70,7 @@ BOOL enable_breakpoint(
     ctx->Dr7 = set_bits(ctx->Dr7, (index * 2), 1, 1);
 
     return TRUE;
+#endif
 }
 
 
@@ -63,6 +89,13 @@ VOID clear_breakpoint(
     IN CONTEXT* ctx,
     IN DWORD index)
 {
+#if defined(_M_ARM64)
+    if (index >= HWBP_MAX_BREAKPOINTS)
+        return;
+
+    ctx->Bcr[index] = 0;
+    ctx->Bvr[index] = 0;
+#else
     // Clear the releveant hardware breakpoint
     switch (index)
     {
@@ -82,7 +115,7 @@ VOID clear_breakpoint(
 
     ctx->Dr7 = set_bits(ctx->Dr7, (index * 2), 1, 0);
     ctx->Dr6 = 0;
-    ctx->EFlags = 0;
+#endif
 }
 
 
@@ -94,7 +127,6 @@ BOOL set_hwbp(
     OUT PHANDLE phHwBpHandler)
 {
     BOOL     ret_val      = FALSE;
-    NTSTATUS status       = STATUS_UNSUCCESSFUL;
     HANDLE   hHwBpHandler = NULL;
     CONTEXT  threadCtx    = { 0 };
 
@@ -113,8 +145,7 @@ BOOL set_hwbp(
         goto Cleanup;
     }
 
-    status = GetThreadContext(hThread, &threadCtx);
-    if (!NT_SUCCESS(status))
+    if (!GetThreadContext(hThread, &threadCtx))
     {
         goto Cleanup;
     }
@@ -122,8 +153,7 @@ BOOL set_hwbp(
     if (!enable_breakpoint(&threadCtx, address, index))
         goto Cleanup;
 
-    status = SetThreadContext (hThread, &threadCtx);
-    if (!NT_SUCCESS(status))
+    if (!SetThreadContext(hThread, &threadCtx))
     {
         goto Cleanup;
     }
@@ -161,22 +191,19 @@ VOID unset_hwbp(
     IN HANDLE hThread,
     IN UINT32 index)
 {
-    NTSTATUS status    = STATUS_UNSUCCESSFUL;
     CONTEXT  threadCtx = { 0 };
 
     memset(&threadCtx, 0, sizeof(threadCtx));
-    threadCtx.ContextFlags = CONTEXT_ALL;
+    threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
 
-    status = GetThreadContext(hThread, &threadCtx);
-    if (!NT_SUCCESS(status))
+    if (!GetThreadContext(hThread, &threadCtx))
     {
         goto cleanup;
     }
 
     clear_breakpoint(&threadCtx, index);
 
-    status = SetThreadContext (hThread, &threadCtx);
-    if (!NT_SUCCESS(status))
+    if (!SetThreadContext(hThread, &threadCtx))
     {
         goto cleanup;
     }

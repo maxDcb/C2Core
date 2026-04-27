@@ -9,10 +9,10 @@ LONG WINAPI hanlderToTrigger(EXCEPTION_POINTERS * ExceptionInfo)
     if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
     {
         BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"Kernel32", TRUE, NULL), (PCHAR)"GetProcessVersion", 0);
-        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+        if (EXCEPTION_CURRENT_IP(ExceptionInfo) == baseAddress) 
         {            
             std::cout << "Hello from GetProcessVersion " << std::endl;
-            ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
+            EXCEPTION_SET_IP(ExceptionInfo, baseAddress + EXCEPTION_BREAKPOINT_STEP);
         }        
         return EXCEPTION_CONTINUE_EXECUTION;
     }

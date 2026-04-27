@@ -465,6 +465,30 @@ private:
 bool compareEntry(Entry i1, Entry i2);
 
 
+#if defined(_M_ARM64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__getReg(18))
+
+#elif defined(_M_X64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__readgsqword(0x30))
+
+#elif defined(_M_IX86)
+    #define PEB_OFFSET 0x30
+    #define READ_TEB() ((void*)__readfsdword(0x18))
+
+#else
+    #error Unsupported architecture
+#endif
+
+
+static void* GetPeb(void)
+{
+    unsigned char* teb = (unsigned char*)READ_TEB();
+    return *(void**)(teb + PEB_OFFSET);
+}
+
+
 class SyscallList
 {
 private:
@@ -472,9 +496,9 @@ private:
     PVOID getNtdllExportDirectory()
     {       
 #ifdef _M_IX86 
-        PSW3_PEB Peb = (PSW3_PEB)__readfsdword(0x30);
+        PSW3_PEB Peb = (PSW3_PEB)GetPeb();
 #else
-        PSW3_PEB Peb = (PSW3_PEB)__readgsqword(0x60);
+        PSW3_PEB Peb = (PSW3_PEB)GetPeb();
 #endif
         
         PSW3_PEB_LDR_DATA Ldr = Peb->Ldr;
@@ -545,12 +569,24 @@ private:
     
     PVOID SC_Address(PVOID NtApiAddress)
     {
+#if defined(_M_ARM64)
+        // Windows ARM64 uses a different NTDLL syscall stub layout than the
+        // x64 `syscall; ret` sequence searched below. Keep the ARM64 path
+        // simple for now and branch to the exported Zw* entrypoint itself.
+        return NtApiAddress;
+#else
         DWORD searchLimit = 512;
         PVOID SyscallAddress;
 
+#ifdef _WIN64
         // If the process is 64-bit on a 64-bit OS, we need to search for syscall
         BYTE syscall_code[] = { 0x0f, 0x05, 0xc3 };
         ULONG distance_to_syscall = 0x12;
+#else
+        // If the process is 32-bit on a 32-bit OS, we need to search for sysenter
+        BYTE syscall_code[] = { 0x0f, 0x34, 0xc3 };
+        ULONG distance_to_syscall = 0x0f;
+#endif
 
         // we don't really care if there is a 'jmp' between
         // NtApiAddress and the 'syscall; ret' instructions
@@ -590,6 +626,7 @@ private:
         }
 
         return NULL;
+#endif
     }
 
     PVOID m_dllBase;

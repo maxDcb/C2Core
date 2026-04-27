@@ -908,11 +908,7 @@ int PwSh::invokeMethodDll(const string& argument, std::string& result)
     VariantInit(&vtPSInvokeReturnVal);
 
     // take care of the capture of the output
-#ifdef _M_IX86 
-    PEB_CUSTOM * ProcEnvBlk = (PEB_CUSTOM *) __readfsdword(0x30);
-#else
-    PEB_CUSTOM * ProcEnvBlk = (PEB_CUSTOM *)__readgsqword(0x60);
-#endif
+    PEB_CUSTOM * ProcEnvBlk = (PEB_CUSTOM *)GetPeb();
     PRTL_USER_PROCESS_PARAMETERS_CUSTOM processParameters = ProcEnvBlk->ProcessParameters;
     HANDLE consoleHandle = processParameters->StandardOutput;
     processParameters->StandardOutput = m_ioPipeWrite;

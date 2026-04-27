@@ -635,14 +635,6 @@ typedef enum _SECTION_INHERIT
 } SECTION_INHERIT, *PSECTION_INHERIT;
 
 
-#ifdef _WIN64
- #define PEB_OFFSET 0x60
- #define READ_MEMLOC __readgsqword
-#else
- #define PEB_OFFSET 0x30
- #define READ_MEMLOC __readfsdword
-#endif
-
 #define LDRP_IMAGE_DLL 0x00000004
 #define LDRP_ENTRY_INSERTED 0x00008000
 #define LDRP_ENTRY_PROCESSED 0x00004000

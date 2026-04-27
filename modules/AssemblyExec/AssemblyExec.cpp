@@ -430,33 +430,64 @@ int AssemblyExec::whateverLinux(const std::string& payload, std::string& result)
 #elif _WIN32
 
 
-LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS * ExceptionInfo) 
+LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS* ExceptionInfo)
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    if (ExceptionInfo->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    BYTE* baseAddress = (BYTE*)xGetProcAddress(
+        xGetLibAddress((PCHAR)"ntdll.dll", TRUE, NULL),
+        (PCHAR)"RtlExitUserProcess",
+        0
+    );
+
+    if (!baseAddress)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    void* exitThread = (void*)GetProcAddress(
+        GetModuleHandleA("kernel32.dll"),
+        "ExitThread"
+    );
+
+    if (!exitThread)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+#if defined(_M_X64)
+
+    if (ExceptionInfo->ContextRecord->Rip == (DWORD64)baseAddress)
     {
-        BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"ntdll.dll", TRUE, NULL), (PCHAR)"RtlExitUserProcess", 0);
-#ifdef _WIN64
-        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
-        {            
-            // continue the execution
-            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
-            //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
-            ExceptionInfo->ContextRecord->Rip = (DWORD64)GetProcAddress(GetModuleHandle("Kernel32.dll"), "ExitThread");
-        }  
-#else   // ===================== X86 =======================   
-        if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
-        {
-            // Set Resume Flag
-            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);
-
-            // Redirect execution to ExitThread
-            ExceptionInfo->ContextRecord->Eip =
-                (DWORD)GetProcAddress(GetModuleHandleA("kernel32.dll"), "ExitThread");
-        }
-
-#endif
+        ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
+        ExceptionInfo->ContextRecord->Rip = (DWORD64)exitThread;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
+
+#elif defined(_M_IX86)
+
+    if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
+    {
+        ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
+        ExceptionInfo->ContextRecord->Eip = (DWORD)exitThread;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+#elif defined(_M_ARM64)
+
+    if (ExceptionInfo->ContextRecord->Pc == (DWORD64)baseAddress)
+    {
+        /*
+            ARM64:
+            - No Rip/Eip
+            - No EFlags/RF
+            - Instruction pointer is Pc
+        */
+        ExceptionInfo->ContextRecord->Pc = (DWORD64)exitThread;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+#else
+    #error Unsupported architecture
+#endif
+
     return EXCEPTION_CONTINUE_SEARCH;
 }
 

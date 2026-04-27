@@ -1,6 +1,10 @@
 #pragma once
 
-#if _WIN32
+#if defined(_WIN32)
+
+#if !defined(_M_IX86) && !defined(_M_X64) && !defined(_M_ARM64)
+#error "hwbp supports only Windows x86/x64/ARM64 targets."
+#endif
 
 
 #include <windows.h>
@@ -8,7 +12,7 @@
 
 #define STATUS_UNSUCCESSFUL 0xC0000001
 
-// debug register go from 0 to 3
+// Breakpoint slot indices used by current callers.
 #define NT_DEVICE_IO_CONTROL_FILE_INDEX 0
 #define CREATE_FILE_INDEX               1
 
@@ -16,26 +20,44 @@
 
 typedef LONG (CALLBACK* exception_callback)(PEXCEPTION_POINTERS);
 
-#ifdef _WIN64
+#if defined(_M_ARM64)
+    #define HWBP_MAX_BREAKPOINTS 2
+    #define EXCEPTION_CODE(e) (e->ExceptionRecord->ExceptionCode)
+    #define EXCEPTION_CURRENT_IP(e) ((PVOID)e->ContextRecord->Pc)
+    #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Pc = (DWORD64)(p)
+    #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->X0 = (DWORD64)(r)
+    #define EXCEPTION_RESUME( e ) ((void)0)
+    #define EXCEPTION_GET_RET( e ) ((PVOID)e->ContextRecord->Lr)
+    #define EXCEPTION_ADJ_STACK( e, i ) e->ContextRecord->Sp += (DWORD64)(i)
+    #define EXCEPTION_ARG_1( e ) ( e->ContextRecord->X0 )
+    #define EXCEPTION_ARG_2( e ) ( e->ContextRecord->X1 )
+    #define EXCEPTION_BREAKPOINT_STEP 4
+
+#elif defined(_M_X64)
+    #define HWBP_MAX_BREAKPOINTS 4
     #define EXCEPTION_CODE(e) (e->ExceptionRecord->ExceptionCode)
     #define EXCEPTION_CURRENT_IP(e) ((PVOID)e->ContextRecord->Rip)
-    #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Rip = p
-    #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Rax = r
+    #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Rip = (DWORD64)(p)
+    #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Rax = (DWORD64)(r)
     #define EXCEPTION_RESUME( e ) e->ContextRecord->EFlags = ( 1 << 16 )
     #define EXCEPTION_GET_RET( e ) *( PVOID* ) ( e->ContextRecord->Rsp )
     #define EXCEPTION_ADJ_STACK( e, i ) e->ContextRecord->Rsp += i
     #define EXCEPTION_ARG_1( e ) ( e->ContextRecord->Rcx )
     #define EXCEPTION_ARG_2( e ) ( e->ContextRecord->Rdx )
+    #define EXCEPTION_BREAKPOINT_STEP 1
+
 #else
+    #define HWBP_MAX_BREAKPOINTS 4
     #define EXCEPTION_CODE( e ) (e->ExceptionRecord->ExceptionCode)
     #define EXCEPTION_CURRENT_IP( e ) ((PVOID)e->ContextRecord->Eip)
-    #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Eip = p
-    #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Eax = r
+    #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Eip = (DWORD)(ULONG_PTR)(p)
+    #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Eax = (DWORD)(ULONG_PTR)(r)
     #define EXCEPTION_RESUME( e ) e->ContextRecord->EFlags = ( 1 << 16 )
     #define EXCEPTION_GET_RET( e ) *( PVOID* ) ( e->ContextRecord->Esp )
     #define EXCEPTION_ADJ_STACK( e, i ) e->ContextRecord->Esp += i
     #define EXCEPTION_ARG_1( e ) *(PVOID*)(e->ContextRecord->Esp + sizeof(PVOID))
     #define EXCEPTION_ARG_2( e ) *(PVOID*)(e->ContextRecord->Esp + sizeof(PVOID)*2)
+    #define EXCEPTION_BREAKPOINT_STEP 1
 #endif
 
 
