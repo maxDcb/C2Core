@@ -569,10 +569,10 @@ private:
     
     PVOID SC_Address(PVOID NtApiAddress)
     {
-#if defined(_M_ARM64)
-        // Windows ARM64 uses a different NTDLL syscall stub layout than the
-        // x64 `syscall; ret` sequence searched below. Keep the ARM64 path
-        // simple for now and branch to the exported Zw* entrypoint itself.
+#if defined(_M_ARM64) || defined(_M_IX86)
+        // ARM64 and x86/WOW64 have different transition stubs than the x64
+        // `syscall; ret` sequence searched below. Branch to the exported Zw*
+        // entrypoint and let ntdll own the platform-specific transition.
         return NtApiAddress;
 #else
         DWORD searchLimit = 512;

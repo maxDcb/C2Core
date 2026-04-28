@@ -1,10 +1,8 @@
-.686p                       ; p = privileged, allows sysenter
+.686p                       ; x86 target
 .model flat, c              ; <-- C calling convention
 option casemap:none
 
 EXTERN getGlobalHash: PROC
-
-EXTERN SW3_GetSyscallNumber: PROC
 
 EXTERN SW3_GetSyscallAddress: PROC
 
@@ -96,25 +94,24 @@ pipo PROC
 		mov ebp, esp
 		call getGlobalHash		
 		push eax
-		call SW3_GetSyscallNumber
+		call SW3_GetSyscallAddress
 		lea esp, [esp+4]
-		mov ecx, 08h
-	push_argument_hash:
+		test eax, eax
+		jz syscall_not_found
+		mov edx, eax
+		mov ecx, 0Bh
+	push_argument:
 		dec ecx
 		push [ebp + 8 + ecx * 4]
-		jnz push_argument_hash
-		mov ecx, eax
-		mov eax, ecx
-		push ret_address_epilog_hash
-		call do_sysenter_interrupt_hash
-		lea esp, [esp+4]
-	ret_address_epilog_hash:
+		jnz push_argument
+		call edx
 		mov esp, ebp
 		pop ebp
 		ret
-	do_sysenter_interrupt_hash:
-		mov edx, esp
-		sysenter
+	syscall_not_found:
+		mov eax, 0C0000225h
+		mov esp, ebp
+		pop ebp
 		ret
 pipo ENDP
 
