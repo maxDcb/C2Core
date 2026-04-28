@@ -22,8 +22,10 @@ typedef LONG (CALLBACK* exception_callback)(PEXCEPTION_POINTERS);
 
 #if defined(_M_ARM64)
     #define HWBP_MAX_BREAKPOINTS 2
+    #define HWBP_EXCEPTION_CODE EXCEPTION_BREAKPOINT
     #define EXCEPTION_CODE(e) (e->ExceptionRecord->ExceptionCode)
     #define EXCEPTION_CURRENT_IP(e) ((PVOID)e->ContextRecord->Pc)
+    #define EXCEPTION_HIT_ADDRESS(e, a) ((PVOID)(e->ExceptionRecord->ExceptionAddress) == (PVOID)(a) || EXCEPTION_CURRENT_IP(e) == (PVOID)(a))
     #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Pc = (DWORD64)(p)
     #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->X0 = (DWORD64)(r)
     #define EXCEPTION_RESUME( e ) ((void)0)
@@ -35,8 +37,10 @@ typedef LONG (CALLBACK* exception_callback)(PEXCEPTION_POINTERS);
 
 #elif defined(_M_X64)
     #define HWBP_MAX_BREAKPOINTS 4
+    #define HWBP_EXCEPTION_CODE EXCEPTION_SINGLE_STEP
     #define EXCEPTION_CODE(e) (e->ExceptionRecord->ExceptionCode)
     #define EXCEPTION_CURRENT_IP(e) ((PVOID)e->ContextRecord->Rip)
+    #define EXCEPTION_HIT_ADDRESS(e, a) (EXCEPTION_CURRENT_IP(e) == (PVOID)(a))
     #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Rip = (DWORD64)(p)
     #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Rax = (DWORD64)(r)
     #define EXCEPTION_RESUME( e ) e->ContextRecord->EFlags = ( 1 << 16 )
@@ -48,8 +52,10 @@ typedef LONG (CALLBACK* exception_callback)(PEXCEPTION_POINTERS);
 
 #else
     #define HWBP_MAX_BREAKPOINTS 4
+    #define HWBP_EXCEPTION_CODE EXCEPTION_SINGLE_STEP
     #define EXCEPTION_CODE( e ) (e->ExceptionRecord->ExceptionCode)
     #define EXCEPTION_CURRENT_IP( e ) ((PVOID)e->ContextRecord->Eip)
+    #define EXCEPTION_HIT_ADDRESS(e, a) (EXCEPTION_CURRENT_IP(e) == (PVOID)(a))
     #define EXCEPTION_SET_IP( e, p ) e->ContextRecord->Eip = (DWORD)(ULONG_PTR)(p)
     #define EXCEPTION_SET_RET( e, r ) e->ContextRecord->Eax = (DWORD)(ULONG_PTR)(r)
     #define EXCEPTION_RESUME( e ) e->ContextRecord->EFlags = ( 1 << 16 )

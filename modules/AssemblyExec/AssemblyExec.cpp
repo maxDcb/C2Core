@@ -432,7 +432,7 @@ int AssemblyExec::whateverLinux(const std::string& payload, std::string& result)
 
 LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS* ExceptionInfo)
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
+    if (EXCEPTION_CODE(ExceptionInfo) != HWBP_EXCEPTION_CODE)
         return EXCEPTION_CONTINUE_SEARCH;
 
     BYTE* baseAddress = (BYTE*)xGetProcAddress(
@@ -454,7 +454,7 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS* ExceptionInfo)
 
 #if defined(_M_X64)
 
-    if (ExceptionInfo->ContextRecord->Rip == (DWORD64)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
         ExceptionInfo->ContextRecord->Rip = (DWORD64)exitThread;
@@ -463,7 +463,7 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS* ExceptionInfo)
 
 #elif defined(_M_IX86)
 
-    if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
         ExceptionInfo->ContextRecord->Eip = (DWORD)exitThread;
@@ -472,7 +472,7 @@ LONG WINAPI handlerRtlExitUserProcess(EXCEPTION_POINTERS* ExceptionInfo)
 
 #elif defined(_M_ARM64)
 
-    if (ExceptionInfo->ContextRecord->Pc == (DWORD64)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         /*
             ARM64:

@@ -3,53 +3,97 @@
 
 #include <iostream>
 
+static volatile LONG gHwbpHits = 0;
+static volatile LONG gUnexpectedExceptions = 0;
+static volatile LONG gUnexpectedAddresses = 0;
+static void* gExpectedAddress = nullptr;
 
 LONG WINAPI hanlderToTrigger(EXCEPTION_POINTERS * ExceptionInfo) 
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    if (EXCEPTION_CODE(ExceptionInfo) != HWBP_EXCEPTION_CODE)
     {
-        BYTE* baseAddress = (BYTE*)xGetProcAddress(xGetLibAddress((PCHAR)"Kernel32", TRUE, NULL), (PCHAR)"GetProcessVersion", 0);
-        if (EXCEPTION_CURRENT_IP(ExceptionInfo) == baseAddress) 
-        {            
-            std::cout << "Hello from GetProcessVersion " << std::endl;
-            EXCEPTION_SET_IP(ExceptionInfo, baseAddress + EXCEPTION_BREAKPOINT_STEP);
-        }        
-        return EXCEPTION_CONTINUE_EXECUTION;
+        InterlockedIncrement(&gUnexpectedExceptions);
+        return EXCEPTION_CONTINUE_SEARCH;
     }
-    return EXCEPTION_CONTINUE_SEARCH;
+
+    if (!EXCEPTION_HIT_ADDRESS(ExceptionInfo, gExpectedAddress))
+    {
+        InterlockedIncrement(&gUnexpectedAddresses);
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    InterlockedIncrement(&gHwbpHits);
+    EXCEPTION_SET_IP(ExceptionInfo, (BYTE*)gExpectedAddress + EXCEPTION_BREAKPOINT_STEP);
+    return EXCEPTION_CONTINUE_EXECUTION;
 }
 
 
 int main()
 {
-
     void* baseAddress = (void*)xGetProcAddress(xGetLibAddress((PCHAR)"Kernel32.dll", TRUE, NULL), (PCHAR)"GetProcessVersion", 0);
+    if (!baseAddress)
+    {
+        std::cerr << "Failed to resolve GetProcessVersion" << std::endl;
+        return 1;
+    }
 
-    std::cout << "baseAddress " << baseAddress << std::endl;
+    gExpectedAddress = baseAddress;
+    InterlockedExchange(&gHwbpHits, 0);
+    InterlockedExchange(&gUnexpectedExceptions, 0);
+    InterlockedExchange(&gUnexpectedAddresses, 0);
 
     int indexHWBP = 0;
-    HANDLE bp;
-    set_hwbp(GetCurrentThread(), baseAddress, hanlderToTrigger, indexHWBP, &bp);
+    HANDLE bp = nullptr;
+    if (!set_hwbp(GetCurrentThread(), baseAddress, hanlderToTrigger, indexHWBP, &bp))
+    {
+        std::cerr << "set_hwbp failed" << std::endl;
+        return 1;
+    }
 
-    std::cout << "bp " << bp << std::endl;
-
-    std::cout << "GetProcessVersion with bp " << std::endl;
+    if (!bp)
+    {
+        std::cerr << "set_hwbp returned a null handler" << std::endl;
+        return 1;
+    }
 
     GetProcessVersion(-1);
+    GetProcessVersion(-1);
 
-    std::cout << "unset_hwbp " << std::endl;
+    LONG hitCount = InterlockedCompareExchange(&gHwbpHits, 0, 0);
+    LONG unexpectedExceptions = InterlockedCompareExchange(&gUnexpectedExceptions, 0, 0);
+    LONG unexpectedAddresses = InterlockedCompareExchange(&gUnexpectedAddresses, 0, 0);
+
+    if (hitCount != 2)
+    {
+        std::cerr << "Expected 2 HWBP hits while armed, got " << hitCount << std::endl;
+        unset_hwbp(GetCurrentThread(), indexHWBP);
+        remove_hwbp_handler(bp);
+        return 1;
+    }
+
+    if (unexpectedExceptions != 0 || unexpectedAddresses != 0)
+    {
+        std::cerr << "Unexpected HWBP state: exceptions=" << unexpectedExceptions
+                  << " addresses=" << unexpectedAddresses << std::endl;
+        unset_hwbp(GetCurrentThread(), indexHWBP);
+        remove_hwbp_handler(bp);
+        return 1;
+    }
 
     unset_hwbp(GetCurrentThread(), indexHWBP);
-
-    std::cout << "remove_hwbp_handler " << std::endl;
-    
     remove_hwbp_handler(bp);
 
-    std::cout << "GetProcessVersion without bp " << std::endl;
-
+    GetProcessVersion(-1);
     GetProcessVersion(-1);
 
-    std::cout << "End " << std::endl;
+    LONG hitCountAfterUnset = InterlockedCompareExchange(&gHwbpHits, 0, 0);
+    if (hitCountAfterUnset != hitCount)
+    {
+        std::cerr << "HWBP still triggered after unset/remove, count=" << hitCountAfterUnset << std::endl;
+        return 1;
+    }
+
+    std::cout << "testsHwbp passed with " << hitCountAfterUnset << " expected hits" << std::endl;
 
     return 0;
 }

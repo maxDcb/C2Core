@@ -11,6 +11,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <tlhelp32.h>
+#include "hwbp.hpp"
 #include "structs.hpp"
 #endif
 
@@ -573,7 +574,7 @@ int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP)
 
 LONG WINAPI handlerETW(EXCEPTION_POINTERS* ExceptionInfo)
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
+    if (EXCEPTION_CODE(ExceptionInfo) != HWBP_EXCEPTION_CODE)
         return EXCEPTION_CONTINUE_SEARCH;
 
     BYTE* baseAddress = (BYTE*)GetProcAddress(
@@ -586,7 +587,7 @@ LONG WINAPI handlerETW(EXCEPTION_POINTERS* ExceptionInfo)
 
 #if defined(_M_X64)
 
-    if (ExceptionInfo->ContextRecord->Rip == (DWORD64)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         printf("[!] Exception (%p)! Params:\n",
             ExceptionInfo->ExceptionRecord->ExceptionAddress);
@@ -606,7 +607,7 @@ LONG WINAPI handlerETW(EXCEPTION_POINTERS* ExceptionInfo)
 
 #elif defined(_M_IX86)
 
-    if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         printf("[!] Exception (%p)! Params:\n",
             ExceptionInfo->ExceptionRecord->ExceptionAddress);
@@ -633,7 +634,7 @@ LONG WINAPI handlerETW(EXCEPTION_POINTERS* ExceptionInfo)
 
 #elif defined(_M_ARM64)
 
-    if (ExceptionInfo->ContextRecord->Pc == (DWORD64)baseAddress)
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
         printf("[!] Exception (%p)! Params:\n",
             ExceptionInfo->ExceptionRecord->ExceptionAddress);
@@ -861,12 +862,12 @@ void* findStringInMemory(const char* target, void* startAddress, int lenght)
 
 LONG WINAPI handlerAmsi(EXCEPTION_POINTERS * ExceptionInfo) 
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    if (EXCEPTION_CODE(ExceptionInfo) == HWBP_EXCEPTION_CODE) 
     {
         BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("amsi.dll"), "AmsiScanBuffer");
 
 #if defined(_M_X64)
-        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress)) 
         {
             
             // continue the execution
@@ -875,14 +876,14 @@ LONG WINAPI handlerAmsi(EXCEPTION_POINTERS * ExceptionInfo)
             return EXCEPTION_CONTINUE_EXECUTION;
         }  
 #elif defined(_M_IX86)
-        if (ExceptionInfo->ContextRecord->Eip == (DWORD64) baseAddress) 
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress)) 
         {            
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
             return EXCEPTION_CONTINUE_EXECUTION;
         } 
 #elif defined(_M_ARM64)
-        if (ExceptionInfo->ContextRecord->Pc == (DWORD64)baseAddress)
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
         {
             /*
             ARM64 has no EFlags/RF equivalent.
