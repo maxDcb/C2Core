@@ -6,7 +6,6 @@
 #include <string>
 #include <iostream>
 
-
 // Sw3NtAllocateVirtualMemory_                             
 // Sw3NtWaitForSingleObject_ 
 // Sw3NtCreateThreadEx_                  
@@ -41,24 +40,40 @@ int main()
 
     
 
-    std::string destinationBuffer = "test";
     std::string payload = "test";
-    SIZE_T sizePayload=payload.size();
-    SIZE_T NumberOfBytesWritten;
-    status = Sw3NtWriteVirtualMemory_(GetCurrentProcess(), (PVOID)destinationBuffer.data(), (PVOID)payload.data(), sizePayload, &NumberOfBytesWritten);
+    SIZE_T sizePayload = payload.size();
+    SIZE_T NumberOfBytesWritten = 0;
+    status = Sw3NtWriteVirtualMemory_(GetCurrentProcess(), remoteBuffer, (PVOID)payload.data(), sizePayload, &NumberOfBytesWritten);
     if(status!=0)
     {
         std::cout << "Fail Sw3NtWriteVirtualMemory_" << std::endl;
         return -1;
     }
 
-    payload = "toto";
-    sizePayload=payload.size();
-    SIZE_T NumberOfBytesRead;
-    status = Sw3NtReadVirtualMemory_(GetCurrentProcess(), remoteBuffer, (PVOID)payload.data(), sizePayload, &NumberOfBytesRead);
+    if (NumberOfBytesWritten != sizePayload)
+    {
+        std::cout << "Unexpected NumberOfBytesWritten: " << NumberOfBytesWritten << std::endl;
+        return -1;
+    }
+
+    std::string readBuffer(payload.size(), '\0');
+    SIZE_T NumberOfBytesRead = 0;
+    status = Sw3NtReadVirtualMemory_(GetCurrentProcess(), remoteBuffer, (PVOID)readBuffer.data(), readBuffer.size(), &NumberOfBytesRead);
     if(status!=0)
     {
         std::cout << "Fail Sw3NtReadVirtualMemory_" << std::endl;
+        return -1;
+    }
+
+    if (NumberOfBytesRead != readBuffer.size())
+    {
+        std::cout << "Unexpected NumberOfBytesRead: " << NumberOfBytesRead << std::endl;
+        return -1;
+    }
+
+    if (readBuffer != payload)
+    {
+        std::cout << "Read content mismatch: '" << readBuffer << "'" << std::endl;
         return -1;
     }
 
@@ -97,7 +112,7 @@ int main()
     HANDLE handle;
     static OBJECT_ATTRIBUTES zoa = { sizeof(zoa) };
     CLIENT_ID pid;
-    pid.UniqueProcess = (HANDLE)dwPid;
+    pid.UniqueProcess = (HANDLE)(ULONG_PTR)dwPid;
     pid.UniqueThread = 0;
     status = Sw3NtOpenProcess_(&handle, PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, &zoa, (CLIENT_ID*)&pid);
     if(status!=0)
@@ -116,8 +131,18 @@ int main()
 
 
     // Open or create file
+    WCHAR tempPath[MAX_PATH] = {};
+    if (GetTempPathW(MAX_PATH, tempPath) == 0)
+    {
+        std::cerr << "GetTempPathW failed: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    std::wstring filePath = tempPath;
+    filePath += L"ntwrite_example.txt";
+
     HANDLE hFile = CreateFileW(
-        L"C:\\Users\\Public\\ntwrite_example.txt",
+        filePath.c_str(),
         GENERIC_WRITE,
         0,
         nullptr,
@@ -152,15 +177,71 @@ int main()
         Key           // Key
     );
 
-    if (status == 0 /* STATUS_SUCCESS */) {
-        std::cout << "NtWriteFile succeeded, bytes written: "
-                  << ioStatus.Information << "\n";
-    } else {
+    if (status != 0)
+    {
         std::cerr << "NtWriteFile failed, NTSTATUS = 0x"
                   << std::hex << status << "\n";
+        CloseHandle(hFile);
+        return 1;
+    }
+
+    if (ioStatus.Information != len)
+    {
+        std::cerr << "NtWriteFile wrote unexpected byte count: "
+                  << ioStatus.Information << "\n";
+        CloseHandle(hFile);
+        return 1;
     }
 
     CloseHandle(hFile);
+
+    hFile = CreateFileW(
+        filePath.c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        std::cerr << "Failed to reopen written file for verification: " << GetLastError() << "\n";
+        return 1;
+    }
+
+    std::string fileContent(len, '\0');
+    DWORD bytesRead = 0;
+    if (!ReadFile(hFile, fileContent.data(), len, &bytesRead, nullptr))
+    {
+        std::cerr << "ReadFile verification failed: " << GetLastError() << "\n";
+        CloseHandle(hFile);
+        return 1;
+    }
+
+    CloseHandle(hFile);
+
+    if (bytesRead != len || fileContent != text)
+    {
+        std::cerr << "NtWriteFile content mismatch\n";
+        return 1;
+    }
+
+    DeleteFileW(filePath.c_str());
+
+    status = Sw3NtClose_(tokenHandle);
+    if (status != 0)
+    {
+        std::cerr << "Fail Sw3NtClose_ for tokenHandle" << std::endl;
+        return -1;
+    }
+
+    status = Sw3NtClose_(handle);
+    if (status != 0)
+    {
+        std::cerr << "Fail Sw3NtClose_ for process handle" << std::endl;
+        return -1;
+    }
 
     std::cout << "Success" << std::endl;
 

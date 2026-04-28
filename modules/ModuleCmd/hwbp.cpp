@@ -5,9 +5,24 @@
 
 #if defined(_WIN32)
 
-#if defined(_M_ARM64)
 namespace
 {
+    constexpr int ULONG_PTR_BITS = static_cast<int>(sizeof(ULONG_PTR) * 8);
+
+    constexpr DWORD DR7_ENABLE_SHIFT = 0;
+    constexpr DWORD DR7_ENABLE_STRIDE = 2;
+    constexpr DWORD DR7_ENABLE_BITS = 2;
+    constexpr DWORD DR7_LOCAL_ENABLE = 1;
+    constexpr DWORD DR7_RW_LEN_SHIFT = 16;
+    constexpr DWORD DR7_RW_LEN_STRIDE = 4;
+    constexpr DWORD DR7_RW_LEN_BITS = 4;
+
+    bool is_valid_breakpoint_index(UINT32 index)
+    {
+        return index < HWBP_MAX_BREAKPOINTS;
+    }
+
+#if defined(_M_ARM64)
     constexpr DWORD ARM64_BCR_ENABLE_SHIFT = 0;
     constexpr DWORD ARM64_BCR_PMC_SHIFT    = 1;
     constexpr DWORD ARM64_BCR_BAS_SHIFT    = 5;
@@ -15,8 +30,8 @@ namespace
     constexpr DWORD ARM64_BCR_ENABLE = 0x1;
     constexpr DWORD ARM64_BCR_PMC_EL0 = 0x2;
     constexpr DWORD ARM64_BCR_BAS_A64 = 0xF;
-}
 #endif
+}
 
 
 ULONG_PTR set_bits(
@@ -25,8 +40,14 @@ ULONG_PTR set_bits(
     IN int bits,
     IN ULONG_PTR newValue)
 {
-    ULONG_PTR mask = (1UL << bits) - 1UL;
-    dw = (dw & ~(mask << lowBit)) | (newValue << lowBit);
+    if (lowBit < 0 || bits <= 0 || lowBit >= ULONG_PTR_BITS)
+        return dw;
+
+    if (bits > ULONG_PTR_BITS - lowBit)
+        bits = ULONG_PTR_BITS - lowBit;
+
+    ULONG_PTR mask = (bits == ULONG_PTR_BITS) ? ~static_cast<ULONG_PTR>(0) : ((static_cast<ULONG_PTR>(1) << bits) - 1);
+    dw = (dw & ~(mask << lowBit)) | ((newValue & mask) << lowBit);
     return dw;
 }
 
@@ -36,10 +57,10 @@ BOOL enable_breakpoint(
     IN PVOID address,
     IN int index)
 {
-#if defined(_M_ARM64)
-    if (index < 0 || index >= HWBP_MAX_BREAKPOINTS)
+    if (!ctx || index < 0 || !is_valid_breakpoint_index(static_cast<UINT32>(index)))
         return FALSE;
 
+#if defined(_M_ARM64)
     ctx->Bvr[index] = ((DWORD64)address) & ~0x3ull;
     ctx->Bcr[index] = 0;
     ctx->Bcr[index] = (DWORD)set_bits(ctx->Bcr[index], ARM64_BCR_ENABLE_SHIFT, 1, ARM64_BCR_ENABLE);
@@ -66,8 +87,8 @@ BOOL enable_breakpoint(
             return FALSE;
     }
 
-    ctx->Dr7 = set_bits(ctx->Dr7, 16, 16, 0);
-    ctx->Dr7 = set_bits(ctx->Dr7, (index * 2), 1, 1);
+    ctx->Dr7 = set_bits(ctx->Dr7, DR7_RW_LEN_SHIFT + (index * DR7_RW_LEN_STRIDE), DR7_RW_LEN_BITS, 0);
+    ctx->Dr7 = set_bits(ctx->Dr7, DR7_ENABLE_SHIFT + (index * DR7_ENABLE_STRIDE), DR7_ENABLE_BITS, DR7_LOCAL_ENABLE);
 
     return TRUE;
 #endif
@@ -80,7 +101,7 @@ exception_callback Handler
 );
 
 
-typedef PVOID (WINAPI * RtlRemoveVectoredExceptionHandler_t)( 
+typedef ULONG (WINAPI * RtlRemoveVectoredExceptionHandler_t)(
 PVOID Handle
 );
 
@@ -89,14 +110,14 @@ VOID clear_breakpoint(
     IN CONTEXT* ctx,
     IN DWORD index)
 {
-#if defined(_M_ARM64)
-    if (index >= HWBP_MAX_BREAKPOINTS)
+    if (!ctx || !is_valid_breakpoint_index(index))
         return;
 
+#if defined(_M_ARM64)
     ctx->Bcr[index] = 0;
     ctx->Bvr[index] = 0;
 #else
-    // Clear the releveant hardware breakpoint
+    // Clear the relevant hardware breakpoint
     switch (index)
     {
         case 0:
@@ -111,9 +132,12 @@ VOID clear_breakpoint(
         case 3:
             ctx->Dr3 = 0;
             break;
+        default:
+            return;
     }
 
-    ctx->Dr7 = set_bits(ctx->Dr7, (index * 2), 1, 0);
+    ctx->Dr7 = set_bits(ctx->Dr7, DR7_ENABLE_SHIFT + (index * DR7_ENABLE_STRIDE), DR7_ENABLE_BITS, 0);
+    ctx->Dr7 = set_bits(ctx->Dr7, DR7_RW_LEN_SHIFT + (index * DR7_RW_LEN_STRIDE), DR7_RW_LEN_BITS, 0);
     ctx->Dr6 = 0;
 #endif
 }
@@ -129,11 +153,20 @@ BOOL set_hwbp(
     BOOL     ret_val      = FALSE;
     HANDLE   hHwBpHandler = NULL;
     CONTEXT  threadCtx    = { 0 };
+    RtlAddVectoredExceptionHandler_t RtlAddVectoredExceptionHandler = NULL;
+
+    if (phHwBpHandler)
+        *phHwBpHandler = NULL;
+
+    if (!hThread || !address || !hwbp_handler || !is_valid_breakpoint_index(index))
+    {
+        goto Cleanup;
+    }
 
     memset(&threadCtx, 0, sizeof(threadCtx));
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
 
-    RtlAddVectoredExceptionHandler_t RtlAddVectoredExceptionHandler = (RtlAddVectoredExceptionHandler_t)xGetProcAddress(xGetLibAddress((PCHAR)"ntdll", TRUE, NULL), (PCHAR)"RtlAddVectoredExceptionHandler", 0);
+    RtlAddVectoredExceptionHandler = (RtlAddVectoredExceptionHandler_t)xGetProcAddress(xGetLibAddress((PCHAR)"ntdll", TRUE, NULL), (PCHAR)"RtlAddVectoredExceptionHandler", 0);
     if (!RtlAddVectoredExceptionHandler)
     {
         goto Cleanup;
@@ -164,6 +197,11 @@ BOOL set_hwbp(
     ret_val = TRUE;
 
 Cleanup:
+    if (!ret_val && hHwBpHandler)
+    {
+        remove_hwbp_handler(hHwBpHandler);
+    }
+
     return ret_val;
 }
 
@@ -192,6 +230,9 @@ VOID unset_hwbp(
     IN UINT32 index)
 {
     CONTEXT  threadCtx = { 0 };
+
+    if (!hThread || !is_valid_breakpoint_index(index))
+        return;
 
     memset(&threadCtx, 0, sizeof(threadCtx));
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
