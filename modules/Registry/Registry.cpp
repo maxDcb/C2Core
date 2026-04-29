@@ -126,7 +126,7 @@ Registry::Parameters Registry::unpackParameters(const std::string& data) const
     return params;
 }
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
 
 namespace
 {
@@ -168,7 +168,7 @@ namespace
 
 int Registry::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
     if (args.size() < 2)
     {
@@ -274,7 +274,7 @@ int Registry::process(C2Message& c2Message, C2Message& c2RetMessage)
 
 int Registry::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if (c2RetMessage.errorCode() > 0)
     {
         errorMsg = c2RetMessage.returnvalue();

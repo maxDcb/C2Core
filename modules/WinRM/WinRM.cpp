@@ -65,7 +65,7 @@ std::string WinRM::getInfo()
 
 int WinRM::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if (splitedCmd.size() >= 2)
     {
         string mode = splitedCmd[1];
@@ -180,7 +180,7 @@ int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
 
 int WinRM::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)
     {

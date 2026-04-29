@@ -120,7 +120,7 @@ TaskScheduler::Parameters TaskScheduler::unpackParameters(const std::string& dat
 
 int TaskScheduler::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
     Parameters params;
 
@@ -250,7 +250,7 @@ int TaskScheduler::process(C2Message& c2Message, C2Message& c2RetMessage)
 
 int TaskScheduler::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)
     {

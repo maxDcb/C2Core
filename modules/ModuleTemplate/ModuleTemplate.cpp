@@ -61,7 +61,7 @@ std::string ModuleTemplate::getInfo()
 // Method that will be trigged server side to construct the message that will be send to the beacon and interpreted by the process method
 int ModuleTemplate::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
     if (splitedCmd.size() >= 2 )
     {
         string args = "args from the splited command line";
@@ -85,7 +85,7 @@ int ModuleTemplate::init(std::vector<std::string> &splitedCmd, C2Message &c2Mess
 // For exemple a file to write on the disk
 int ModuleTemplate::followUp(const C2Message &c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
     // check if there is an error
     if(c2RetMessage.errorCode()==-1)
     {

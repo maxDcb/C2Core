@@ -212,7 +212,7 @@ std::string xorKey = "nY5LkT7dXmiWeF2QApDLMQmnHaCR4VzsC6zuN3QgZtTqU7qaaf";
 
 int MiniDump::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
 
     if(splitedCmd.size() == 3 && splitedCmd[1]=="dump")
     {

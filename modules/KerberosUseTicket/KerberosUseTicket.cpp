@@ -80,7 +80,7 @@ std::string KerberosUseTicket::getInfo()
 
 int KerberosUseTicket::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
     if (splitedCmd.size() == 2)
     {
         string inputFile = splitedCmd[1];

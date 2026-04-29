@@ -74,7 +74,7 @@ extern "C" __attribute__((visibility("default"))) ReversePortForward* ReversePor
 #endif
 
 ReversePortForward::ReversePortForward()
-// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     : ModuleCmd(std::string(moduleName), moduleHash)
     , m_localPort(0)
     , m_remotePort(0)
@@ -94,7 +94,7 @@ ReversePortForward::ReversePortForward()
 
 ReversePortForward::~ReversePortForward()
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::lock_guard<std::mutex> lock(m_localMutex);
     for (auto& entry : m_localConnections)
     {
@@ -132,7 +132,7 @@ std::string ReversePortForward::getInfo()
 
 int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if (splitedCmd.size() != 4)
     {
         c2Message.set_returnvalue(formatHelp());
@@ -180,7 +180,7 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
 
 int ReversePortForward::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     switch (c2RetMessage.errorCode())
     {
     case 1:
@@ -253,12 +253,12 @@ void ReversePortForward::enqueueChunk(int connectionId, const std::string& data,
         std::lock_guard<std::mutex> lock(m_queueMutex);
         m_pendingChunks.push({connectionId, data, closeEvent});
     }
-#if !(defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS))
+#if !(defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS))
     m_queueCv.notify_all();
 #endif
 }
 
-// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
 
 bool ReversePortForward::sendAll(SocketHandle socket, const std::string& data) const
 {
@@ -817,7 +817,7 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 // could be usefull
 int ReversePortForward::recurringExec(C2Message& c2RetMessage)
 {
-// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     pollLocalConnections();
 
     std::unique_lock<std::mutex> lock(m_queueMutex);

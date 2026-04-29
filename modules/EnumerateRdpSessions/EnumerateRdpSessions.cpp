@@ -84,7 +84,7 @@ EnumerateRdpSessions::Parameters EnumerateRdpSessions::unpackParameters(const st
 
 int EnumerateRdpSessions::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
     if (args.empty())
     {
@@ -321,7 +321,7 @@ int EnumerateRdpSessions::followUp(const C2Message& /*c2RetMessage*/)
 
 int EnumerateRdpSessions::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if (c2RetMessage.errorCode() > 0)
     {
         errorMsg = c2RetMessage.returnvalue();

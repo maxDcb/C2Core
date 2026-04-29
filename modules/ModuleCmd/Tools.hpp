@@ -20,7 +20,7 @@
 #endif
 
 
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
 
 #include <donut.h>
 

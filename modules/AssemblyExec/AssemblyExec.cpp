@@ -109,7 +109,7 @@ std::string AssemblyExec::getInfo()
 
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
     if(splitedCmd.size() == 2)
     {
         if(splitedCmd[1]=="thread")
@@ -263,7 +263,7 @@ int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Messag
 
 int AssemblyExec::initConfig(const nlohmann::json &config)
 {
-#if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
     for (auto& it : config.items())
     {
         if(it.key()=="process")

@@ -57,7 +57,7 @@ private:
     void closeSocket(SocketHandle socket) const;
     void enqueueChunk(int connectionId, const std::string& data, bool closeEvent);
 
-// #if defined(BUILD_TEAMSERVER) || defined(BUILD_TESTS)
+// #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     bool sendAll(SocketHandle socket, const std::string& data) const;
     std::string receiveAvailable(SocketHandle socket, bool& closed) const;
     void pollLocalConnections();
