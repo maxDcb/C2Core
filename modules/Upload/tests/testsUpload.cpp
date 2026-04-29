@@ -1,6 +1,10 @@
 #include "../Upload.hpp"
+#include <chrono>
 #include <filesystem>
+#include <functional>
 #include <fstream>
+#include <string>
+#include <thread>
 
 bool testUpload();
 
@@ -22,9 +26,15 @@ static bool fileContentEqual(const std::filesystem::path& p, const std::string& 
     return data == expected;
 }
 
+static std::filesystem::path uniqueTestTempPath(const char* prefix) {
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+        + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    return std::filesystem::temp_directory_path() / (std::string(prefix) + "_" + suffix);
+}
+
 bool testUpload() {
     namespace fs = std::filesystem;
-    fs::path temp = fs::temp_directory_path() / "c2core_upload_test";
+    fs::path temp = uniqueTestTempPath("c2core_upload_test");
     fs::create_directories(temp);
     bool ok = true;
 

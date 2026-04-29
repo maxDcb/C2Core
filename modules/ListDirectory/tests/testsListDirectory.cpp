@@ -1,9 +1,20 @@
 #include "../ListDirectory.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <functional>
 #include <fstream>
+#include <string>
+#include <thread>
 
 bool testListDirectory();
+
+static std::filesystem::path uniqueTestTempPath(const char* prefix)
+{
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+        + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    return std::filesystem::temp_directory_path() / (std::string(prefix) + "_" + suffix);
+}
 
 int main()
 {
@@ -24,7 +35,7 @@ bool testListDirectory()
     std::unique_ptr<ListDirectory> listDirectory = std::make_unique<ListDirectory>();
 
     // Prepare temporary directory with a file
-    std::filesystem::path temp = std::filesystem::temp_directory_path() / "c2core_listdir_test";
+    std::filesystem::path temp = uniqueTestTempPath("c2core_listdir_test");
     std::filesystem::create_directories(temp);
     std::ofstream(temp / "file.txt") << "data";
 

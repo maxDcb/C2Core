@@ -1,6 +1,10 @@
 #include "../Tree.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <functional>
+#include <string>
+#include <thread>
 
 #ifdef __linux__
 #elif _WIN32
@@ -8,6 +12,13 @@
 #endif
 
 bool testTree();
+
+static std::filesystem::path uniqueTestTempPath(const char* prefix)
+{
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+        + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    return std::filesystem::temp_directory_path() / (std::string(prefix) + "_" + suffix);
+}
 
 int main()
 {
@@ -20,13 +31,13 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 bool testTree()
 {
     namespace fs = std::filesystem;
-    fs::path temp = fs::temp_directory_path() / "c2core_tree_test";
+    fs::path temp = uniqueTestTempPath("c2core_tree_test");
     fs::remove_all(temp);
     fs::create_directories(temp / "sub");
     std::ofstream(temp / "file.txt") << "data";

@@ -1,8 +1,19 @@
 #include "../ChangeDirectory.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <functional>
+#include <string>
+#include <thread>
 
 bool testChangeDirectory();
+
+static std::filesystem::path uniqueTestTempPath(const char* prefix)
+{
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+        + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    return std::filesystem::temp_directory_path() / (std::string(prefix) + "_" + suffix);
+}
 
 int main()
 {
@@ -24,7 +35,7 @@ bool testChangeDirectory()
     std::unique_ptr<ChangeDirectory> changeDirectory = std::make_unique<ChangeDirectory>();
 
     std::filesystem::path original = std::filesystem::current_path();
-    std::filesystem::path temp = std::filesystem::temp_directory_path() / "c2core_change_dir_test";
+    std::filesystem::path temp = uniqueTestTempPath("c2core_change_dir_test");
     std::filesystem::create_directories(temp);
     std::cout << "original=" << original << " temp=" << temp << std::endl;
 
