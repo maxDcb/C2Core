@@ -71,6 +71,7 @@ std::string CoffLoader::getInfo()
 
 int CoffLoader::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if (splitedCmd.size() < 3)
     {
         c2Message.set_returnvalue(getInfo());
@@ -114,7 +115,7 @@ int CoffLoader::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
         c2Message.set_returnvalue(msg);
         return -1;
     }
-
+#endif
 
     return 0;
 }

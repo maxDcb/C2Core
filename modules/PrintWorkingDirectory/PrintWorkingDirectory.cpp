@@ -58,8 +58,10 @@ std::string PrintWorkingDirectory::getInfo()
 
 int PrintWorkingDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("");
+#endif
 
     return 0;
 }

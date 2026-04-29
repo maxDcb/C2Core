@@ -72,6 +72,7 @@ std::string Run::getInfo()
 
 int Run::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     if(splitedCmd.size()<2)
     {
         c2Message.set_returnvalue(getInfo());
@@ -87,6 +88,7 @@ int Run::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd(shellCmd);
+#endif
 
     return 0;
 }

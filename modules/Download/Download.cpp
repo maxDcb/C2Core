@@ -60,6 +60,7 @@ std::string Download::getInfo()
 
 int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> quoteRegroupedCmd = regroupStrings(splitedCmd);
 
     if (quoteRegroupedCmd.size() == 3)
@@ -76,6 +77,7 @@ int Download::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         c2Message.set_returnvalue(getInfo());
         return -1;
     }
+#endif
 
     return 0;
 }
@@ -196,6 +198,7 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Download::followUp(const C2Message &c2RetMessage)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     // check if there is an error
     if(c2RetMessage.errorCode()==-1)
     {
@@ -218,6 +221,7 @@ int Download::followUp(const C2Message &c2RetMessage)
         }
         
     }
+#endif
 
     return 0;
 }

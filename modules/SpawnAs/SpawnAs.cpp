@@ -238,6 +238,7 @@ SpawnAs::Options SpawnAs::unpackParameters(const std::string& data) const
 
 int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     auto regroupedCmd = regroupStrings(splitedCmd);
 
     if (regroupedCmd.size() < 4)
@@ -397,6 +398,7 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
     c2Message.set_cmd(cmd);
     c2Message.set_data(programToLaunch.data(), static_cast<int>(programToLaunch.size()));
     c2Message.set_args(packParameters(options));
+#endif
 
     return 0;
 }
