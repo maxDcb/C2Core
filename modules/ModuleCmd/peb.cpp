@@ -4,6 +4,30 @@
 #if _WIN32
 
 
+#if defined(_M_ARM64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__getReg(18))
+
+#elif defined(_M_X64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__readgsqword(0x30))
+
+#elif defined(_M_IX86)
+    #define PEB_OFFSET 0x30
+    #define READ_TEB() ((void*)__readfsdword(0x18))
+
+#else
+    #error Unsupported architecture
+#endif
+
+
+static void* GetPeb(void)
+{
+    unsigned char* teb = (unsigned char*)READ_TEB();
+    return *(void**)(teb + PEB_OFFSET);
+}
+
+
 // Relative Virtual Address to Virtual Address
 #define RVA2VA(type, base, rva) (type)((ULONG_PTR) base + rva)
 
@@ -20,7 +44,7 @@ LPVOID find_reference(
     LPVOID                 addr = NULL;
     LPVOID                 base = NULL;
 
-    peb = (PPEB2)READ_MEMLOC(PEB_OFFSET);
+    peb = (PPEB2)GetPeb();
     ldr = (PPEB_LDR_DATA2)peb->Ldr;
 
     // for each DLL loaded
@@ -224,7 +248,7 @@ LPVOID xGetLibAddress(
         dll_name[i++] = 0;
     }
 
-    peb = (PPEB2)READ_MEMLOC(PEB_OFFSET);
+    peb = (PPEB2)GetPeb();
     ldr = (PPEB_LDR_DATA2)peb->Ldr;
 
     // for each DLL loaded

@@ -3,7 +3,9 @@ add_library(Chisel SHARED Chisel.cpp)
 
 set_property(TARGET Chisel PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-target_link_libraries(Chisel PRIVATE Donut )
+if(C2CORE_BUILD_TESTS)
+    target_link_libraries(Chisel PRIVATE Donut )
+endif()
 
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Chisel>")

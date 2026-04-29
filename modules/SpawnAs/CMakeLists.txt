@@ -1,7 +1,6 @@
 include_directories(../)
 add_library(SpawnAs SHARED SpawnAs.cpp)
 set_property(TARGET SpawnAs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-target_link_libraries(SpawnAs ${Donut} )
 
 if(WIN32)
     target_link_libraries(SpawnAs advapi32 userenv)
@@ -13,9 +12,9 @@ if(C2CORE_BUILD_TESTS)
 add_executable(testsSpawnAs tests/testsSpawnAs.cpp SpawnAs.cpp)
 
 if(WIN32)
-    target_link_libraries(testsSpawnAs ${Donut} advapi32 userenv)
+    target_link_libraries(testsSpawnAs advapi32 userenv)
 else()
-    target_link_libraries(testsSpawnAs ${Donut} ${aplib64} )
+    target_link_libraries(testsSpawnAs ${aplib64} )
 endif()
 
 add_custom_command(TARGET testsSpawnAs POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

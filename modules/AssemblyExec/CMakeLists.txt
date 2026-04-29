@@ -1,11 +1,26 @@
 include_directories(../)
 
 if(WIN32)
-    if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+    set(SYSCALL_OBJ "../ModuleCmd/syscall.x86.obj")
+    if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+        set(SYSCALL_OBJ "../ModuleCmd/syscall.arm64.obj")
+    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(SYSCALL_OBJ "../ModuleCmd/syscall.x64.obj")
+    endif()
+
+    if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
         add_library(AssemblyExec SHARED
             AssemblyExec.cpp
             ../ModuleCmd/syscall.cpp
-            ../ModuleCmd/syscall.x64.obj
+            ${SYSCALL_OBJ}
+            ../ModuleCmd/peb.cpp
+            ../ModuleCmd/hwbp.cpp
+        )
+    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)   # x64
+        add_library(AssemblyExec SHARED
+            AssemblyExec.cpp
+            ../ModuleCmd/syscall.cpp
+            ${SYSCALL_OBJ}
             ../ModuleCmd/peb.cpp
             ../ModuleCmd/hwbp.cpp
         )
@@ -13,7 +28,7 @@ if(WIN32)
         add_library(AssemblyExec SHARED
             AssemblyExec.cpp
             ../ModuleCmd/syscall.cpp
-            ../ModuleCmd/syscall.x86.obj
+            ${SYSCALL_OBJ}
             ../ModuleCmd/peb.cpp
             ../ModuleCmd/hwbp.cpp
         )
@@ -24,19 +39,30 @@ endif()
 
 set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-target_link_libraries(AssemblyExec PRIVATE Donut)
+if(C2CORE_BUILD_TESTS)
+    target_link_libraries(AssemblyExec PRIVATE Donut )
+endif()
 
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:AssemblyExec>")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
-        if (CMAKE_SIZEOF_VOID_P EQUAL 8)   # 64-bit
+        if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             add_executable(testsAssemblyExec
                 tests/testsAssemblyExec.cpp
                 AssemblyExec.cpp
                 ../ModuleCmd/syscall.cpp
-                ../ModuleCmd/syscall.x64.obj
+                ${SYSCALL_OBJ}
+                ../ModuleCmd/peb.cpp
+                ../ModuleCmd/hwbp.cpp
+            )
+        elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)   # x64
+            add_executable(testsAssemblyExec
+                tests/testsAssemblyExec.cpp
+                AssemblyExec.cpp
+                ../ModuleCmd/syscall.cpp
+                ${SYSCALL_OBJ}
                 ../ModuleCmd/peb.cpp
                 ../ModuleCmd/hwbp.cpp
             )
@@ -45,7 +71,7 @@ if(C2CORE_BUILD_TESTS)
                 tests/testsAssemblyExec.cpp
                 AssemblyExec.cpp
                 ../ModuleCmd/syscall.cpp
-                ../ModuleCmd/syscall.x86.obj
+                ${SYSCALL_OBJ}
                 ../ModuleCmd/peb.cpp
                 ../ModuleCmd/hwbp.cpp
             )
