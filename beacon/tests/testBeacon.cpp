@@ -1,6 +1,8 @@
-#include <catch2/catch_test_macros.hpp>
 #include "../Beacon.hpp"
 #include "../../modules/ModuleCmd/CommonCommand.hpp"
+
+#include <iostream>
+#include <string>
 
 class BeaconTestProxy : public Beacon {
 public:
@@ -11,66 +13,86 @@ public:
 
     void checkIn() override {}
 
-    void pushTask(const C2Message &msg) { m_tasks.push(msg); }
-    void pushResult(const C2Message &msg) { m_taskResult.push(msg); }
+    void pushResult(const C2Message& msg) { m_taskResult.push(msg); }
     size_t resultCount() const { return m_taskResult.size(); }
     size_t taskCount() const { return m_tasks.size(); }
 };
 
-static const std::string kConfig = R"({"xorKey":"key","ModulesConfig":{}})";
+namespace {
+    const std::string kConfig = R"({"xorKey":"key","ModulesConfig":{}})";
 
-TEST_CASE("initConfig parses xor key", "[beacon]") {
-    BeaconTestProxy b;
-    REQUIRE(b.initConfig(kConfig));
+    bool expect(bool condition, const std::string& message)
+    {
+        if (!condition)
+        {
+            std::cerr << "[FAIL] " << message << std::endl;
+            return false;
+        }
+        return true;
+    }
 }
 
-TEST_CASE("initConfig validates input", "[beacon]") {
-    BeaconTestProxy b;
-    REQUIRE_FALSE(b.initConfig("not json"));
-    REQUIRE_FALSE(b.initConfig(R"({"xorKey":"k"})"));
-}
+int main()
+{
+    bool ok = true;
 
-TEST_CASE("cmdToTasks handles malformed input", "[beacon]") {
-    BeaconTestProxy b;
-    b.initConfig(kConfig);
-    REQUIRE(b.cmdToTasks("not_base64"));
-    REQUIRE(b.taskCount() == 0);
-}
+    {
+        BeaconTestProxy b;
+        ok &= expect(b.initConfig(kConfig), "initConfig should parse xor key");
+    }
+    {
+        BeaconTestProxy b;
+        ok &= expect(!b.initConfig("not json"), "initConfig should reject malformed JSON");
+        ok &= expect(!b.initConfig(R"({"xorKey":"k"})"), "initConfig should reject incomplete config");
+    }
+    {
+        BeaconTestProxy b;
+        ok &= expect(b.initConfig(kConfig), "initConfig should accept base config");
+        ok &= expect(b.cmdToTasks("not_base64"), "cmdToTasks should tolerate malformed input");
+        ok &= expect(b.taskCount() == 0, "cmdToTasks should not enqueue malformed tasks");
+    }
+    {
+        BeaconTestProxy b;
+        ok &= expect(b.initConfig(kConfig), "initConfig should accept base config for results");
+        C2Message msg;
+        msg.set_instruction("TEST");
+        msg.set_returnvalue("OK");
+        b.pushResult(msg);
+        std::string out;
+        ok &= expect(b.taskResultsToCmd(out), "taskResultsToCmd should serialize queued results");
+        ok &= expect(!out.empty(), "serialized task results should not be empty");
+        ok &= expect(b.resultCount() == 0, "taskResultsToCmd should clear result queue");
+    }
+    {
+        BeaconTestProxy b;
+        C2Message sleepMsg;
+        sleepMsg.set_instruction(SleepCmd);
+        sleepMsg.set_cmd("2");
+        C2Message sleepRet;
+        ok &= expect(!b.execInstruction(sleepMsg, sleepRet), "sleep command should keep beacon running");
+        ok &= expect(sleepRet.returnvalue() == "2000ms", "sleep command should convert seconds to ms");
 
-TEST_CASE("taskResultsToCmd serializes queued results", "[beacon]") {
-    BeaconTestProxy b;
-    b.initConfig(kConfig);
-    C2Message msg; msg.set_instruction("TEST"); msg.set_returnvalue("OK");
-    b.pushResult(msg);
-    std::string out;
-    REQUIRE(b.taskResultsToCmd(out));
-    REQUIRE_FALSE(out.empty());
-    REQUIRE(b.resultCount() == 0); // queue cleared
-}
+        C2Message badSleep;
+        badSleep.set_instruction(SleepCmd);
+        badSleep.set_cmd("abc");
+        C2Message badRet;
+        ok &= expect(!b.execInstruction(badSleep, badRet), "bad sleep should keep beacon running");
+        ok &= expect(badRet.returnvalue() == CmdStatusFail, "bad sleep should fail cleanly");
 
-TEST_CASE("execInstruction handles Sleep and End", "[beacon]") {
-    BeaconTestProxy b;
+        C2Message endMsg;
+        endMsg.set_instruction(EndCmd);
+        C2Message endRet;
+        ok &= expect(b.execInstruction(endMsg, endRet), "end command should stop beacon");
+        ok &= expect(endRet.returnvalue() == CmdStatusSuccess, "end command should return success");
+    }
+    {
+        BeaconTestProxy b;
+        C2Message msg;
+        msg.set_instruction("UNKNOWN");
+        C2Message ret;
+        ok &= expect(!b.execInstruction(msg, ret), "unknown module should keep beacon running");
+        ok &= expect(ret.returnvalue() == CmdModuleNotFound, "unknown module should report module not found");
+    }
 
-    C2Message sleepMsg; sleepMsg.set_instruction(SleepCmd); sleepMsg.set_cmd("2");
-    C2Message sleepRet;
-    REQUIRE_FALSE(b.execInstruction(sleepMsg, sleepRet));
-    REQUIRE(sleepRet.returnvalue() == "2000ms");
-
-    C2Message badSleep; badSleep.set_instruction(SleepCmd); badSleep.set_cmd("abc");
-    C2Message badRet;
-    REQUIRE_FALSE(b.execInstruction(badSleep, badRet));
-    REQUIRE(badRet.returnvalue() == CmdStatusFail);
-
-    C2Message endMsg; endMsg.set_instruction(EndCmd);
-    C2Message endRet;
-    REQUIRE(b.execInstruction(endMsg, endRet));
-    REQUIRE(endRet.returnvalue() == CmdStatusSuccess);
-}
-
-TEST_CASE("execInstruction unknown module", "[beacon]") {
-    BeaconTestProxy b;
-    C2Message msg; msg.set_instruction("UNKNOWN");
-    C2Message ret;
-    REQUIRE_FALSE(b.execInstruction(msg, ret));
-    REQUIRE(ret.returnvalue() == CmdModuleNotFound);
+    return ok ? 0 : 1;
 }

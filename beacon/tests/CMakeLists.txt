@@ -11,7 +11,6 @@ if(NOT WIN32)
         httplib::httplib)
 endif()
 
-# Unit tests using Catch2
 add_executable(beacon_unit_tests
     testBeacon.cpp
     ../Beacon.cpp
@@ -20,8 +19,6 @@ add_executable(beacon_unit_tests
     ../../listener/ListenerSmb.cpp)
 
 target_link_libraries(beacon_unit_tests
-    Catch2::Catch2WithMain
-    Catch2::Catch2
     nlohmann_json::nlohmann_json
     SocketHandler
     PipeHandler

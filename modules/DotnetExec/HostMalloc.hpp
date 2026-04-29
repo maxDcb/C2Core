@@ -34,9 +34,9 @@ public:
     virtual ULONG   STDMETHODCALLTYPE AddRef(void);
     virtual ULONG   STDMETHODCALLTYPE Release(void);
 
-    virtual HRESULT Alloc(SIZE_T cbSize, EMemoryCriticalLevel eCriticalLevel, void** ppMem);
-    virtual HRESULT DebugAlloc(SIZE_T cbSize, EMemoryCriticalLevel       eCriticalLevel, char* pszFileName, int         iLineNo, void** ppMem);
-    virtual HRESULT Free(void* pMem);
+    virtual HRESULT STDMETHODCALLTYPE Alloc(SIZE_T cbSize, EMemoryCriticalLevel eCriticalLevel, void** ppMem);
+    virtual HRESULT STDMETHODCALLTYPE DebugAlloc(SIZE_T cbSize, EMemoryCriticalLevel       eCriticalLevel, char* pszFileName, int         iLineNo, void** ppMem);
+    virtual HRESULT STDMETHODCALLTYPE Free(void* pMem);
 
     HANDLE hHeap;
 

@@ -7,14 +7,11 @@ else()
     set(additionalLib "")
 endif()
 
-# Unit tests using Catch2
 add_executable(listener_unit_tests
     testListener.cpp
     ../Listener.cpp)
 
 target_link_libraries(listener_unit_tests
-    Catch2::Catch2WithMain
-    Catch2::Catch2
     nlohmann_json::nlohmann_json
     c2_base64
     ${additionalLib})
@@ -29,12 +26,18 @@ add_executable(testListenerDns
 target_link_libraries(testListenerDns nlohmann_json::nlohmann_json Dnscommunication c2_base64 ${additionalLib})
 add_test(NAME testListenerDns COMMAND testListenerDns)
 
-add_executable(testListenerGithub
-    testListenerGithub.cpp
-    ../Listener.cpp
-    ../ListenerGithub.cpp)
-target_link_libraries(testListenerGithub nlohmann_json::nlohmann_json openssl::openssl httplib::httplib c2_base64 ${additionalLib})
-add_test(NAME testListenerGithub COMMAND testListenerGithub)
+if(TARGET httplib::httplib)
+    add_executable(testListenerGithub
+        testListenerGithub.cpp
+        ../Listener.cpp
+        ../ListenerGithub.cpp)
+    target_link_libraries(testListenerGithub nlohmann_json::nlohmann_json c2_base64 httplib::httplib ${additionalLib})
+    if(TARGET openssl::openssl)
+        target_link_libraries(testListenerGithub openssl::openssl)
+    endif()
+    add_test(NAME testListenerGithub COMMAND testListenerGithub)
+    set_tests_properties(testListenerGithub PROPERTIES DISABLED TRUE)
+endif()
 
 
 add_executable(testListenerSmb

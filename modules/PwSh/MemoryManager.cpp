@@ -48,7 +48,7 @@ ULONG STDMETHODCALLTYPE MyMemoryManager::Release()
 
 
 // This is called when the CLR wants to do heap allocations, it's responsible for returning our implementation of IHostMalloc
-HRESULT MyMemoryManager::CreateMalloc(DWORD dwMallocType, IHostMalloc** ppMalloc) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::CreateMalloc(DWORD dwMallocType, IHostMalloc** ppMalloc) 
 {
     // std::cout << "MyMemoryManager::CreateMalloc" << std::endl;
 
@@ -70,7 +70,7 @@ HRESULT MyMemoryManager::CreateMalloc(DWORD dwMallocType, IHostMalloc** ppMalloc
 
 
 //The Virtual* API calls are responsible for non-heap memory management, you can just call the Virtual* APIs as intended or implement your own routines
-HRESULT MyMemoryManager::VirtualAlloc(void* pAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect, EMemoryCriticalLevel eCriticalLevel, void** ppMem) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::VirtualAlloc(void* pAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect, EMemoryCriticalLevel eCriticalLevel, void** ppMem) 
 {
     LPVOID allocAddress=NULL;
     HANDLE hProcess = GetCurrentProcess();
@@ -93,7 +93,7 @@ HRESULT MyMemoryManager::VirtualAlloc(void* pAddress, SIZE_T dwSize, DWORD flAll
 }
 
 
-HRESULT MyMemoryManager::VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) 
 {
     // std::cout << "MyMemoryManager::VirtualFree" << std::endl;
 
@@ -104,7 +104,7 @@ HRESULT MyMemoryManager::VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFr
 }
 
 
-HRESULT MyMemoryManager::VirtualQuery(void* lpAddress, void* lpBuffer, SIZE_T dwLength, SIZE_T* pResult) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::VirtualQuery(void* lpAddress, void* lpBuffer, SIZE_T dwLength, SIZE_T* pResult) 
 {
     // std::cout << "MyMemoryManager::VirtualQuery" << std::endl;
 
@@ -113,7 +113,7 @@ HRESULT MyMemoryManager::VirtualQuery(void* lpAddress, void* lpBuffer, SIZE_T dw
 }
 
 
-HRESULT MyMemoryManager::VirtualProtect(void* lpAddress, SIZE_T dwSize, DWORD flNewProtect, DWORD* pflOldProtect) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::VirtualProtect(void* lpAddress, SIZE_T dwSize, DWORD flNewProtect, DWORD* pflOldProtect) 
 {
     // std::cout << "MyMemoryManager::VirtualProtect" << std::endl;
 
@@ -126,7 +126,7 @@ HRESULT MyMemoryManager::VirtualProtect(void* lpAddress, SIZE_T dwSize, DWORD fl
 }
 
 
-HRESULT MyMemoryManager::GetMemoryLoad(DWORD* pMemoryLoad, SIZE_T* pAvailableBytes) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::GetMemoryLoad(DWORD* pMemoryLoad, SIZE_T* pAvailableBytes) 
 {
     // std::cout << "MyMemoryManager::GetMemoryLoad" << std::endl;
 
@@ -137,14 +137,14 @@ HRESULT MyMemoryManager::GetMemoryLoad(DWORD* pMemoryLoad, SIZE_T* pAvailableByt
 }
 
 
-HRESULT MyMemoryManager::RegisterMemoryNotificationCallback(ICLRMemoryNotificationCallback* pCallback) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::RegisterMemoryNotificationCallback(ICLRMemoryNotificationCallback* pCallback) 
 {
     // std::cout << "MyMemoryManager::RegisterMemoryNotificationCallback" << std::endl;
     return S_OK;
 }
 
 
-HRESULT MyMemoryManager::NeedsVirtualAddressSpace(LPVOID startAddress, SIZE_T size) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::NeedsVirtualAddressSpace(LPVOID startAddress, SIZE_T size) 
 {
     // std::cout << "MyMemoryManager::NeedsVirtualAddressSpace" << std::endl;
     return S_OK;
@@ -154,7 +154,7 @@ HRESULT MyMemoryManager::NeedsVirtualAddressSpace(LPVOID startAddress, SIZE_T si
 //
 // This is a notification callback that will be triggered whenever a .NET assembly is loaded into the process
 //
-HRESULT MyMemoryManager::AcquiredVirtualAddressSpace(LPVOID startAddress, SIZE_T size) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::AcquiredVirtualAddressSpace(LPVOID startAddress, SIZE_T size) 
 {
     // std::cout << "MyMemoryManager::AcquiredVirtualAddressSpace" << std::endl;
     // std::cout << "Mapped file with size " << size <<  " bytes into memory at  " << std::hex << startAddress << std::endl;
@@ -171,7 +171,7 @@ HRESULT MyMemoryManager::AcquiredVirtualAddressSpace(LPVOID startAddress, SIZE_T
 }
 
 
-HRESULT MyMemoryManager::ReleasedVirtualAddressSpace(LPVOID startAddress) 
+HRESULT STDMETHODCALLTYPE MyMemoryManager::ReleasedVirtualAddressSpace(LPVOID startAddress) 
 {
     // std::cout << "MyMemoryManager::ReleasedVirtualAddressSpace" << std::endl;
     return S_OK;

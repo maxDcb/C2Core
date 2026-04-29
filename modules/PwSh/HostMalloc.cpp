@@ -46,7 +46,7 @@ ULONG STDMETHODCALLTYPE MyHostMalloc::Release()
 }
 
 
-HRESULT MyHostMalloc::Alloc(SIZE_T cbSize, EMemoryCriticalLevel eCriticalLevel, void** ppMem) 
+HRESULT STDMETHODCALLTYPE MyHostMalloc::Alloc(SIZE_T cbSize, EMemoryCriticalLevel eCriticalLevel, void** ppMem) 
 {
     LPVOID allocAddress = ::HeapAlloc(this->hHeap, 0, cbSize);
     // std::cout << "MyHostMalloc::Alloc " << std::hex << allocAddress << std::endl;
@@ -69,7 +69,7 @@ HRESULT MyHostMalloc::Alloc(SIZE_T cbSize, EMemoryCriticalLevel eCriticalLevel, 
 }
 
 
-HRESULT MyHostMalloc::DebugAlloc(SIZE_T cbSize, EMemoryCriticalLevel       eCriticalLevel, char* pszFileName, int         iLineNo, void** ppMem) 
+HRESULT STDMETHODCALLTYPE MyHostMalloc::DebugAlloc(SIZE_T cbSize, EMemoryCriticalLevel       eCriticalLevel, char* pszFileName, int         iLineNo, void** ppMem) 
 {
     // std::cout << "MyHostMalloc::DebugAlloc" << std::endl;
 
@@ -85,7 +85,7 @@ HRESULT MyHostMalloc::DebugAlloc(SIZE_T cbSize, EMemoryCriticalLevel       eCrit
 }
 
 
-HRESULT MyHostMalloc::Free(void* pMem) 
+HRESULT STDMETHODCALLTYPE MyHostMalloc::Free(void* pMem) 
 {
     // std::cout << "MyHostMalloc::Free" << std::endl;
 

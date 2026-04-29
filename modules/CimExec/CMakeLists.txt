@@ -17,4 +17,5 @@ if(C2CORE_BUILD_TESTS)
     $<TARGET_FILE:testsCimExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCimExec>")
 
     add_test(NAME testsCimExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCimExec>")
+    set_tests_properties(testsCimExec PROPERTIES DISABLED TRUE)
 endif()

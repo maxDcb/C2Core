@@ -7,6 +7,12 @@ endif()
 
 include_directories(ModuleCmd)
 
+function(c2core_disable_safeseh_for_x86 target)
+    if(MSVC AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4 AND NOT CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+        target_link_options(${target} PRIVATE /SAFESEH:NO)
+    endif()
+endfunction()
+
 #Only tests
 add_subdirectory(ModuleCmd)
 
@@ -31,10 +37,8 @@ add_subdirectory(KillProcess)
 add_subdirectory(KeyLogger)
 add_subdirectory(ScreenShot)
 add_subdirectory(MiniDump)
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)    # x64, need some calling convention fixing
-    add_subdirectory(DotnetExec)
-    add_subdirectory(PwSh)
-endif()
+add_subdirectory(DotnetExec)
+add_subdirectory(PwSh)
 add_subdirectory(Shell)
 add_subdirectory(Registry)
 
@@ -61,4 +65,4 @@ add_subdirectory(WinRM)
 add_subdirectory(DcomExec)
 add_subdirectory(CimExec)
 add_subdirectory(SshExec)
-# add_subdirectory(ReversePortForward)
+

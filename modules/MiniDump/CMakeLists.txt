@@ -33,6 +33,7 @@ endif()
 
 set_property(TARGET MiniDump PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(MiniDump ${Donut})
+c2core_disable_safeseh_for_x86(MiniDump)
 
 
 add_custom_command(TARGET MiniDump POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
@@ -68,6 +69,7 @@ if(C2CORE_BUILD_TESTS)
     endif()
     set_property(TARGET testsMiniDump PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_link_libraries(testsMiniDump ${Donut})
+    c2core_disable_safeseh_for_x86(testsMiniDump)
 
     add_custom_command(TARGET testsMiniDump POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsMiniDump> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMiniDump>")

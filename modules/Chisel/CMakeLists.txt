@@ -6,6 +6,7 @@ set_property(TARGET Chisel PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 if(C2CORE_BUILD_TESTS)
     target_link_libraries(Chisel PRIVATE Donut )
 endif()
+c2core_disable_safeseh_for_x86(Chisel)
 
 add_custom_command(TARGET Chisel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:Chisel> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Chisel>")
@@ -15,6 +16,7 @@ if(C2CORE_BUILD_TESTS)
 
     if(WIN32)
         target_link_libraries(testsChisel PRIVATE Donut )
+        c2core_disable_safeseh_for_x86(testsChisel)
     else()
         target_link_libraries(testsChisel PRIVATE Donut ${aplib64} )
     endif()

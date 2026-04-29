@@ -42,6 +42,7 @@ set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 if(C2CORE_BUILD_TESTS)
     target_link_libraries(AssemblyExec PRIVATE Donut )
 endif()
+c2core_disable_safeseh_for_x86(AssemblyExec)
 
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:AssemblyExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:AssemblyExec>")
@@ -77,6 +78,7 @@ if(C2CORE_BUILD_TESTS)
             )
         endif()
         target_link_libraries(testsAssemblyExec PRIVATE Donut )
+        c2core_disable_safeseh_for_x86(testsAssemblyExec)
 
         add_executable(testOutputWriter tests/testOutputWriter.cpp)
     else()

@@ -493,7 +493,7 @@ int DotnetExec::initCLR()
             int patchSize = 4;
         #else
             // memcpy(pEventWrite, "\x33\xc0\xc2\x14\x00", 5);        // xor eax, eax; ret 14
-            char patch[] patch = "\x33\xc0\xc2\x14\x00"; // xor rax, rax; ret
+            char patch[] = "\x33\xc0\xc2\x14\x00"; // xor eax, eax; ret 14
             int patchSize = 5;
         #endif
         

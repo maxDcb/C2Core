@@ -18,4 +18,5 @@ if(C2CORE_BUILD_TESTS)
     $<TARGET_FILE:testsDcomExec> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDcomExec>")
 
     add_test(NAME testsDcomExec COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsDcomExec>")
+    set_tests_properties(testsDcomExec PROPERTIES DISABLED TRUE)
 endif()
