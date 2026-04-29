@@ -1,48 +1,39 @@
 #include "../CoffLoader.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <iostream>
+#include <vector>
 
-bool testCoffLoader();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    bool ok = true;
 
-    std::cout << "[+] testCoffLoader" << std::endl;
-    res = testCoffLoader();
-    if (res)
-        std::cout << "[+] Sucess" << std::endl;
-    else
-        std::cout << "[-] Failed" << std::endl;
-
-    return 0;
-}
-
-bool testCoffLoader()
-{
-    std::unique_ptr<CoffLoader> coffLoader = std::make_unique<CoffLoader>();
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("coffLoader");
-        splitedCmd.push_back(".\\dir.x64.o");
-        splitedCmd.push_back("go");
-        splitedCmd.push_back("Zs");
-        splitedCmd.push_back("c:\\");
-        splitedCmd.push_back("0");
+        CoffLoader module;
+        std::vector<std::string> cmd = {"coffLoader", "missing.o", "go"};
+        C2Message message;
 
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        coffLoader->init(splitedCmd, c2Message);
-        coffLoader->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        ok &= expect(module.init(cmd, message) == -1, "missing COFF file should be rejected");
+        ok &= expect(message.returnvalue().find("Couldn't open file") != std::string::npos, "missing COFF error should mention open failure");
     }
 
-    return true;
+    {
+        const auto coff = writeTempFile("c2core_dummy.o", "coff-bytes");
+        CoffLoader module;
+        std::vector<std::string> cmd = {"coffLoader", coff.string(), "go", "Zs", "c:\\", "0"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == 0, "existing COFF file should be accepted");
+        ok &= expect(message.instruction() == "coffLoader", "instruction should be set");
+        ok &= expect(message.inputfile() == coff.string(), "input file should be packed");
+        ok &= expect(message.cmd() == "go", "function name should be packed");
+        ok &= expect(message.args() == "Zs c:\\ 0", "COFF arguments should be packed");
+        ok &= expect(message.data() == "coff-bytes", "COFF bytes should be packed");
+        std::filesystem::remove(coff);
+    }
+
+    return ok ? 0 : 1;
 }

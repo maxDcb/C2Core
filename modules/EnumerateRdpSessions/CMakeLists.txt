@@ -18,5 +18,4 @@ if(C2CORE_BUILD_TESTS)
         $<TARGET_FILE:testsEnumerateRdpSessions> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsEnumerateRdpSessions>")
 
     add_test(NAME testsEnumerateRdpSessions COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsEnumerateRdpSessions>")
-    set_tests_properties(testsEnumerateRdpSessions PROPERTIES DISABLED TRUE)
 endif()

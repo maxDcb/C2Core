@@ -20,7 +20,7 @@ int main()
     else
        std::cout << "[-] Failed" << std::endl;
 
-    return 0;
+    return !res;
 }
 
 bool testRun()
@@ -30,32 +30,50 @@ bool testRun()
 
     // ----- simple echo -----
     {
+#ifdef _WIN32
+        std::vector<std::string> cmd = {"run", "cmd.exe", "/c", "echo", "hello"};
+        const std::string shellCmd = "cmd.exe /c echo hello";
+#else
         std::vector<std::string> cmd = {"run", "echo", "hello"};
+        const std::string shellCmd = "echo hello";
+#endif
         C2Message msg, ret;
         run->init(cmd, msg);
-        msg.set_cmd("echo hello");
+        msg.set_cmd(shellCmd);
         run->process(msg, ret);
         ok &= ret.returnvalue().find("hello") != std::string::npos;
     }
 
     // ----- command with spaces (split tokens) -----
     {
+#ifdef _WIN32
+        std::vector<std::string> cmd = {"run", "cmd.exe", "/c", "echo", "hello", "world"};
+        const std::string shellCmd = "cmd.exe /c echo hello world";
+#else
         std::vector<std::string> cmd = {"run", "echo", "hello", "world"};
+        const std::string shellCmd = "echo hello world";
+#endif
         C2Message msg, ret;
         run->init(cmd, msg);
-        msg.set_cmd("echo hello world");
+        msg.set_cmd(shellCmd);
         run->process(msg, ret);
         ok &= ret.returnvalue().find("hello world") != std::string::npos;
     }
 
     // ----- invalid command should return error text -----
     {
+#ifdef _WIN32
+        std::vector<std::string> cmd = {"run", "cmd.exe", "/c", "nonexistent_command_foo"};
+        const std::string shellCmd = "cmd.exe /c nonexistent_command_foo";
+#else
         std::vector<std::string> cmd = {"run", "nonexistent_command_foo"};
+        const std::string shellCmd = "nonexistent_command_foo";
+#endif
         C2Message msg, ret;
         run->init(cmd, msg);
-        msg.set_cmd("nonexistent_command_foo");
+        msg.set_cmd(shellCmd);
         run->process(msg, ret);
-        ok &= ret.returnvalue().empty();
+        ok &= !ret.returnvalue().empty();
     }
 
     // ----- missing argument -----

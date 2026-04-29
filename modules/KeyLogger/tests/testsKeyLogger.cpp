@@ -1,55 +1,44 @@
 #include "../KeyLogger.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <iostream>
+#include <vector>
 
-#include <thread> 
-#include <chrono>  
- 
-
-bool testKeyLogger();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    bool ok = true;
 
-    std::cout << "[+] testKeyLogger" << std::endl;
-    res = testKeyLogger();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
-
-    return 0;
-}
-
-bool testKeyLogger()
-{
-
-    std::unique_ptr<KeyLogger> keyLogger = std::make_unique<KeyLogger>();
     {
-        C2Message c2Message;
-        c2Message.set_instruction("keyLogger");
-        c2Message.set_args("start");
+        KeyLogger module;
+        std::vector<std::string> cmd = {"keyLogger", "start"};
+        C2Message message;
 
-        C2Message c2RetMessage;
-        keyLogger->process(c2Message, c2RetMessage);
-
-        std::this_thread::sleep_for (std::chrono::seconds(2));
-
-        keyLogger->recurringExec(c2RetMessage) ;
-        keyLogger->followUp(c2RetMessage);
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("keyLogger");
-        splitedCmd.push_back("get");
-        C2Message c2MessageFinal;
-        keyLogger->init(splitedCmd, c2MessageFinal);
-
-        std::cout << "Result:\n" << c2MessageFinal.returnvalue() << std::endl;
+        ok &= expect(module.init(cmd, message) == 0, "start should be accepted");
+        ok &= expect(message.instruction() == "keyLogger", "instruction should be set");
+        ok &= expect(message.args() == "start", "start action should be packed");
     }
 
-    return true;
+    {
+        KeyLogger module;
+        C2Message follow;
+        follow.set_data("abc");
+        module.followUp(follow);
+
+        std::vector<std::string> cmd = {"keyLogger", "dump"};
+        C2Message message;
+        ok &= expect(module.init(cmd, message) == -1, "dump should be handled locally");
+        ok &= expect(message.returnvalue().find("abc") != std::string::npos, "dump should expose buffered keys");
+    }
+
+    {
+        KeyLogger module;
+        std::vector<std::string> cmd = {"keyLogger", "invalid"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "unknown keylogger action should be rejected");
+    }
+
+    return ok ? 0 : 1;
 }

@@ -28,7 +28,8 @@ target_link_libraries(beacon_unit_tests
 
 add_test(NAME beacon_unit_tests COMMAND beacon_unit_tests)
 
-# Functional tests for transport variants (simple main)
+# Manual smoke executables for transport variants. They are built with the test
+# suite but are not registered in CTest because they only validate construction.
 add_executable(testBeaconDns
     testBeaconDns.cpp
     ../Beacon.cpp
@@ -45,8 +46,6 @@ target_link_libraries(testBeaconDns
     MemoryModule
     SocksServer
     c2_base64)
-
-add_test(NAME testBeaconDns COMMAND testBeaconDns)
 
 add_executable(testBeaconGithub
     testBeaconGithub.cpp
@@ -65,8 +64,6 @@ target_link_libraries(testBeaconGithub
     c2_base64
     ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
-add_test(NAME testBeaconGithub COMMAND testBeaconGithub)
-
 add_executable(testBeaconHttp
     testBeaconHttp.cpp
     ../Beacon.cpp
@@ -84,8 +81,6 @@ target_link_libraries(testBeaconHttp
     c2_base64
     ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
-add_test(NAME testBeaconHttp COMMAND testBeaconHttp)
-
 add_executable(testBeaconSmb
     testBeaconSmb.cpp
     ../Beacon.cpp
@@ -101,8 +96,6 @@ target_link_libraries(testBeaconSmb
     MemoryModule
     SocksServer
     c2_base64)
-
-add_test(NAME testBeaconSmb COMMAND testBeaconSmb)
 
 add_executable(testBeaconTcp
     testBeaconTcp.cpp
@@ -120,4 +113,3 @@ target_link_libraries(testBeaconTcp
     SocksServer
     c2_base64)
 
-add_test(NAME testBeaconTcp COMMAND testBeaconTcp)

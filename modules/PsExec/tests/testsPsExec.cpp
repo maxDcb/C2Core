@@ -1,108 +1,45 @@
 #include "../PsExec.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <iostream>
+#include <vector>
 
-bool testPsExec();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    bool ok = true;
 
-    std::cout << "[+] testPsExec" << std::endl;
-    res = testPsExec();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
-
-    return 0;
-}
-
-
-bool testPsExec()
-{
-    std::unique_ptr<PsExec> module = std::make_unique<PsExec>();
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("psExec");
-        splitedCmd.push_back("-n");
-        splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back(".\\TestService.exe");
+        const auto service = writeTempFile("c2core_service.exe", "service-bytes");
+        PsExec module;
+        std::vector<std::string> cmd = {"psExec", "-u", "DOMAIN\\alice", "secret", "server01", service.string()};
+        C2Message message;
 
-        C2Message c2Message;
-        C2Message ret;
-        module->init(splitedCmd, c2Message);
-        module->process(c2Message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("psExec");
-        splitedCmd.push_back("-u");
-        splitedCmd.push_back("root");
-        splitedCmd.push_back("root");
-        splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back(".\\TestService.exe");
-
-        C2Message c2Message;
-        C2Message ret;
-        module->init(splitedCmd, c2Message);
-        module->process(c2Message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("psExec");
-        splitedCmd.push_back("-u");
-        splitedCmd.push_back("root");
-        splitedCmd.push_back("toor");
-        splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back(".\\TestService.exe");
-
-        C2Message c2Message;
-        C2Message ret;
-        module->init(splitedCmd, c2Message);
-        module->process(c2Message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("psExec");
-        splitedCmd.push_back("-n");
-        splitedCmd.push_back("127.0.0.1");
-        splitedCmd.push_back("c:\\windows\\system32\\notepad.exe");
-
-        C2Message c2Message;
-        C2Message ret;
-        module->init(splitedCmd, c2Message);
-        module->process(c2Message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
+        ok &= expect(module.init(cmd, message) == 0, "credential PsExec form should be accepted");
+        ok &= expect(message.instruction() == "psExec", "instruction should be set");
+        const auto fields = splitPackedFields(message.cmd());
+        ok &= expect(fields.size() == 4, "packed PsExec credential parameters should contain four fields");
+        if (fields.size() == 4)
+        {
+            ok &= expect(fields[0] == "DOMAIN", "domain should be packed");
+            ok &= expect(fields[1] == "alice", "username should be packed");
+            ok &= expect(fields[2] == "secret", "password should be packed");
+            ok &= expect(fields[3] == "server01", "target should be packed");
+        }
+        ok &= expect(message.data() == "service-bytes", "service bytes should be packed");
+        std::filesystem::remove(service);
     }
 
+    {
+        PsExec module;
+        std::vector<std::string> cmd = {"psExec", "-n", "server01", "missing.exe"};
+        C2Message message;
 
+        ok &= expect(module.init(cmd, message) == -1, "missing service file should be rejected");
+        ok &= expect(message.returnvalue().find("Couldn't open file") != std::string::npos, "missing service file should explain the error");
+    }
 
-    return true;
+    return ok ? 0 : 1;
 }

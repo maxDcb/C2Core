@@ -1,62 +1,62 @@
 #include "../WmiExec.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <iostream>
+#include <vector>
 
-bool testWmiExec();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    bool ok = true;
 
-    std::cout << "[+] testWmiExec" << std::endl;
-    res = testWmiExec();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
-
-    return 0;
-}
-
-
-bool testWmiExec()
-{
     {
-        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test.txt"};
+        WmiExec module;
+        std::vector<std::string> cmd = {"wmiExec", "-u", "DOMAIN\\alice", "secret", "server01", "cmd.exe", "/c", "whoami"};
         C2Message message;
-        C2Message ret;
 
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::cout << ret.returnvalue() << std::endl;
-    }
-    {
-        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-u", "root", "root", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::cout << ret.returnvalue() << std::endl;
-    }
-    {
-        std::unique_ptr<WmiExec> module = std::make_unique<WmiExec>();
-        std::vector<std::string> cmd = {"WmiExec", "-n", "127.0.0.1", "cmd.exe", "/c echo ran > C:\\Users\\vuln\\Desktop\\wmiExec_test2.txt"};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::cout << ret.returnvalue() << std::endl;
+        ok &= expect(module.init(cmd, message) == 0, "credential WMI form should be accepted");
+        ok &= expect(message.instruction() == "wmiExec", "instruction should be set");
+        const auto fields = splitPackedFields(message.cmd());
+        ok &= expect(fields.size() == 4, "packed WMI credential parameters should contain four fields");
+        if (fields.size() == 4)
+        {
+            ok &= expect(fields[0] == "DOMAIN", "domain should be packed");
+            ok &= expect(fields[1] == "alice", "username should be packed");
+            ok &= expect(fields[2] == "secret", "password should be packed");
+            ok &= expect(fields[3] == "server01", "target should be packed");
+        }
+        ok &= expect(message.data() == "cmd.exe /c whoami", "command tail should be packed");
     }
 
-    return true;
+    {
+        WmiExec module;
+        std::vector<std::string> cmd = {"wmiExec", "-n", "localhost", "cmd.exe", "/c", "whoami"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == 0, "no-credential WMI form should be accepted");
+        ok &= expect(message.cmd() == "localhost", "target should be packed in cmd");
+        ok &= expect(message.data() == "cmd.exe /c whoami", "no-credential command tail should be packed");
+    }
+
+    {
+        WmiExec module;
+        std::vector<std::string> cmd = {"wmiExec", "-u", "alice"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "incomplete credential WMI form should be rejected");
+    }
+
+    {
+        WmiExec module;
+        C2Message ret;
+        ret.set_errorCode(4);
+        ret.set_returnvalue("connect failed");
+        std::string error;
+
+        ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
+        ok &= expect(error == "connect failed", "errorCodeToMsg should expose process error text");
+    }
+
+    return ok ? 0 : 1;
 }

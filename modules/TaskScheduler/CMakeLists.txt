@@ -18,5 +18,4 @@ if(C2CORE_BUILD_TESTS)
     $<TARGET_FILE:testsTaskScheduler> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTaskScheduler>")
 
     add_test(NAME testsTaskScheduler COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTaskScheduler>")
-    set_tests_properties(testsTaskScheduler PROPERTIES DISABLED TRUE)
 endif()

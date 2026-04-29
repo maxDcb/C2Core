@@ -17,5 +17,4 @@ if(C2CORE_BUILD_TESTS)
     $<TARGET_FILE:testsWinRM> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsWinRM>")
 
     add_test(NAME testsWinRM COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsWinRM>")
-    set_tests_properties(testsWinRM PROPERTIES DISABLED TRUE)
 endif()

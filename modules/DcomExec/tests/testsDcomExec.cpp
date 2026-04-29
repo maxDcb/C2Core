@@ -1,165 +1,61 @@
 #include "../DcomExec.hpp"
+#include "../../tests/TestHelpers.hpp"
 
 #include <iostream>
 #include <memory>
 #include <vector>
 
+using namespace test_helpers;
+
 int main()
 {
+    bool ok = true;
+
     {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\vuln10\\Desktop\\dcom_test1.txt\""};
+        DcomExec module;
+        std::vector<std::string> cmd = {
+            "dcomExec", "-h", "server01", "-k", "HOST/server01.domain",
+            "-u", "DOMAIN\\alice", "-p", "secret", "-c", "cmd.exe",
+            "-a", "/c whoami", "-w", "C:\\Windows"};
         C2Message message;
-        C2Message ret;
 
-        module->init(cmd, message);
-        module->process(message, ret);
+        ok &= expect(module.init(cmd, message) == 0, "init should accept complete DCOM parameters");
+        ok &= expect(message.instruction() == "dcomExec", "instruction should be set");
 
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-u", ".\\root", "-p", "root", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test2.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-u", ".\\root", "-p", "root", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test2.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "192.168.122.177", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test1.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "192.168.122.177", "-c", "cmd.exe", "-a", "/c calc.exe"};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "192.168.122.177", "-u", ".\\root", "-p", "root", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test666.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "192.168.122.177", "-u", "root", "-p", "toor", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test2.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "192.168.122.59", "-u", ".\\root", "-p", "root", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\root\\Desktop\\dcom_test2.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "localhost", "-k", "host/DESKTOP-0HOG7VE", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\vuln\\Desktop\\dcom_test3.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
-    }
-    {
-        std::unique_ptr<DcomExec> module = std::make_unique<DcomExec>();
-        std::vector<std::string> cmd = {"dcomExec", "-h", "localhost", "-n", "-c", "cmd.exe", "-a", "\"/c", "echo", "ran", ">", "C:\\Users\\vuln\\Desktop\\dcom_test4.txt\""};
-        C2Message message;
-        C2Message ret;
-
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << ret.returnvalue() << std::endl;
-        std::cerr << err << std::endl;
+        const auto fields = splitPackedFields(message.cmd());
+        ok &= expect(fields.size() == 9, "packed DCOM parameters should contain nine fields");
+        if (fields.size() == 9)
+        {
+            ok &= expect(fields[0] == "server01", "host should be packed");
+            ok &= expect(fields[2] == "cmd.exe", "command should be packed");
+            ok &= expect(fields[3] == "/c whoami", "arguments should be packed");
+            ok &= expect(fields[4] == "C:\\Windows", "working directory should be packed");
+            ok &= expect(fields[5] == "HOST/server01.domain", "SPN should be packed");
+            ok &= expect(fields[6] == "DOMAIN\\alice", "username should be packed");
+            ok &= expect(fields[7] == "secret", "password should be packed");
+            ok &= expect(fields[8] == "0", "no-password flag should be packed");
+        }
     }
 
-    std::cout << "Finished" << std::endl;
-    return 0;
+    {
+        DcomExec module;
+        std::vector<std::string> cmd = {"dcomExec", "-h", "server01", "-p", "secret", "-c", "cmd.exe"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "password without username should be rejected");
+        ok &= expect(!message.returnvalue().empty(), "credential validation should explain the error");
+    }
+
+    {
+        DcomExec module;
+        C2Message ret;
+        ret.set_errorCode(4);
+        ret.set_returnvalue("dcom failed");
+        std::string error;
+
+        ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
+        ok &= expect(error.find("dcom failed") != std::string::npos, "errorCodeToMsg should expose process error text");
+    }
+
+    return ok ? 0 : 1;
 }
-
-
-

@@ -1,257 +1,46 @@
 #include "../AssemblyExec.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <iostream>
+#include <vector>
 
-bool testAssemblyExec();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
-    
-    std::cout << "[+] testAssemblyExec" << std::endl;
-    res = testAssemblyExec();
-    if (res)
-     std::cout << "[+] Sucess" << std::endl;
-    else
-     std::cout << "[-] Failed" << std::endl;
+    bool ok = true;
 
-    return 0;
-}
+    {
+        AssemblyExec module;
+        std::vector<std::string> cmd = {"assemblyExec", "thread"};
+        C2Message message;
 
-
-bool fileExists(const std::string& path) 
-{
-    std::ifstream file(path);
-    return file.good();
-}
-
-bool testAssemblyExec()
-{
-    std::unique_ptr<AssemblyExec> assemblyExec = std::make_unique<AssemblyExec>();
-
-    if (fileExists(".\\Rubeus.exe")) {
-    } else {
-        std::cout << ".\\Rubeus.exe File does not exist." << std::endl;
-        return false;
-    }
-    if (fileExists(".\\mimikatz.exe")) {
-    } else {
-        std::cout << ".\\mimikatz.exe File does not exist." << std::endl;
-        return false;
+        ok &= expect(module.init(cmd, message) == -1, "thread mode should be handled locally");
+        ok &= expect(message.returnvalue() == "thread mode.\n", "thread mode should report selected mode");
     }
 
     {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Test long output" << std::endl;
+        AssemblyExec module;
+        std::vector<std::string> cmd = {"assemblyExec", "-r", "missing.bin"};
+        C2Message message;
 
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\testOutputWriter.exe");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        // std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<10*400+4000*2*2)
-            return false;
-#endif
+        ok &= expect(module.init(cmd, message) == -1, "missing raw shellcode file should be rejected");
+        ok &= expect(message.returnvalue().find("Couldn't open file") != std::string::npos, "missing file error should mention open failure");
     }
+
     {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Test long output SpoofedParent" << std::endl;
+        const auto raw = writeTempFile("c2core_assembly_raw.bin", "raw-bytes");
+        AssemblyExec module;
+        std::vector<std::string> cmd = {"assemblyExec", "-r", raw.string()};
+        C2Message message;
 
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\testOutputWriter.exe");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        assemblyExec->setModeSpoofParent(true);
-        assemblyExec->setSpoofedParent("explorer.exe");
-
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        // std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<10*400+4000*2*2)
-            return false;
-#endif
+        ok &= expect(module.init(cmd, message) == 0, "existing raw shellcode file should be accepted");
+        ok &= expect(message.instruction() == "assemblyExec", "instruction should be set");
+        ok &= expect(message.inputfile() == raw.string(), "input file should be packed");
+        ok &= expect(message.data() == "raw-bytes", "raw bytes should be packed");
+        std::filesystem::remove(raw);
     }
-    {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Syscall true - setModeProcess true - ModeSpoofParent true - SpoofedParent explorer.exe" << std::endl;
 
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\mimikatz.exe");
-        splitedCmd.push_back("\"sleep 1000\""); 
-        splitedCmd.push_back("\"exit\"");
-        
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        assemblyExec->setProcessToSpawn("notepad.exe");
-        assemblyExec->setUseSyscall(true);
-        assemblyExec->setModeProcess(true);
-        assemblyExec->setModeSpoofParent(true);
-        assemblyExec->setSpoofedParent("explorer.exe");
-
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<40)
-            return false;
-#endif
-    }
-    {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Syscall true - setModeProcess true - ModeSpoofParent false - SpoofedParent" << std::endl;
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\mimikatz.exe");
-        splitedCmd.push_back("\"sleep 1000\""); 
-        splitedCmd.push_back("\"exit\"");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-
-        assemblyExec->setProcessToSpawn("notepad.exe");
-        assemblyExec->setUseSyscall(true);
-        assemblyExec->setModeProcess(true);
-        assemblyExec->setModeSpoofParent(false);
-        assemblyExec->setSpoofedParent("");
-
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<40)
-            return false;
-#endif
-    }
-    {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Syscall true - setModeProcess false - ModeSpoofParent false - SpoofedParent" << std::endl;
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\Rubeus.exe");
-        splitedCmd.push_back("triage");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-
-        assemblyExec->setProcessToSpawn("notepad.exe");
-        assemblyExec->setUseSyscall(false);
-        assemblyExec->setModeProcess(false);
-
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<40)
-            return false;
-#endif
-    }
-    {
-#ifdef __linux__
-#elif _WIN32
-        std::cout << "Syscall true - setModeProcess false - ModeSpoofParent true - SpoofedParent explorer.exe" << std::endl;
-
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("assemblyExec");
-        splitedCmd.push_back("-e");
-        splitedCmd.push_back(".\\mimikatz.exe");
-        splitedCmd.push_back("\"sleep 10000\""); 
-        splitedCmd.push_back("\"exit\"");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        assemblyExec->setProcessToSpawn("C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe");
-        assemblyExec->setUseSyscall(false);
-        assemblyExec->setModeProcess(true);
-        assemblyExec->setModeSpoofParent(true);
-        assemblyExec->setSpoofedParent("msedge.exe");
-        
-        assemblyExec->init(splitedCmd, c2Message);
-        assemblyExec->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-        std::cout << output.size() << std::endl;
-
-        if(output.size()<40)
-            return false;
-#endif
-    }
-//     {
-// #ifdef __linux__
-
-// #elif _WIN32
-//         std::vector<std::string> splitedCmd;
-//         splitedCmd.push_back("assemblyExec");
-//         splitedCmd.push_back("-e");
-//         splitedCmd.push_back(".\\mimikatz.exe");
-//         splitedCmd.push_back("\"sleep 1000000\""); 
-//         splitedCmd.push_back("\"exit\"");
-
-
-//         C2Message c2Message;
-//         C2Message c2RetMessage;
-//         assemblyExec->init(splitedCmd, c2Message);
-//         assemblyExec->process(c2Message, c2RetMessage);
-
-//         std::string output = "\n\noutput:\n";
-//         output += c2RetMessage.returnvalue();
-//         output += "\n";
-//         std::cout << output << std::endl;
-// #endif
-
-//     }
-
-    return true;
+    return ok ? 0 : 1;
 }

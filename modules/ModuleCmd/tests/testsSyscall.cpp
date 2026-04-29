@@ -190,7 +190,9 @@ int main()
     }
 
     std::wstring filePath = tempPath;
-    filePath += L"ntwrite_example.txt";
+    filePath += L"ntwrite_example_";
+    filePath += std::to_wstring(GetCurrentProcessId());
+    filePath += L".txt";
 
     HANDLE hFile = CreateFileW(
         filePath.c_str(),

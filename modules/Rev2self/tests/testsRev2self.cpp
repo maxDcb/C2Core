@@ -1,43 +1,21 @@
 #include "../Rev2self.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <iostream>
+#include <vector>
 
-bool testRev2self();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    Rev2self module;
+    std::vector<std::string> cmd = {"rev2self"};
+    C2Message message;
 
-    std::cout << "[+] testRev2self" << std::endl;
-    res = testRev2self();
-    if (res)
-        std::cout << "[+] Sucess" << std::endl;
-    else
-        std::cout << "[-] Failed" << std::endl;
+    bool ok = true;
+    ok &= expect(module.init(cmd, message) == 0, "init should accept rev2self command");
+    ok &= expect(message.instruction() == "rev2self", "instruction should be set");
+    ok &= expect(message.cmd().empty(), "rev2self should pack an empty command");
 
-    return 0;
-}
-
-bool testRev2self()
-{
-    std::unique_ptr<Rev2self> rev2self = std::make_unique<Rev2self>();
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("rev2self");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        rev2self->init(splitedCmd, c2Message);
-        rev2self->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-
-    return true;
+    return ok ? 0 : 1;
 }

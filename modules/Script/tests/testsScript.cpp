@@ -1,66 +1,45 @@
 #include "../Script.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <filesystem>
+#include <iostream>
+#include <vector>
 
-bool testScript();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
-
-    std::cout << "[+] testScript" << std::endl;
-    res = testScript();
-    if (res)
-      std::cout << "[+] Sucess" << std::endl;
-    else
-      std::cout << "[-] Failed" << std::endl;
-    
-    return 0;
-}
-
-bool testScript()
-{
-    std::unique_ptr<Script> script = std::make_unique<Script>();
-     std::string scriptFile;
-#ifdef __linux__
-    scriptFile="./deepce.sh";
-#elif _WIN32
-    scriptFile =".\\test.bat";
-#endif
+    bool ok = true;
 
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("script");
-        splitedCmd.push_back(scriptFile);
+        Script module;
+        std::vector<std::string> cmd = {"script"};
+        C2Message message;
 
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        script->init(splitedCmd, c2Message);
-        script->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        ok &= expect(module.init(cmd, message) == -1, "missing script path should be rejected");
     }
+
     {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("script");
-        splitedCmd.push_back("none");
+        Script module;
+        std::vector<std::string> cmd = {"script", "missing-script"};
+        C2Message message;
 
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        script->init(splitedCmd, c2Message);
-        script->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
+        ok &= expect(module.init(cmd, message) == -1, "nonexistent script should be rejected");
+        ok &= expect(message.returnvalue().find("Fail to open file") != std::string::npos, "nonexistent script error should mention open failure");
     }
 
-    return true;
+    {
+        const auto script = writeTempFile("c2core_script", "echo script-test");
+        Script module;
+        std::vector<std::string> cmd = {"script", script.string()};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == 0, "existing script should be accepted");
+        ok &= expect(message.instruction() == "script", "instruction should be set");
+        ok &= expect(message.inputfile() == script.string(), "input file should be packed");
+        ok &= expect(message.data() == "echo script-test", "script content should be packed");
+        std::filesystem::remove(script);
+    }
+
+    return ok ? 0 : 1;
 }

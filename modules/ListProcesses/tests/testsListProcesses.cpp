@@ -1,43 +1,24 @@
 #include "../ListProcesses.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <iostream>
+#include <vector>
 
-bool testListProcesses();
+using namespace test_helpers;
 
 int main()
 {
-    bool res;
+    bool ok = true;
 
-    std::cout << "[+] testListProcesses" << std::endl;
-    res = testListProcesses();
-    if (res)
-       std::cout << "[+] Sucess" << std::endl;
-    else
-       std::cout << "[-] Failed" << std::endl;
+    ListProcesses module;
+    std::vector<std::string> cmd = {"ps"};
+    C2Message message;
+    C2Message ret;
 
-    return 0;
-}
+    ok &= expect(module.init(cmd, message) == 0, "init should accept process listing command");
+    ok &= expect(message.instruction() == "ps", "instruction should be set");
+    module.process(message, ret);
+    ok &= expect(!ret.returnvalue().empty(), "process listing should produce output");
 
-bool testListProcesses()
-{
-    std::unique_ptr<ListProcesses> listProcesses = std::make_unique<ListProcesses>();
-    {
-        std::vector<std::string> splitedCmd;
-        splitedCmd.push_back("ps");
-
-        C2Message c2Message;
-        C2Message c2RetMessage;
-        listProcesses->init(splitedCmd, c2Message);
-        listProcesses->process(c2Message, c2RetMessage);
-
-        std::string output = "\n\noutput:\n";
-        output += c2RetMessage.returnvalue();
-        output += "\n";
-        std::cout << output << std::endl;
-    }
-
-    return true;
+    return ok ? 0 : 1;
 }

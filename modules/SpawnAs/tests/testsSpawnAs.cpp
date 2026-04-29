@@ -1,102 +1,61 @@
-#include <iostream>
-#include <memory>
-#include <vector>
-#include <string>
-
 #include "../SpawnAs.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-#ifdef __linux__
-#elif _WIN32
-#include <windows.h>
-#endif
+#include <iostream>
+#include <vector>
 
+using namespace test_helpers;
 
 int main()
 {
-    // Test 1 : launchAsUserW
-    // CreateProcessAsUserW - calling process has the right privileges; this is the most “native”/powerful path
-    // Privileges needed on the caller: SeAssignPrimaryTokenPrivilege and SeIncreaseQuotaPrivilege (and often SeImpersonatePrivilege).
-    // Pros: works great from services / SYSTEM; full control over profile & environment.
-    // --logon-type 2 --with-profile
+    bool ok = true;
+
     {
-        std::unique_ptr<SpawnAs> module = std::make_unique<SpawnAs>();
+        SpawnAs module;
         std::vector<std::string> cmd = {
-            "spawnAs",          // nom / token d'appel (optionnel selon ton parser)
-            "root", "root",     // user + password
-            "--",               // séparation options / commande
-            "cmd.exe", "/c", "echo test1 > C:\\Users\\root\\Desktop\\test1.txt"
-        };
-
+            "spawnAs", "-d", ".", "--netonly", "--no-profile",
+            "alice", "secret", "--", "cmd.exe", "/c", "whoami"};
         C2Message message;
-        C2Message ret;
 
-        module->init(cmd, message);
-        module->process(message, ret);
+        ok &= expect(module.init(cmd, message) == 0, "spawnAs should accept explicit options and command separator");
+        ok &= expect(message.instruction() == "spawnAs", "instruction should be set");
+        ok &= expect(message.data() == "cmd.exe /c whoami", "command should be packed in data");
 
-        std::string err;
-        module->errorCodeToMsg(ret, err);
+        const auto credentials = splitPackedFields(message.cmd());
+        ok &= expect(credentials.size() == 3, "packed spawnAs credentials should contain three fields");
+        if (credentials.size() == 3)
+        {
+            ok &= expect(credentials[0] == ".", "domain should be packed");
+            ok &= expect(credentials[1] == "alice", "username should be packed");
+            ok &= expect(credentials[2] == "secret", "password should be packed");
+        }
 
-        std::cout << "[Test1] returnvalue:\n" << ret.returnvalue() << std::endl;
-        std::cerr  << "[Test1] error: " << err << std::endl;
+        const auto options = splitPackedFields(message.args());
+        ok &= expect(options.size() == 3, "packed spawnAs options should contain three fields");
+        if (options.size() == 3)
+        {
+            ok &= expect(options[0] == "9", "netonly logon type should be packed");
+            ok &= expect(options[1] == "0", "no-profile flag should be packed");
+            ok &= expect(options[2] == "0", "hidden-window default should be packed");
+        }
     }
 
-    // Test 2 : launchWithTokenW
-    // CreateProcessWithTokenW - caller lacks SeAssignPrimaryToken/SeIncreaseQuota, but has SeImpersonatePrivilege (typical for admins).
-    // Privileges needed on the caller: mainly SeImpersonatePrivilege. 
-    // Pros: often succeeds where CPAsUserW fails due to missing privileges.
-    // --logon-type 2 --no-profile
     {
-        std::unique_ptr<SpawnAs> module = std::make_unique<SpawnAs>();
-        std::vector<std::string> cmd = {
-            "spawnAs",         
-            "--no-profile",
-            "root", "root",
-            "--",
-            "cmd.exe", "/c", "echo test2 > C:\\Users\\root\\Desktop\\test2.txt"
-        };
-
+        SpawnAs module;
+        std::vector<std::string> cmd = {"spawnAs", "--logon-type", "99", "alice", "secret", "--", "cmd.exe"};
         C2Message message;
-        C2Message ret;
 
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << "[Test2] returnvalue:\n" << ret.returnvalue() << std::endl;
-        std::cerr  << "[Test2] error: " << err << std::endl;
+        ok &= expect(module.init(cmd, message) == -1, "unsupported logon type should be rejected");
+        ok &= expect(!message.returnvalue().empty(), "unsupported logon type should explain the error");
     }
 
-    // Test 2 : launchWithLogonW
-    // CreateProcessWithLogonW - last resort; works from an interactive context where services/privileges are limited.
-    // it’s not supported for services; it’s designed for interactive callers.
-    // Pros: simplest API surface (credentials in, process out).
-    // --logon-type 9
     {
-        std::unique_ptr<SpawnAs> module = std::make_unique<SpawnAs>();
-        std::vector<std::string> cmd = {
-            "spawnAs",
-            "-d", ".",                 // override domain (here local .)
-            "-l", "9",                 // logon-type 9 = LOGON32_LOGON_NEW_CREDENTIALS (netonly)
-            "root", "root",
-            "--",
-            "cmd.exe", "/c", "echo test3 > C:\\Users\\root\\Desktop\\test3.txt"
-        };
-
+        SpawnAs module;
+        std::vector<std::string> cmd = {"spawnAs", "alice", "secret"};
         C2Message message;
-        C2Message ret;
 
-        module->init(cmd, message);
-        module->process(message, ret);
-
-        std::string err;
-        module->errorCodeToMsg(ret, err);
-
-        std::cout << "[Test3] returnvalue:\n" << ret.returnvalue() << std::endl;
-        std::cerr  << "[Test3] error: " << err << std::endl;
+        ok &= expect(module.init(cmd, message) == -1, "missing command should be rejected");
     }
 
-
-    return 0;
+    return ok ? 0 : 1;
 }
