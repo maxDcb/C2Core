@@ -7,6 +7,7 @@ add_custom_command(TARGET Shell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsShell tests/testsShell.cpp Shell.cpp)
+    target_compile_definitions(testsShell PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsShell)
     add_custom_command(TARGET testsShell POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:testsShell> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsShell>")

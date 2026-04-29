@@ -12,6 +12,7 @@ $<TARGET_FILE:Chisel> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Chisel
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsChisel tests/testsChisel.cpp Chisel.cpp)
+    target_compile_definitions(testsChisel PRIVATE C2CORE_BUILD_TESTS)
 
     if(WIN32)
         target_link_libraries(testsChisel PRIVATE Donut )

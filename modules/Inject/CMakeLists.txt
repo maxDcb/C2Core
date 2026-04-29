@@ -29,9 +29,11 @@ $<TARGET_FILE:Inject> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Inject
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
        add_executable(testsInject tests/testsInject.cpp Inject.cpp ../ModuleCmd/syscall.cpp ${SYSCALL_OBJ})
+       target_compile_definitions(testsInject PRIVATE C2CORE_BUILD_TESTS)
         target_link_libraries(testsInject PRIVATE Donut )
     else()
         add_executable(testsInject tests/testsInject.cpp Inject.cpp)
+        target_compile_definitions(testsInject PRIVATE C2CORE_BUILD_TESTS)
         target_link_libraries(testsInject PRIVATE Donut ${aplib64} )
     endif()
 

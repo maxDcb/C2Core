@@ -10,6 +10,7 @@ $<TARGET_FILE:Coff> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Coff>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsCoffLoader tests/testsCoffLoader.cpp CoffLoader.cpp)
+    target_compile_definitions(testsCoffLoader PRIVATE C2CORE_BUILD_TESTS)
 
     if(WIN32)
         set_property(TARGET testsCoffLoader PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")

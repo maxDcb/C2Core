@@ -10,6 +10,7 @@ add_custom_command(TARGET Registry POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsRegistry tests/testsRegistry.cpp Registry.cpp)
+    target_compile_definitions(testsRegistry PRIVATE C2CORE_BUILD_TESTS)
     if (WIN32)
         target_compile_definitions(testsRegistry PRIVATE _WIN32_WINNT=0x0601)
         target_link_libraries(testsRegistry PRIVATE Advapi32)

@@ -10,6 +10,7 @@ add_custom_command(TARGET EnumerateRdpSessions POST_BUILD COMMAND ${CMAKE_COMMAN
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsEnumerateRdpSessions tests/testsEnumerateRdpSessions.cpp EnumerateRdpSessions.cpp)
+    target_compile_definitions(testsEnumerateRdpSessions PRIVATE C2CORE_BUILD_TESTS)
     if (WIN32)
         target_compile_definitions(testsEnumerateRdpSessions PRIVATE _WIN32_WINNT=0x0601)
         target_link_libraries(testsEnumerateRdpSessions PRIVATE Wtsapi32)

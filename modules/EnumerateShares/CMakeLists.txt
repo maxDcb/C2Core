@@ -9,6 +9,7 @@ add_custom_command(TARGET EnumerateShares POST_BUILD COMMAND ${CMAKE_COMMAND} -E
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsEnumerateShares tests/testsEnumerateShares.cpp EnumerateShares.cpp)
+    target_compile_definitions(testsEnumerateShares PRIVATE C2CORE_BUILD_TESTS)
     if(UNIX)
         target_link_libraries(testsEnumerateShares smbclient)
     endif()

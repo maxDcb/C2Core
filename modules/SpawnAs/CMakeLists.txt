@@ -10,6 +10,7 @@ $<TARGET_FILE:SpawnAs> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Spawn
 
 if(C2CORE_BUILD_TESTS)
 add_executable(testsSpawnAs tests/testsSpawnAs.cpp SpawnAs.cpp)
+target_compile_definitions(testsSpawnAs PRIVATE C2CORE_BUILD_TESTS)
 
 if(WIN32)
     target_link_libraries(testsSpawnAs advapi32 userenv)

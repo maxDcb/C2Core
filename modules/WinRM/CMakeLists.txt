@@ -10,6 +10,7 @@ endif()
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsWinRM tests/testsWinRM.cpp WinRM.cpp)
+    target_compile_definitions(testsWinRM PRIVATE C2CORE_BUILD_TESTS)
     if(WIN32)
         target_link_libraries(testsWinRM PRIVATE WsmSvc)
     endif()

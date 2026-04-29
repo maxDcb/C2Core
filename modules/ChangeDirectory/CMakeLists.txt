@@ -7,6 +7,7 @@ $<TARGET_FILE:ChangeDirectory> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NA
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsChangeDirectory tests/testsChangeDirectory.cpp ChangeDirectory.cpp)
+    target_compile_definitions(testsChangeDirectory PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsChangeDirectory )
     add_custom_command(TARGET testsChangeDirectory POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsChangeDirectory> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsChangeDirectory>")

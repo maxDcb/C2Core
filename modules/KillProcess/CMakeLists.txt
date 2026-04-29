@@ -8,6 +8,7 @@ add_custom_command(TARGET KillProcess POST_BUILD COMMAND ${CMAKE_COMMAND} -E cop
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsKillProcess tests/testsKillProcess.cpp KillProcess.cpp)
+    target_compile_definitions(testsKillProcess PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsKillProcess )
     add_custom_command(TARGET testsKillProcess POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:testsKillProcess> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsKillProcess>")

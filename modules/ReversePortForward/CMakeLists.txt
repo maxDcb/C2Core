@@ -7,6 +7,7 @@ add_custom_command(TARGET ReversePortForward POST_BUILD COMMAND ${CMAKE_COMMAND}
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsReversePortForward tests/testsReversePortForward.cpp ReversePortForward.cpp)
+    target_compile_definitions(testsReversePortForward PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsReversePortForward)
     add_custom_command(TARGET testsReversePortForward POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:testsReversePortForward> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsReversePortForward>")

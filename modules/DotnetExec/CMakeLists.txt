@@ -18,10 +18,13 @@ $<TARGET_FILE:DotnetExec> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Do
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
         add_executable(testsDotnetExec tests/testsDotnetExec.cpp DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ${SYSCALL_OBJ} tests/project.rc)
+        target_compile_definitions(testsDotnetExec PRIVATE C2CORE_BUILD_TESTS)
     else()
         add_executable(testsDotnetExec tests/testsDotnetExec.cpp DotnetExec.cpp)
+        target_compile_definitions(testsDotnetExec PRIVATE C2CORE_BUILD_TESTS)
     endif()
     # add_executable(testsDotnetExec WIN32 tests/testsDotnetExec.cpp DotnetExec.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj tests/project.rc)
+    target_compile_definitions(testsDotnetExec PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsDotnetExec )
     set_property(TARGET testsDotnetExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     add_custom_command(TARGET testsDotnetExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 

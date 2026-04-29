@@ -1,12 +1,14 @@
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsModuleCmd tests/testsModuleCmd.cpp)
+    target_compile_definitions(testsModuleCmd PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsModuleCmd nlohmann_json::nlohmann_json c2_base64)
     add_custom_command(TARGET testsModuleCmd POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsModuleCmd> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleCmd>")
     add_test(NAME testsModuleCmd COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleCmd>")
 
     add_executable(testsTools tests/testsTools.cpp)
+    target_compile_definitions(testsTools PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsTools nlohmann_json::nlohmann_json c2_base64)
     add_custom_command(TARGET testsTools POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsTools> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTools>")
@@ -21,12 +23,14 @@ if(C2CORE_BUILD_TESTS)
         endif()
 
         add_executable(testsSyscall tests/testsSyscall.cpp ./syscall.cpp ${SYSCALL_OBJ})
+        target_compile_definitions(testsSyscall PRIVATE C2CORE_BUILD_TESTS)
         target_link_libraries(testsSyscall )
         add_custom_command(TARGET testsSyscall POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
         $<TARGET_FILE:testsSyscall> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSyscall>")
         add_test(NAME testsSyscall COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsSyscall>")
 
         add_executable(testsHwbp tests/testsHwbp.cpp ./hwbp.cpp ./peb.cpp)
+        target_compile_definitions(testsHwbp PRIVATE C2CORE_BUILD_TESTS)
         target_link_libraries(testsHwbp )
         add_custom_command(TARGET testsHwbp POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
         $<TARGET_FILE:testsHwbp> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsHwbp>")

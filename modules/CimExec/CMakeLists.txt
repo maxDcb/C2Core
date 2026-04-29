@@ -10,6 +10,7 @@ endif()
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsCimExec tests/testsCimExec.cpp CimExec.cpp)
+    target_compile_definitions(testsCimExec PRIVATE C2CORE_BUILD_TESTS)
     if(WIN32)
         target_link_libraries(testsCimExec PRIVATE mi)
     endif()

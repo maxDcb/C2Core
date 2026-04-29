@@ -10,6 +10,7 @@ $<TARGET_FILE:TaskScheduler> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsTaskScheduler tests/testsTaskScheduler.cpp TaskScheduler.cpp)
+    target_compile_definitions(testsTaskScheduler PRIVATE C2CORE_BUILD_TESTS)
     if (WIN32)
         target_compile_definitions(testsTaskScheduler PRIVATE _WIN32_WINNT=0x0601)
         target_link_libraries(testsTaskScheduler PRIVATE Taskschd)

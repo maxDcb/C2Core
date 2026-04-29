@@ -50,6 +50,7 @@ if(C2CORE_BUILD_TESTS)
     if(WIN32)
         if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             add_executable(testsAssemblyExec
+            target_compile_definitions(testsAssemblyExec PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsAssemblyExec.cpp
                 AssemblyExec.cpp
                 ../ModuleCmd/syscall.cpp
@@ -59,6 +60,7 @@ if(C2CORE_BUILD_TESTS)
             )
         elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)   # x64
             add_executable(testsAssemblyExec
+            target_compile_definitions(testsAssemblyExec PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsAssemblyExec.cpp
                 AssemblyExec.cpp
                 ../ModuleCmd/syscall.cpp
@@ -68,6 +70,7 @@ if(C2CORE_BUILD_TESTS)
             )
         else()                             # 32-bit
             add_executable(testsAssemblyExec
+            target_compile_definitions(testsAssemblyExec PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsAssemblyExec.cpp
                 AssemblyExec.cpp
                 ../ModuleCmd/syscall.cpp
@@ -81,6 +84,7 @@ if(C2CORE_BUILD_TESTS)
         add_executable(testOutputWriter tests/testOutputWriter.cpp)
     else()
         add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp)
+        target_compile_definitions(testsAssemblyExec PRIVATE C2CORE_BUILD_TESTS)
         target_link_libraries(testsAssemblyExec PRIVATE Donut ${aplib64} )
 
         add_executable(testOutputWriter tests/testOutputWriter.cpp)

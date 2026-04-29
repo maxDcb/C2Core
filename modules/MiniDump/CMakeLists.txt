@@ -43,6 +43,7 @@ if(C2CORE_BUILD_TESTS)
     if(WIN32)
         if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             add_executable(testsMiniDump
+            target_compile_definitions(testsMiniDump PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsMiniDump.cpp
                 MiniDump.cpp
                 ../ModuleCmd/syscall.cpp
@@ -50,6 +51,7 @@ if(C2CORE_BUILD_TESTS)
             )
         elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)   # x64
             add_executable(testsMiniDump
+            target_compile_definitions(testsMiniDump PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsMiniDump.cpp
                 MiniDump.cpp
                 ../ModuleCmd/syscall.cpp
@@ -57,6 +59,7 @@ if(C2CORE_BUILD_TESTS)
             )
         else()                             # 32-bit
             add_executable(testsMiniDump
+            target_compile_definitions(testsMiniDump PRIVATE C2CORE_BUILD_TESTS)
                 tests/testsMiniDump.cpp
                 MiniDump.cpp
                 ../ModuleCmd/syscall.cpp
@@ -65,6 +68,7 @@ if(C2CORE_BUILD_TESTS)
         endif()
     else()
     add_executable(testsMiniDump tests/testsMiniDump.cpp MiniDump.cpp)
+    target_compile_definitions(testsMiniDump PRIVATE C2CORE_BUILD_TESTS)
     endif()
     set_property(TARGET testsMiniDump PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_link_libraries(testsMiniDump ${Donut})

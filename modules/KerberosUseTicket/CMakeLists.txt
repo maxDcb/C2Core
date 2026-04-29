@@ -7,6 +7,7 @@ $<TARGET_FILE:KerberosUseTicket> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsKerberosUseTicket tests/testsKerberosUseTicket.cpp KerberosUseTicket.cpp)
+    target_compile_definitions(testsKerberosUseTicket PRIVATE C2CORE_BUILD_TESTS)
     target_link_libraries(testsKerberosUseTicket )
     add_custom_command(TARGET testsKerberosUseTicket POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsKerberosUseTicket> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsKerberosUseTicket>")

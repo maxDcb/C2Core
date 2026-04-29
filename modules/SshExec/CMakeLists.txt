@@ -21,6 +21,7 @@ add_custom_command(TARGET SshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 if(C2CORE_BUILD_TESTS)
     add_executable(testsSshExec tests/testsSshExec.cpp SshExec.cpp)
     target_link_libraries(testsSshExec PRIVATE Libssh2::libssh2)
+    target_compile_definitions(testsSshExec PRIVATE C2CORE_BUILD_TESTS)
     if (WIN32)
         target_link_libraries(testsSshExec PRIVATE 
             ws2_32
