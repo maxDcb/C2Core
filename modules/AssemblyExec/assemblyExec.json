@@ -1,0 +1,51 @@
+{
+  "name": "assemblyExec",
+  "display_name": "assemblyExec",
+  "kind": "module",
+  "description": "Execute shellcode in the current beacon using a thread, process, or spoofed-parent process mode. Donut inputs are prepared by the TeamServer shellcode service before the task is sent to the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "--mode",
+      "type": "enum",
+      "required": false,
+      "description": "Execution mode.",
+      "values": ["thread", "process", "processWithSpoofedParent"]
+    },
+    {
+      "name": "source",
+      "type": "enum",
+      "required": true,
+      "description": "Payload source.",
+      "values": ["--raw", "--donut-exe", "--donut-dll"]
+    },
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Raw shellcode, .NET executable, or .NET DLL path on the TeamServer."
+    },
+    {
+      "name": "--method",
+      "type": "text",
+      "required": false,
+      "description": "Required for --donut-dll."
+    },
+    {
+      "name": "arguments",
+      "type": "text",
+      "required": false,
+      "description": "Arguments passed to the Donut source after --.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "assemblyExec --mode process --raw shellcode.bin",
+    "assemblyExec --mode thread --donut-exe Seatbelt.exe -- -group=system",
+    "assemblyExec --mode process --donut-dll Tool.dll --method EntryPoint -- arg1 arg2"
+  ],
+  "source": "manifest"
+}

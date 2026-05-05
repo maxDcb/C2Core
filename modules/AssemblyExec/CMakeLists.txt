@@ -39,9 +39,6 @@ endif()
 
 set_property(TARGET AssemblyExec PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-if(C2CORE_BUILD_TESTS OR C2CORE_BUILD_FUNCTIONAL_TESTS)
-    target_link_libraries(AssemblyExec PRIVATE Donut )
-endif()
 c2core_disable_safeseh_for_x86(AssemblyExec)
 
 add_custom_command(TARGET AssemblyExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
@@ -83,14 +80,11 @@ if(C2CORE_BUILD_TESTS)
                 ../ModuleCmd/hwbp.cpp
             )
         endif()
-        target_link_libraries(testsAssemblyExec PRIVATE Donut )
         c2core_disable_safeseh_for_x86(testsAssemblyExec)
 
         add_executable(testOutputWriter tests/testOutputWriter.cpp)
     else()
         add_executable(testsAssemblyExec tests/testsAssemblyExec.cpp AssemblyExec.cpp)
-        target_link_libraries(testsAssemblyExec PRIVATE Donut ${aplib64} )
-
         add_executable(testOutputWriter tests/testOutputWriter.cpp)
     endif()
 
@@ -138,13 +132,11 @@ if(C2CORE_BUILD_FUNCTIONAL_TESTS)
                 ../ModuleCmd/hwbp.cpp
             )
         endif()
-        target_link_libraries(testsAssemblyExecFunctional PRIVATE Donut)
         c2core_disable_safeseh_for_x86(testsAssemblyExecFunctional)
         add_dependencies(testsAssemblyExecFunctional assemblyExecDummyExe)
         target_compile_definitions(testsAssemblyExecFunctional PRIVATE C2_ASSEMBLYEXEC_DUMMY_EXE="$<TARGET_FILE:assemblyExecDummyExe>")
     else()
         add_executable(testsAssemblyExecFunctional tests/functional/testsAssemblyExecFunctional.cpp AssemblyExec.cpp)
-        target_link_libraries(testsAssemblyExecFunctional PRIVATE Donut ${aplib64})
     endif()
 
     target_include_directories(testsAssemblyExecFunctional PRIVATE ../tests)

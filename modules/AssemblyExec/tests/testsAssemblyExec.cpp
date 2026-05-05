@@ -81,11 +81,11 @@ int main()
     {
         const auto raw = writeTempFile("c2core_assembly_raw.bin", "raw-bytes");
         AssemblyExec module;
-        std::vector<std::string> cmd = {"assemblyExec", "-r", raw.string()};
+        std::vector<std::string> cmd = {"assemblyExec", "--mode", "process", "--raw", raw.string()};
         C2Message message;
 
         ok &= expect(module.init(cmd, message) == 0, "existing raw shellcode file should be accepted");
-        ok &= expectAssemblyMessage(message, raw, "1", "-r", "raw process mode");
+        ok &= expectAssemblyMessage(message, raw, "1", "--raw", "raw process mode");
         ok &= expect(message.data() == "raw-bytes", "raw bytes should be packed");
         std::filesystem::remove(raw);
     }
@@ -126,7 +126,7 @@ int main()
         C2Message message;
 
         ok &= expect(module.init(cmd, message) == -1, "unknown payload option should be rejected");
-        ok &= expect(message.returnvalue().find("One of the tags") != std::string::npos, "unknown payload option should explain accepted tags");
+        ok &= expect(message.returnvalue().find("Unknown assemblyExec option") != std::string::npos, "unknown payload option should explain accepted tags");
     }
 
     {
@@ -136,6 +136,15 @@ int main()
 
         ok &= expect(module.init(cmd, message) == -1, "DLL mode without method should be rejected");
         ok &= expect(message.returnvalue().find("Method is mandatory") != std::string::npos, "DLL mode should explain missing method");
+    }
+
+    {
+        AssemblyExec module;
+        std::vector<std::string> cmd = {"assemblyExec", "--donut-exe", "payload.exe"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "Donut mode should be rejected by module init");
+        ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "Donut mode should point to TeamServer shellcode service");
     }
 
     if (dummyExe.empty())
@@ -155,8 +164,8 @@ int main()
             std::vector<std::string> cmd = {"assemblyExec", "-e", dummyPath.string()};
             C2Message message;
 
-            ok &= expect(module.init(cmd, message) == 0, "dummy exe should be accepted by Donut EXE mode");
-            ok &= expectAssemblyMessage(message, dummyPath, "1", "-e", "dummy exe default process mode");
+            ok &= expect(module.init(cmd, message) == -1, "dummy exe Donut mode should be prepared by TeamServer");
+            ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "dummy exe Donut mode should explain TeamServer preparation");
         }
 
         {
@@ -169,9 +178,8 @@ int main()
             std::vector<std::string> cmd = {"assemblyExec", "-e", dummyPath.string(), "alpha", "beta gamma"};
             C2Message message;
 
-            ok &= expect(module.init(cmd, message) == 0, "dummy exe with arguments should be accepted by Donut EXE mode");
-            ok &= expectAssemblyMessage(message, dummyPath, "0", "alpha beta gamma", "dummy exe thread mode with args");
-            ok &= expect(message.cmd().find(dummyPath.string()) != std::string::npos, "dummy exe command should include input path");
+            ok &= expect(module.init(cmd, message) == -1, "dummy exe with arguments should be prepared by TeamServer");
+            ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "dummy exe with args should explain TeamServer preparation");
         }
 
         {
@@ -184,8 +192,8 @@ int main()
             std::vector<std::string> cmd = {"assemblyExec", "-e", dummyPath.string(), "--flag"};
             C2Message message;
 
-            ok &= expect(module.init(cmd, message) == 0, "dummy exe should be accepted in spoofed-parent mode");
-            ok &= expectAssemblyMessage(message, dummyPath, "2", "--flag", "dummy exe spoofed-parent mode");
+            ok &= expect(module.init(cmd, message) == -1, "dummy exe spoofed-parent mode should be prepared by TeamServer");
+            ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "dummy exe spoofed-parent should explain TeamServer preparation");
         }
 
         {

