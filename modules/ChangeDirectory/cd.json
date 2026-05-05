@@ -1,0 +1,24 @@
+{
+  "name": "cd",
+  "display_name": "cd",
+  "kind": "module",
+  "description": "Change the beacon current working directory.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux", "macos"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Remote directory path.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "cd /tmp",
+    "cd C:\\Users\\Public"
+  ],
+  "source": "manifest"
+}

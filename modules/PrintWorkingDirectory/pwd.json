@@ -1,0 +1,13 @@
+{
+  "name": "pwd",
+  "display_name": "pwd",
+  "kind": "module",
+  "description": "Print the current working directory on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux", "macos"],
+  "archs": ["any"],
+  "args": [],
+  "examples": ["pwd"],
+  "source": "manifest"
+}

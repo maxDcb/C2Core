@@ -1,0 +1,23 @@
+{
+  "name": "unloadModule",
+  "display_name": "unloadModule",
+  "kind": "common",
+  "description": "Unload a previously loaded beacon module from the current session.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "module_name",
+      "type": "text",
+      "required": true,
+      "description": "Loaded module command name."
+    }
+  ],
+  "examples": [
+    "unloadModule pwd",
+    "unloadModule assemblyExec"
+  ],
+  "source": "manifest"
+}

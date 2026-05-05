@@ -1,0 +1,30 @@
+{
+  "name": "loadModule",
+  "display_name": "loadModule",
+  "kind": "common",
+  "description": "Load a beacon module into the current session.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["x86", "x64", "arm64", "any"],
+  "args": [
+    {
+      "name": "module",
+      "type": "artifact",
+      "required": true,
+      "description": "Module artifact compatible with the current session.",
+      "artifact_filter": {
+        "category": "module",
+        "target": "beacon",
+        "platform": "session.platform",
+        "arch": "session.arch",
+        "runtime": "native"
+      }
+    }
+  ],
+  "examples": [
+    "loadModule Inject.dll",
+    "loadModule pwd"
+  ],
+  "source": "manifest"
+}

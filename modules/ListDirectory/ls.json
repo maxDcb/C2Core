@@ -1,0 +1,25 @@
+{
+  "name": "ls",
+  "display_name": "ls",
+  "kind": "module",
+  "description": "List the contents of a directory on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux", "macos"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": false,
+      "description": "Remote directory path. Defaults to the beacon current working directory.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "ls",
+    "ls /tmp",
+    "ls C:\\Users\\Public"
+  ],
+  "source": "manifest"
+}
