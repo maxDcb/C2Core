@@ -21,6 +21,7 @@ struct ModulePreparedShellcodeTask
     std::string payload;
     std::string executionMode;
     std::string displayCommand;
+    int pid = -1;
 };
 #endif
 

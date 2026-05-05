@@ -132,7 +132,6 @@ int main()
 {
     bool ok = true;
     const std::string dummyExe = dummyExePath();
-    const std::string currentArch = buildWindowsArch();
 
     {
         Inject module;
@@ -166,7 +165,7 @@ int main()
         C2Message message;
 
         ok &= expect(module.init(cmd, message) == -1, "unknown payload option should be rejected");
-        ok &= expect(message.returnvalue().find("One of the tags") != std::string::npos, "unknown payload option should explain accepted tags");
+        ok &= expect(message.returnvalue().find("Unknown inject option") != std::string::npos, "unknown payload option should explain the failure");
     }
 
     {
@@ -176,6 +175,24 @@ int main()
 
         ok &= expect(module.init(cmd, message) == -1, "DLL mode without method should be rejected");
         ok &= expect(message.returnvalue().find("Method is mandatory") != std::string::npos, "DLL mode should explain missing method");
+    }
+
+    {
+        Inject module;
+        std::vector<std::string> cmd = {"inject", "--donut-exe", "payload.exe", "--pid", "1234", "--", "alpha", "beta"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "Donut EXE mode should be delegated to TeamServer");
+        ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "Donut delegation should explain TeamServer ownership");
+    }
+
+    {
+        Inject module;
+        std::vector<std::string> cmd = {"inject", "--donut-dll", "payload.dll", "--pid", "1234", "--method", "Run"};
+        C2Message message;
+
+        ok &= expect(module.init(cmd, message) == -1, "Donut DLL mode should be delegated to TeamServer");
+        ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "Donut DLL delegation should explain TeamServer ownership");
     }
 
     {
@@ -222,16 +239,6 @@ int main()
     {
         const std::filesystem::path dummyPath(dummyExe);
         ok &= expect(std::filesystem::exists(dummyPath), "dummy exe should exist before Donut and process tests");
-
-        {
-            Inject module;
-            module.setWindowsArch(currentArch);
-            std::vector<std::string> cmd = {"inject", "-e", dummyPath.string(), "1234", "alpha", "beta gamma"};
-            C2Message message;
-
-            ok &= expect(module.init(cmd, message) == 0, "dummy exe should be accepted by Donut EXE mode");
-            ok &= expectInjectMessage(message, dummyPath, 1234, "alpha beta gamma", "dummy exe Donut mode with args");
-        }
 
         {
             Inject module;

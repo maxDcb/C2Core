@@ -1,9 +1,14 @@
 #include "Inject.hpp"
 
 #include <cstring>
+#include <filesystem>
+#include <iterator>
 
 #include "Common.hpp"
+#include "InjectCommandOptions.hpp"
+#ifndef _WIN32
 #include "Tools.hpp"
+#endif
 
 
 using namespace std;
@@ -74,148 +79,106 @@ std::string Inject::getInfo()
     info += "inject:\n";
     info += "Inject shellcode in the pid process. For linux must be root or at least have ptrace capability.\n";
     info += "No output is provided.\n";
-    info += "Use -r to use a shellcode file.\n";
-    info += "If -e or -d are given, use donut to create the shellcode.\n";
+    info += "Use --raw to use a shellcode file.\n";
+    info += "If --donut-exe or --donut-dll are given, the TeamServer creates the shellcode.\n";
     info += "If pid is negative a new process is created for the injection.\n";
     info += "exemple:\n";
-    info += "- inject -r ./calc.bin 2568\n";
-    info += "- inject -e ./beacon.exe pid arg1 arg2\n";
-    info += "- inject -d ./calc.dll pid method arg1 arg2\n";
+    info += "- inject --raw ./calc.bin --pid 2568\n";
+    info += "- inject --donut-exe ./beacon.exe --pid 2568 -- arg1 arg2\n";
+    info += "- inject --donut-dll ./calc.dll --pid -1 --method EntryPoint -- arg1 arg2\n";
 #endif
     return info;
 }
 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+namespace
+{
+std::string resolvePayloadPath(
+    const std::string& inputFile,
+    const std::string& toolsDirectoryPath,
+    const std::string& windowsBeaconsDirectoryPath,
+    const std::string& windowsArch)
+{
+    if (inputFile.empty())
+        return "";
+    if (std::filesystem::exists(inputFile))
+        return inputFile;
+
+    std::filesystem::path toolsPath = std::filesystem::path(toolsDirectoryPath) / inputFile;
+    if (std::filesystem::exists(toolsPath))
+        return toolsPath.string();
+
+    std::filesystem::path beaconPath = std::filesystem::path(windowsBeaconsDirectoryPath) / inputFile;
+    if (std::filesystem::exists(beaconPath))
+        return beaconPath.string();
+
+    std::filesystem::path archBeaconPath = std::filesystem::path(windowsBeaconsDirectoryPath) / windowsArch / inputFile;
+    if (std::filesystem::exists(archBeaconPath))
+        return archBeaconPath.string();
+
+    return inputFile;
+}
+
+std::string readBinaryFile(const std::string& path)
+{
+    std::ifstream input(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+} // namespace
+
+int Inject::initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Message& c2Message)
+{
+    if (task.payload.empty())
+    {
+        c2Message.set_returnvalue("Shellcode payload is empty.");
+        return -1;
+    }
+
+    c2Message.set_pid(task.pid);
+    c2Message.set_cmd(task.displayCommand);
+    c2Message.set_instruction(std::string(moduleName));
+    c2Message.set_inputfile(task.inputFile);
+    c2Message.set_data(task.payload.data(), task.payload.size());
+    return 0;
+}
+#endif
+
 int Inject::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (splitedCmd.size() >= 4)
+    inject_command::CommandOptions options = inject_command::parseCommandOptions(splitedCmd);
+    if (!options.error.empty())
     {
-        bool donut=false;
-        std::string inputFile=splitedCmd[2];
-        std::string method;
-        std::string args;
-        int pid=-1;
-
-        try
-        {
-            pid = stoi(splitedCmd[3]);
-        }
-        catch (...)
-        {
-            std::string msg = "Pid must be an integer.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        if(splitedCmd[1]=="-e")
-        {
-            donut=true;
-            for (int idx = 4; idx < splitedCmd.size(); idx++) 
-            {
-                if(!args.empty())
-                    args+=" ";
-                args+=splitedCmd[idx];
-            }
-        }
-        else if(splitedCmd[1]=="-d")
-        {
-            donut=true;
-            if(splitedCmd.size() > 4)
-                method=splitedCmd[4];
-            else
-            {
-                std::string msg = "Method is mandatory for DLL.\n";
-                c2Message.set_returnvalue(msg);
-                return -1;
-            }
-            for (int idx = 5; idx < splitedCmd.size(); idx++) 
-            {
-                if(!args.empty())
-                    args+=" ";
-                args+=splitedCmd[idx];
-            }
-        }
-        else if(splitedCmd[1]=="-r")
-        {
-        }
-        else
-        {
-            std::string msg = "One of the tags, -r, -e or -d must be provided.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        if(inputFile.empty())
-        {
-            std::string msg = "A file name have to be provided.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        std::ifstream myfile;
-        myfile.open(inputFile);
-
-        if(!myfile)
-        {
-            std::string newInputFile=m_toolsDirectoryPath;
-            newInputFile+=inputFile;
-            myfile.open(newInputFile, std::ios::binary);
-            inputFile=newInputFile;
-        }
-
-        if(!myfile)
-        {
-            std::string newInputFile=m_windowsBeaconsDirectoryPath;
-            newInputFile+=inputFile;
-            myfile.open(newInputFile, std::ios::binary);
-            inputFile=newInputFile;
-        }
-
-        if(!myfile) 
-        {
-            std::string msg = "Couldn't open file.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-        myfile.close();
-
-        std::string payload;
-        if(donut)
-        {
-            creatShellCodeDonut(inputFile, method, args, payload, true, false, m_windowsArch);
-        }
-        else
-        {
-            std::ifstream input(inputFile, std::ios::binary);
-            std::string payload_(std::istreambuf_iterator<char>(input), {});
-            payload=payload_;
-        }
-
-        if(payload.size()==0)
-        {
-            std::string msg = "Something went wrong. Payload empty.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        std::string cmd;
-        for (int idx = 1; idx < splitedCmd.size(); idx++) 
-        {
-            cmd+=splitedCmd[idx];
-            cmd+=" ";
-        }
-
-        c2Message.set_pid(pid);
-        c2Message.set_cmd(cmd);
-        c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_inputfile(inputFile);
-        c2Message.set_data(payload.data(), payload.size());
-    }
-    else
-    {
-        c2Message.set_returnvalue(getInfo());
+        c2Message.set_returnvalue(options.error + "\n");
         return -1;
     }
+
+    if (options.generator != "raw")
+    {
+        c2Message.set_returnvalue("Donut shellcode generation is handled by the TeamServer shellcode service.\n");
+        return -1;
+    }
+
+    const std::string inputFile = resolvePayloadPath(options.sourcePath, m_toolsDirectoryPath, m_windowsBeaconsDirectoryPath, m_windowsArch);
+    std::ifstream myfile(inputFile, std::ios::binary);
+    if(!myfile)
+    {
+        c2Message.set_returnvalue("Couldn't open file.\n");
+        return -1;
+    }
+    myfile.close();
+
+    ModulePreparedShellcodeTask task;
+    task.inputFile = inputFile;
+    task.payload = readBinaryFile(inputFile);
+    task.pid = options.pid;
+    task.displayCommand = options.displayCommand;
+    if (task.payload.empty())
+    {
+        c2Message.set_returnvalue("Something went wrong. Payload empty.\n");
+        return -1;
+    }
+    return initPreparedShellcode(task, c2Message);
 #endif
     return 0;
 }
