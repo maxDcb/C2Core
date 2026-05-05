@@ -1,4 +1,5 @@
 #include "../Inject.hpp"
+#include "../../AssemblyExec/tests/AssemblyExecTestShellcodeGenerator.hpp"
 #include "../../tests/TestHelpers.hpp"
 
 #include <filesystem>
@@ -38,6 +39,41 @@ bool expectInjectMessage(const C2Message& message,
     ok &= expect(!message.data().empty(), label + ": payload should be non-empty");
     return ok;
 }
+
+#ifdef _WIN32
+bool expectPreparedDonutMessage(const std::filesystem::path& sourcePath,
+                                int expectedPid,
+                                const std::string& arguments,
+                                const std::string& arch,
+                                const std::string& displayCommand,
+                                const std::string& label)
+{
+    bool ok = true;
+    assembly_exec_tests::GeneratedShellcode generated = assembly_exec_tests::generateDonutShellcodeForTest(
+        sourcePath.string(),
+        "",
+        arguments,
+        arch,
+        true);
+    ok &= expect(generated.ok, label + ": Donut test shellcode should be generated: " + generated.error);
+    if (!ok)
+        return false;
+
+    Inject module;
+    ModulePreparedShellcodeTask task;
+    task.inputFile = generated.path.string();
+    task.payload = generated.bytes;
+    task.pid = expectedPid;
+    task.displayCommand = displayCommand;
+
+    C2Message message;
+    ok &= expect(module.initPreparedShellcode(task, message) == 0, label + ": prepared shellcode should be packed");
+    ok &= expectInjectMessage(message, generated.path, expectedPid, displayCommand, label);
+    ok &= expect(message.data() == generated.bytes, label + ": generated shellcode bytes should be packed");
+    std::filesystem::remove(generated.path);
+    return ok;
+}
+#endif
 
 #ifdef _WIN32
 class ChildProcess
@@ -132,6 +168,7 @@ int main()
 {
     bool ok = true;
     const std::string dummyExe = dummyExePath();
+    const std::string currentArch = buildWindowsArch();
 
     {
         Inject module;
@@ -239,6 +276,33 @@ int main()
     {
         const std::filesystem::path dummyPath(dummyExe);
         ok &= expect(std::filesystem::exists(dummyPath), "dummy exe should exist before Donut and process tests");
+
+        {
+            Inject module;
+            module.setWindowsArch(currentArch);
+            std::vector<std::string> cmd = {"inject", "--donut-exe", dummyPath.string(), "--pid", "1234", "--", "alpha", "beta gamma"};
+            C2Message message;
+
+            ok &= expect(module.init(cmd, message) == -1, "dummy exe Donut mode should be prepared by TeamServer");
+            ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "dummy exe Donut mode should explain TeamServer preparation");
+            ok &= expectPreparedDonutMessage(
+                dummyPath,
+                1234,
+                "alpha beta gamma",
+                currentArch,
+                "--donut-exe " + dummyPath.string() + " --pid 1234 -- alpha beta gamma",
+                "dummy exe TeamServer-prepared Donut inject");
+        }
+
+        {
+            ok &= expectPreparedDonutMessage(
+                dummyPath,
+                -1,
+                "--spawn",
+                currentArch,
+                "--donut-exe " + dummyPath.string() + " --pid -1 -- --spawn",
+                "dummy exe TeamServer-prepared Donut spawn inject");
+        }
 
         {
             Inject module;

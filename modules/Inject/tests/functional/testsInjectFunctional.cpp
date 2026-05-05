@@ -1,6 +1,8 @@
 #include "../../Inject.hpp"
+#include "../../../AssemblyExec/tests/AssemblyExecTestShellcodeGenerator.hpp"
 #include "../../../tests/FunctionalTestHelpers.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -43,6 +45,31 @@ std::string normalizeKind(const std::string& kind)
 bool isTruthy(const std::string& value)
 {
     return value == "1" || value == "true" || value == "TRUE" || value == "yes" || value == "YES";
+}
+
+std::string currentWindowsArch()
+{
+#if defined(_M_ARM64) || defined(__aarch64__)
+    return "arm64";
+#elif defined(_M_IX86) || defined(__i386__)
+    return "x86";
+#else
+    return "x64";
+#endif
+}
+
+bool parsePid(const std::string& value, int& pid)
+{
+    try
+    {
+        size_t parsed = 0;
+        pid = std::stoi(value, &parsed);
+        return parsed == value.size();
+    }
+    catch (...)
+    {
+        return false;
+    }
 }
 }
 
@@ -97,45 +124,58 @@ int main(int argc, char** argv)
         return skipMissing("testsInjectFunctional", missing);
     }
 
-    std::vector<std::string> command = {"inject"};
+    Inject module;
+    C2Message message;
+    std::filesystem::path generatedPath;
     if (kind == "raw")
     {
-        command.push_back("-r");
-        command.push_back(payload);
-    }
-    else if (kind == "dll")
-    {
-        command.push_back("-d");
-        command.push_back(payload);
-        command.push_back(pid);
-        command.push_back(method);
-        if (!arguments.empty())
+        std::vector<std::string> command = {"inject", "-r", payload, pid};
+        if (module.init(command, message) != 0)
         {
-            command.push_back(arguments);
+            std::cerr << "testsInjectFunctional init failed:\n" << message.returnvalue() << '\n';
+            return 1;
         }
     }
     else
     {
-        command.push_back("-e");
-        command.push_back(payload);
-        command.push_back(pid);
-        if (!arguments.empty())
+        int parsedPid = -1;
+        if (!parsePid(pid, parsedPid))
         {
-            command.push_back(arguments);
+            std::cerr << "testsInjectFunctional invalid pid: " << pid << '\n';
+            return 1;
         }
-    }
 
-    if (kind == "raw")
-    {
-        command.push_back(pid);
-    }
+        assembly_exec_tests::GeneratedShellcode generated = assembly_exec_tests::generateDonutShellcodeForTest(
+            payload,
+            kind == "dll" ? method : "",
+            arguments,
+            currentWindowsArch(),
+            true);
+        if (!generated.ok)
+        {
+#ifndef _WIN32
+            std::cout << "testsInjectFunctional skipped: " << generated.error << '\n';
+            return skipReturnCode;
+#else
+            std::cerr << "testsInjectFunctional Donut preparation failed:\n" << generated.error << '\n';
+            return 1;
+#endif
+        }
 
-    Inject module;
-    C2Message message;
-    if (module.init(command, message) != 0)
-    {
-        std::cerr << "testsInjectFunctional init failed:\n" << message.returnvalue() << '\n';
-        return 1;
+        generatedPath = generated.path;
+        ModulePreparedShellcodeTask task;
+        task.inputFile = generated.path.string();
+        task.payload = generated.bytes;
+        task.pid = parsedPid;
+        task.displayCommand = kind == "dll"
+            ? "--donut-dll " + payload + " --pid " + pid + " --method " + method + " -- " + arguments
+            : "--donut-exe " + payload + " --pid " + pid + " -- " + arguments;
+        if (module.initPreparedShellcode(task, message) != 0)
+        {
+            std::cerr << "testsInjectFunctional prepared init failed:\n" << message.returnvalue() << '\n';
+            std::filesystem::remove(generatedPath);
+            return 1;
+        }
     }
 
     std::cout << "testsInjectFunctional init OK\n";
@@ -145,6 +185,10 @@ int main(int argc, char** argv)
     if (!execute)
     {
         std::cout << "execution skipped; pass --execute to run the module process path.\n";
+        if (!generatedPath.empty())
+        {
+            std::filesystem::remove(generatedPath);
+        }
         return 0;
     }
 
@@ -165,5 +209,9 @@ int main(int argc, char** argv)
     C2Message result;
     module.process(message, result);
     std::cout << result.returnvalue() << '\n';
+    if (!generatedPath.empty())
+    {
+        std::filesystem::remove(generatedPath);
+    }
     return 0;
 }
