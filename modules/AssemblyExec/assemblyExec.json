@@ -10,27 +10,38 @@
   "args": [
     {
       "name": "--mode",
-      "type": "enum",
+      "type": "flag",
       "required": false,
-      "description": "Execution mode.",
+      "description": "Execution mode. Defaults to process.",
       "values": ["thread", "process", "processWithSpoofedParent"]
     },
     {
-      "name": "source",
-      "type": "enum",
-      "required": true,
-      "description": "Payload source.",
-      "values": ["--raw", "--donut-exe", "--donut-dll"]
+      "name": "--raw",
+      "type": "flag",
+      "required": false,
+      "description": "Use an existing raw shellcode file on the TeamServer."
     },
     {
-      "name": "path",
+      "name": "--donut-exe",
+      "type": "flag",
+      "required": false,
+      "description": "Generate shellcode from a .NET executable on the TeamServer."
+    },
+    {
+      "name": "--donut-dll",
+      "type": "flag",
+      "required": false,
+      "description": "Generate shellcode from a .NET DLL on the TeamServer."
+    },
+    {
+      "name": "source_path",
       "type": "path",
       "required": true,
       "description": "Raw shellcode, .NET executable, or .NET DLL path on the TeamServer."
     },
     {
       "name": "--method",
-      "type": "text",
+      "type": "flag",
       "required": false,
       "description": "Required for --donut-dll."
     },

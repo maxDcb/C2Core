@@ -1,4 +1,5 @@
 #include "../../AssemblyExec.hpp"
+#include "../AssemblyExecTestShellcodeGenerator.hpp"
 #include "../../../tests/FunctionalTestHelpers.hpp"
 
 #include <filesystem>
@@ -43,6 +44,17 @@ std::string normalizeKind(const std::string& kind)
         return "raw";
     }
     return "exe";
+}
+
+std::string currentWindowsArch()
+{
+#if defined(_M_ARM64) || defined(__aarch64__)
+    return "arm64";
+#elif defined(_M_IX86) || defined(__i386__)
+    return "x86";
+#else
+    return "x64";
+#endif
 }
 }
 
@@ -107,33 +119,51 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    std::vector<std::string> command = {"assemblyExec"};
+    C2Message message;
+    std::filesystem::path generatedPath;
     if (kind == "raw")
     {
-        command.push_back("-r");
-        command.push_back(payload);
-    }
-    else if (kind == "dll")
-    {
-        command.push_back("-d");
-        command.push_back(payload);
-        command.push_back(method);
+        std::vector<std::string> command = {"assemblyExec", "--mode", mode, "--raw", payload};
+        if (module.init(command, message) != 0)
+        {
+            std::cerr << "testsAssemblyExecFunctional init failed:\n" << message.returnvalue() << '\n';
+            return 1;
+        }
     }
     else
     {
-        command.push_back("-e");
-        command.push_back(payload);
-    }
-    if (!arguments.empty())
-    {
-        command.push_back(arguments);
-    }
+        const bool exitProcess = mode != "thread";
+        assembly_exec_tests::GeneratedShellcode generated = assembly_exec_tests::generateDonutShellcodeForTest(
+            payload,
+            kind == "dll" ? method : "",
+            arguments,
+            currentWindowsArch(),
+            exitProcess);
+        if (!generated.ok)
+        {
+#ifndef _WIN32
+            std::cout << "testsAssemblyExecFunctional skipped: " << generated.error << '\n';
+            return skipReturnCode;
+#else
+            std::cerr << "testsAssemblyExecFunctional Donut preparation failed:\n" << generated.error << '\n';
+            return 1;
+#endif
+        }
 
-    C2Message message;
-    if (module.init(command, message) != 0)
-    {
-        std::cerr << "testsAssemblyExecFunctional init failed:\n" << message.returnvalue() << '\n';
-        return 1;
+        generatedPath = generated.path;
+        ModulePreparedShellcodeTask task;
+        task.inputFile = generated.path.string();
+        task.payload = generated.bytes;
+        task.executionMode = mode;
+        task.displayCommand = kind == "dll"
+            ? "--mode " + mode + " --donut-dll " + payload + " --method " + method + " -- " + arguments
+            : "--mode " + mode + " --donut-exe " + payload + " -- " + arguments;
+        if (module.initPreparedShellcode(task, message) != 0)
+        {
+            std::cerr << "testsAssemblyExecFunctional prepared init failed:\n" << message.returnvalue() << '\n';
+            std::filesystem::remove(generatedPath);
+            return 1;
+        }
     }
 
     std::cout << "testsAssemblyExecFunctional init OK\n";
@@ -143,6 +173,10 @@ int main(int argc, char** argv)
     if (!execute)
     {
         std::cout << "execution skipped; pass --execute to run the module process path.\n";
+        if (!generatedPath.empty())
+        {
+            std::filesystem::remove(generatedPath);
+        }
         return 0;
     }
 
@@ -163,5 +197,9 @@ int main(int argc, char** argv)
     C2Message result;
     module.process(message, result);
     std::cout << result.returnvalue() << '\n';
+    if (!generatedPath.empty())
+    {
+        std::filesystem::remove(generatedPath);
+    }
     return 0;
 }
