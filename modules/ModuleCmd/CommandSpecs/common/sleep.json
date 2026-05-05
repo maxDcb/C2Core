@@ -1,0 +1,20 @@
+{
+  "name": "sleep",
+  "display_name": "sleep",
+  "kind": "common",
+  "description": "Set the beacon sleep interval in seconds.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux", "macos"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "seconds",
+      "type": "number",
+      "required": true,
+      "description": "Sleep interval in seconds."
+    }
+  ],
+  "examples": ["sleep 0.5"],
+  "source": "manifest"
+}

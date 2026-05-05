@@ -1,0 +1,13 @@
+{
+  "name": "end",
+  "display_name": "end",
+  "kind": "common",
+  "description": "Terminate the beacon process.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux", "macos"],
+  "archs": ["any"],
+  "args": [],
+  "examples": ["end"],
+  "source": "manifest"
+}
