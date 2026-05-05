@@ -299,6 +299,11 @@ class CommonCommands
                 if(!input && !isWindows)
                 {
                     std::string newInputFile = m_linuxModulesDirectoryPath;
+                    if (!windowsArch.empty())
+                    {
+                        newInputFile += windowsArch;
+                        newInputFile += "/";
+                    }
                     newInputFile+=inputFile;
                     input.open(newInputFile, std::ios::binary);
                     resolvedModulePath = newInputFile;
