@@ -1,0 +1,65 @@
+{
+  "name": "taskScheduler",
+  "display_name": "taskScheduler",
+  "kind": "module",
+  "description": "Create and optionally run a scheduled task on a local or remote Windows host.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-c",
+      "type": "flag",
+      "required": true,
+      "description": "Executable or command to run in the scheduled task."
+    },
+    {
+      "name": "-s",
+      "type": "flag",
+      "required": false,
+      "description": "Target host. Omit for localhost."
+    },
+    {
+      "name": "-t",
+      "type": "flag",
+      "required": false,
+      "description": "Scheduled task name. A random name is used if omitted."
+    },
+    {
+      "name": "-a",
+      "type": "flag",
+      "required": false,
+      "description": "Command line arguments."
+    },
+    {
+      "name": "-u",
+      "type": "flag",
+      "required": false,
+      "description": "DOMAIN\\user for task registration."
+    },
+    {
+      "name": "-p",
+      "type": "flag",
+      "required": false,
+      "description": "Password for the provided user."
+    },
+    {
+      "name": "--no-run",
+      "type": "flag",
+      "required": false,
+      "description": "Register the task without running it."
+    },
+    {
+      "name": "--nocleanup",
+      "type": "flag",
+      "required": false,
+      "description": "Keep the task after it starts."
+    }
+  ],
+  "examples": [
+    "taskScheduler -c C:\\Windows\\System32\\cmd.exe -a \"/c whoami\"",
+    "taskScheduler -s HOST -t UpdateTask -c C:\\Windows\\System32\\cmd.exe -a \"/c whoami\" --nocleanup"
+  ],
+  "source": "manifest"
+}

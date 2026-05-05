@@ -1,0 +1,22 @@
+{
+  "name": "killProcess",
+  "display_name": "killProcess",
+  "kind": "module",
+  "description": "Terminate a process on the beacon host by PID.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "pid",
+      "type": "number",
+      "required": true,
+      "description": "Process id to terminate."
+    }
+  ],
+  "examples": [
+    "killProcess 4242"
+  ],
+  "source": "manifest"
+}

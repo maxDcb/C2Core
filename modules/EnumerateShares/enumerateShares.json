@@ -1,0 +1,23 @@
+{
+  "name": "enumerateShares",
+  "display_name": "enumerateShares",
+  "kind": "module",
+  "description": "Enumerate SMB shares from the beacon context.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "host",
+      "type": "text",
+      "required": false,
+      "description": "Optional remote host to enumerate. Empty value enumerates from the local context."
+    }
+  ],
+  "examples": [
+    "enumerateShares",
+    "enumerateShares fileserver"
+  ],
+  "source": "manifest"
+}

@@ -1,0 +1,74 @@
+{
+  "name": "registry",
+  "display_name": "registry",
+  "kind": "module",
+  "description": "Manipulate local or remote Windows registry keys.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "operation",
+      "type": "enum",
+      "required": true,
+      "description": "Registry operation.",
+      "values": [
+        "set",
+        "deleteValue",
+        "delete",
+        "delvalue",
+        "query",
+        "get",
+        "createKey",
+        "create",
+        "deleteKey",
+        "delkey"
+      ]
+    },
+    {
+      "name": "-s",
+      "type": "flag",
+      "required": false,
+      "description": "Remote host. Omit for localhost."
+    },
+    {
+      "name": "-h",
+      "type": "flag",
+      "required": true,
+      "description": "Root hive, for example HKLM, HKCU, HKU, HKCR, or HKCC.",
+      "values": ["HKLM", "HKCU", "HKU", "HKCR", "HKCC"]
+    },
+    {
+      "name": "-k",
+      "type": "flag",
+      "required": true,
+      "description": "Subkey path."
+    },
+    {
+      "name": "-n",
+      "type": "flag",
+      "required": false,
+      "description": "Value name required for value operations."
+    },
+    {
+      "name": "-d",
+      "type": "flag",
+      "required": false,
+      "description": "Value data for set."
+    },
+    {
+      "name": "-t",
+      "type": "flag",
+      "required": false,
+      "description": "Registry value type for set. Defaults to REG_SZ.",
+      "values": ["REG_SZ", "REG_DWORD", "REG_QWORD", "REG_EXPAND_SZ"]
+    }
+  ],
+  "examples": [
+    "registry set -h HKLM -k Software\\Acme -n Path -d C:/Temp -t REG_SZ",
+    "registry query -h HKCU -k Environment -n Path",
+    "registry createKey -h HKCU -k Software\\Acme"
+  ],
+  "source": "manifest"
+}

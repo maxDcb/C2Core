@@ -1,0 +1,25 @@
+{
+  "name": "keyLogger",
+  "display_name": "keyLogger",
+  "kind": "module",
+  "description": "Start, stop, or locally dump the keylogger buffer.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "action",
+      "type": "enum",
+      "required": true,
+      "description": "Keylogger action. dump is handled locally by the TeamServer module instance.",
+      "values": ["start", "stop", "dump"]
+    }
+  ],
+  "examples": [
+    "keyLogger start",
+    "keyLogger stop",
+    "keyLogger dump"
+  ],
+  "source": "manifest"
+}

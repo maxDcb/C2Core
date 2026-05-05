@@ -1,0 +1,30 @@
+{
+  "name": "miniDump",
+  "display_name": "miniDump",
+  "kind": "module",
+  "description": "Dump LSASS to an XORed file or decrypt an XORed dump locally.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "action",
+      "type": "enum",
+      "required": true,
+      "description": "MiniDump action.",
+      "values": ["dump", "decrypt"]
+    },
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Output file for dump, or input XORed dump path for decrypt."
+    }
+  ],
+  "examples": [
+    "miniDump dump lsass.xored",
+    "miniDump decrypt /tmp/lsass.xored"
+  ],
+  "source": "manifest"
+}

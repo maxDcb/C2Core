@@ -1,0 +1,22 @@
+{
+  "name": "stealToken",
+  "display_name": "stealToken",
+  "kind": "module",
+  "description": "Steal and impersonate a token from a process id.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "pid",
+      "type": "number",
+      "required": true,
+      "description": "Process id whose token should be impersonated."
+    }
+  ],
+  "examples": [
+    "stealToken 4242"
+  ],
+  "source": "manifest"
+}

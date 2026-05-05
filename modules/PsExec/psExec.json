@@ -1,0 +1,49 @@
+{
+  "name": "psExec",
+  "display_name": "psExec",
+  "kind": "module",
+  "description": "Copy and run a service executable on a remote Windows host through PsExec.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "auth_mode",
+      "type": "enum",
+      "required": true,
+      "description": "Authentication mode.",
+      "values": ["-u", "-k", "-n"]
+    },
+    {
+      "name": "username",
+      "type": "text",
+      "required": false,
+      "description": "DOMAIN\\Username for -u mode."
+    },
+    {
+      "name": "password",
+      "type": "text",
+      "required": false,
+      "description": "Password for -u mode."
+    },
+    {
+      "name": "target",
+      "type": "text",
+      "required": true,
+      "description": "Target host name or IP."
+    },
+    {
+      "name": "service_file",
+      "type": "path",
+      "required": true,
+      "description": "Local service executable file path to copy and run."
+    }
+  ],
+  "examples": [
+    "psExec -u DOMAIN\\Username Password123! fileserver service.exe",
+    "psExec -k fileserver service.exe",
+    "psExec -n fileserver service.exe"
+  ],
+  "source": "manifest"
+}

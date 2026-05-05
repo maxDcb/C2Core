@@ -1,0 +1,34 @@
+{
+  "name": "reversePortForward",
+  "display_name": "reversePortForward",
+  "kind": "module",
+  "description": "Start a reverse port forward from the beacon to a local service.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "remote_port",
+      "type": "number",
+      "required": true,
+      "description": "Port to listen on remotely."
+    },
+    {
+      "name": "local_host",
+      "type": "text",
+      "required": true,
+      "description": "Local host reachable from the TeamServer side to forward traffic to."
+    },
+    {
+      "name": "local_port",
+      "type": "number",
+      "required": true,
+      "description": "Local port to forward traffic to."
+    }
+  ],
+  "examples": [
+    "reversePortForward 8080 127.0.0.1 80"
+  ],
+  "source": "manifest"
+}

@@ -1,0 +1,85 @@
+{
+  "name": "spawnAs",
+  "display_name": "spawnAs",
+  "kind": "module",
+  "description": "Spawn a command under explicit Windows credentials.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-d",
+      "type": "flag",
+      "required": false,
+      "description": "Domain override."
+    },
+    {
+      "name": "-l",
+      "type": "flag",
+      "required": false,
+      "description": "Windows logon type.",
+      "values": ["2", "9"]
+    },
+    {
+      "name": "-p",
+      "type": "flag",
+      "required": false,
+      "description": "Load the user profile before launching the process."
+    },
+    {
+      "name": "--with-profile",
+      "type": "flag",
+      "required": false,
+      "description": "Load the user profile before launching the process."
+    },
+    {
+      "name": "--no-profile",
+      "type": "flag",
+      "required": false,
+      "description": "Do not load the user profile."
+    },
+    {
+      "name": "-w",
+      "type": "flag",
+      "required": false,
+      "description": "Show the process window."
+    },
+    {
+      "name": "--show-window",
+      "type": "flag",
+      "required": false,
+      "description": "Show the process window."
+    },
+    {
+      "name": "--netonly",
+      "type": "flag",
+      "required": false,
+      "description": "Use LOGON32_LOGON_NEW_CREDENTIALS."
+    },
+    {
+      "name": "username",
+      "type": "text",
+      "required": true,
+      "description": "Username in Username, DOMAIN\\Username, or user@domain form."
+    },
+    {
+      "name": "password",
+      "type": "text",
+      "required": true,
+      "description": "Password for the supplied user."
+    },
+    {
+      "name": "command",
+      "type": "text",
+      "required": true,
+      "description": "Program and arguments to launch after --.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "spawnAs contoso\\alice P@ssw0rd -- powershell.exe -nop -w hidden",
+    "spawnAs -d . -l 9 bob Password123 -- cmd.exe /c whoami"
+  ],
+  "source": "manifest"
+}

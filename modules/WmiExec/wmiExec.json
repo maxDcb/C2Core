@@ -1,0 +1,56 @@
+{
+  "name": "wmiExec",
+  "display_name": "wmiExec",
+  "kind": "module",
+  "description": "Execute a command through WMI.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "auth_mode",
+      "type": "enum",
+      "required": true,
+      "description": "Authentication mode.",
+      "values": ["-u", "-k", "-n"]
+    },
+    {
+      "name": "username",
+      "type": "text",
+      "required": false,
+      "description": "DOMAIN\\Username for -u mode."
+    },
+    {
+      "name": "password",
+      "type": "text",
+      "required": false,
+      "description": "Password for -u mode."
+    },
+    {
+      "name": "dc",
+      "type": "text",
+      "required": false,
+      "description": "Domain controller or DOMAIN\\dc value for -k mode."
+    },
+    {
+      "name": "target",
+      "type": "text",
+      "required": true,
+      "description": "Target host name or IP."
+    },
+    {
+      "name": "command",
+      "type": "text",
+      "required": true,
+      "description": "Remote command tail.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "wmiExec -u DOMAIN\\Username Password123! target powershell.exe -nop -w hidden",
+    "wmiExec -k DOMAIN\\dc target whoami.exe /all",
+    "wmiExec -n localhost whoami.exe"
+  ],
+  "source": "manifest"
+}

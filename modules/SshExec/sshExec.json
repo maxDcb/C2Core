@@ -1,0 +1,84 @@
+{
+  "name": "sshExec",
+  "display_name": "sshExec",
+  "kind": "module",
+  "description": "Execute a command on a remote SSH server using username/password authentication.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "-h",
+      "type": "flag",
+      "required": true,
+      "description": "SSH host name or IP."
+    },
+    {
+      "name": "--host",
+      "type": "flag",
+      "required": false,
+      "description": "SSH host name or IP."
+    },
+    {
+      "name": "-P",
+      "type": "flag",
+      "required": false,
+      "description": "SSH port. Defaults to 22."
+    },
+    {
+      "name": "--port",
+      "type": "flag",
+      "required": false,
+      "description": "SSH port. Defaults to 22."
+    },
+    {
+      "name": "-u",
+      "type": "flag",
+      "required": true,
+      "description": "SSH username."
+    },
+    {
+      "name": "--user",
+      "type": "flag",
+      "required": false,
+      "description": "SSH username."
+    },
+    {
+      "name": "-p",
+      "type": "flag",
+      "required": true,
+      "description": "SSH password."
+    },
+    {
+      "name": "--password",
+      "type": "flag",
+      "required": false,
+      "description": "SSH password."
+    },
+    {
+      "name": "-c",
+      "type": "flag",
+      "required": false,
+      "description": "Remote command."
+    },
+    {
+      "name": "--command",
+      "type": "flag",
+      "required": false,
+      "description": "Remote command."
+    },
+    {
+      "name": "command",
+      "type": "text",
+      "required": true,
+      "description": "Remote command tail passed after --.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "sshExec -h 10.0.0.5 -u admin -p Passw0rd! -c \"ipconfig /all\"",
+    "sshExec -h server -P 22 -u admin -p Passw0rd! -- /bin/echo hello"
+  ],
+  "source": "manifest"
+}

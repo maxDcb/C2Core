@@ -1,0 +1,48 @@
+{
+  "name": "evasion",
+  "display_name": "evasion",
+  "kind": "module",
+  "description": "Run an evasion action on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "action",
+      "type": "enum",
+      "required": true,
+      "description": "Evasion action.",
+      "values": [
+        "CheckHooks",
+        "DisableETW",
+        "Unhook",
+        "UnhookPerunsFart",
+        "AmsiBypass",
+        "Introspection",
+        "ReadMemory",
+        "PatchMemory",
+        "RemotePatch"
+      ]
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "required": false,
+      "description": "Module name, address, or target value required by selected actions."
+    },
+    {
+      "name": "value",
+      "type": "text",
+      "required": false,
+      "description": "Size or patch bytes required by memory actions."
+    }
+  ],
+  "examples": [
+    "evasion CheckHooks",
+    "evasion DisableETW",
+    "evasion ReadMemory 0x123456 20",
+    "evasion PatchMemory 0x123456 \\x90\\x90\\x90\\x90"
+  ],
+  "source": "manifest"
+}

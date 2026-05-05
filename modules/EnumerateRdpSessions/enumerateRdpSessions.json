@@ -1,0 +1,30 @@
+{
+  "name": "enumerateRdpSessions",
+  "display_name": "enumerateRdpSessions",
+  "kind": "module",
+  "description": "Enumerate local or remote RDP sessions using the Windows WTS APIs.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-s",
+      "type": "flag",
+      "required": false,
+      "description": "Target host name or IP. Defaults to the local system."
+    },
+    {
+      "name": "server",
+      "type": "text",
+      "required": false,
+      "description": "Optional target host name or IP."
+    }
+  ],
+  "examples": [
+    "enumerateRdpSessions",
+    "enumerateRdpSessions -s fileserver",
+    "enumerateRdpSessions fileserver"
+  ],
+  "source": "manifest"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "kerberosUseTicket",
+  "display_name": "kerberosUseTicket",
+  "kind": "module",
+  "description": "Import a Kerberos ticket file into the current LUID.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "ticket_file",
+      "type": "path",
+      "required": true,
+      "description": "Local .kirbi ticket file read by the TeamServer before dispatch."
+    }
+  ],
+  "examples": [
+    "kerberosUseTicket /tmp/ticket.kirbi"
+  ],
+  "source": "manifest"
+}

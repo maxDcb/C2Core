@@ -1,0 +1,15 @@
+{
+  "name": "getEnv",
+  "display_name": "getEnv",
+  "kind": "module",
+  "description": "List environment variables available to the beacon process.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [],
+  "examples": [
+    "getEnv"
+  ],
+  "source": "manifest"
+}

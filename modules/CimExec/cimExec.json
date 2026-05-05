@@ -1,0 +1,53 @@
+{
+  "name": "cimExec",
+  "display_name": "cimExec",
+  "kind": "module",
+  "description": "Execute a command on a remote Windows host through CIM/WMI.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-h",
+      "type": "flag",
+      "required": true,
+      "description": "Remote host name or IP."
+    },
+    {
+      "name": "-c",
+      "type": "flag",
+      "required": true,
+      "description": "Executable or command to start remotely."
+    },
+    {
+      "name": "-n",
+      "type": "flag",
+      "required": false,
+      "description": "CIM namespace. Defaults to root/cimv2."
+    },
+    {
+      "name": "-a",
+      "type": "flag",
+      "required": false,
+      "description": "Arguments passed to the remote command."
+    },
+    {
+      "name": "-u",
+      "type": "flag",
+      "required": false,
+      "description": "DOMAIN\\user credentials."
+    },
+    {
+      "name": "-p",
+      "type": "flag",
+      "required": false,
+      "description": "Password for explicit credentials."
+    }
+  ],
+  "examples": [
+    "cimExec -h server01 -c cmd.exe -a \"/c whoami\"",
+    "cimExec -h server01 -n root/cimv2 -c powershell.exe -a \"-nop -c whoami\""
+  ],
+  "source": "manifest"
+}

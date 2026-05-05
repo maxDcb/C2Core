@@ -1,0 +1,28 @@
+{
+  "name": "makeToken",
+  "display_name": "makeToken",
+  "kind": "module",
+  "description": "Create and impersonate a token from explicit credentials.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "username",
+      "type": "text",
+      "required": true,
+      "description": "Username in Username or DOMAIN\\Username form."
+    },
+    {
+      "name": "password",
+      "type": "text",
+      "required": true,
+      "description": "Password for the supplied username."
+    }
+  ],
+  "examples": [
+    "makeToken DOMAIN\\Username Password123!"
+  ],
+  "source": "manifest"
+}

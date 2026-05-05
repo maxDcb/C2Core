@@ -1,0 +1,65 @@
+{
+  "name": "dcomExec",
+  "display_name": "dcomExec",
+  "kind": "module",
+  "description": "Execute a command on a remote Windows host through DCOM.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-h",
+      "type": "flag",
+      "required": true,
+      "description": "Remote host name or IP."
+    },
+    {
+      "name": "-c",
+      "type": "flag",
+      "required": true,
+      "description": "Executable or command to start remotely."
+    },
+    {
+      "name": "-a",
+      "type": "flag",
+      "required": false,
+      "description": "Arguments passed to the remote command."
+    },
+    {
+      "name": "-w",
+      "type": "flag",
+      "required": false,
+      "description": "Remote working directory."
+    },
+    {
+      "name": "-k",
+      "type": "flag",
+      "required": false,
+      "description": "Kerberos SPN, for example HOST/server.domain."
+    },
+    {
+      "name": "-u",
+      "type": "flag",
+      "required": false,
+      "description": "Username for explicit credentials."
+    },
+    {
+      "name": "-p",
+      "type": "flag",
+      "required": false,
+      "description": "Password for explicit credentials."
+    },
+    {
+      "name": "-n",
+      "type": "flag",
+      "required": false,
+      "description": "Use no password/current credential behavior."
+    }
+  ],
+  "examples": [
+    "dcomExec -h fileserver -c cmd.exe -a \"/c whoami\"",
+    "dcomExec -h fileserver -k HOST/fileserver.domain -u DOMAIN\\user -p Passw0rd -c cmd.exe -a \"/c whoami\""
+  ],
+  "source": "manifest"
+}

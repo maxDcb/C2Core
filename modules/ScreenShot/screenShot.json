@@ -1,0 +1,15 @@
+{
+  "name": "screenShot",
+  "display_name": "screenShot",
+  "kind": "module",
+  "description": "Capture a screenshot from the beacon host.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [],
+  "examples": [
+    "screenShot"
+  ],
+  "source": "manifest"
+}
