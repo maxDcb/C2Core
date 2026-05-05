@@ -1,0 +1,29 @@
+{
+  "name": "upload",
+  "display_name": "upload",
+  "kind": "module",
+  "description": "Upload a local TeamServer file to the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "local_path",
+      "type": "path",
+      "required": true,
+      "description": "Source path on the TeamServer."
+    },
+    {
+      "name": "remote_path",
+      "type": "path",
+      "required": true,
+      "description": "Destination path on the beacon."
+    }
+  ],
+  "examples": [
+    "upload /tmp/tool.exe C:\\Temp\\tool.exe",
+    "upload /tmp/tool /tmp/tool"
+  ],
+  "source": "manifest"
+}

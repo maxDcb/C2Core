@@ -1,0 +1,25 @@
+{
+  "name": "run",
+  "display_name": "run",
+  "kind": "module",
+  "description": "Run a system command on the beacon and return its output.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "command",
+      "type": "text",
+      "required": true,
+      "description": "Command line to execute.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "run whoami",
+    "run id",
+    "run cmd /c dir"
+  ],
+  "source": "manifest"
+}

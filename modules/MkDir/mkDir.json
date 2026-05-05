@@ -1,0 +1,24 @@
+{
+  "name": "mkDir",
+  "display_name": "mkDir",
+  "kind": "module",
+  "description": "Create a remote directory on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Remote directory path.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "mkDir /tmp/work",
+    "mkDir C:\\Temp\\work"
+  ],
+  "source": "manifest"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "cat",
+  "display_name": "cat",
+  "kind": "module",
+  "description": "Read and print a remote file from the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Remote file path.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "cat /etc/hosts",
+    "cat C:\\Windows\\win.ini"
+  ],
+  "source": "manifest"
+}

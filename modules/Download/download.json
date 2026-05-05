@@ -1,0 +1,29 @@
+{
+  "name": "download",
+  "display_name": "download",
+  "kind": "module",
+  "description": "Download a remote file from the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "remote_path",
+      "type": "path",
+      "required": true,
+      "description": "Path of the file on the beacon."
+    },
+    {
+      "name": "local_path",
+      "type": "path",
+      "required": true,
+      "description": "Destination path on the TeamServer."
+    }
+  ],
+  "examples": [
+    "download /tmp/file.txt /tmp/file.txt",
+    "download C:\\Temp\\file.txt /tmp/file.txt"
+  ],
+  "source": "manifest"
+}

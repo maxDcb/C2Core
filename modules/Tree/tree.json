@@ -1,0 +1,25 @@
+{
+  "name": "tree",
+  "display_name": "tree",
+  "kind": "module",
+  "description": "Recursively list a remote directory structure.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": false,
+      "description": "Remote directory path. Defaults to the beacon current working directory.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "tree",
+    "tree /tmp",
+    "tree C:\\Users\\Public"
+  ],
+  "source": "manifest"
+}

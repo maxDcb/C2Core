@@ -1,0 +1,13 @@
+{
+  "name": "ipConfig",
+  "display_name": "ipConfig",
+  "kind": "module",
+  "description": "Show network interface configuration on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [],
+  "examples": ["ipConfig"],
+  "source": "manifest"
+}

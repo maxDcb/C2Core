@@ -1,0 +1,24 @@
+{
+  "name": "help",
+  "display_name": "help",
+  "kind": "common",
+  "description": "Show available commands or command-specific help in the beacon console.",
+  "target": "operator",
+  "requires_session": false,
+  "platforms": ["any"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "command",
+      "type": "text",
+      "required": false,
+      "description": "Optional command name."
+    }
+  ],
+  "examples": [
+    "help",
+    "help loadModule",
+    "help listener"
+  ],
+  "source": "manifest"
+}

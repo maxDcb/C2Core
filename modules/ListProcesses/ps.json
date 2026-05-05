@@ -1,0 +1,13 @@
+{
+  "name": "ps",
+  "display_name": "ps",
+  "kind": "module",
+  "description": "List running processes on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [],
+  "examples": ["ps"],
+  "source": "manifest"
+}

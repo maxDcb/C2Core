@@ -1,0 +1,24 @@
+{
+  "name": "remove",
+  "display_name": "remove",
+  "kind": "module",
+  "description": "Remove a remote file or directory from the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "path",
+      "type": "path",
+      "required": true,
+      "description": "Remote file or directory path.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "remove /tmp/file.txt",
+    "remove C:\\Temp\\file.txt"
+  ],
+  "source": "manifest"
+}

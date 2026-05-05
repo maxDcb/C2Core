@@ -1,0 +1,25 @@
+{
+  "name": "shell",
+  "display_name": "shell",
+  "kind": "module",
+  "description": "Start or interact with a persistent shell on the beacon.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "command",
+      "type": "text",
+      "required": false,
+      "description": "Optional shell command. Empty command starts the shell; exit stops it.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "shell",
+    "shell whoami",
+    "shell exit"
+  ],
+  "source": "manifest"
+}
