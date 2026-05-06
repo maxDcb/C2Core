@@ -13,6 +13,7 @@ public:
     std::string getInfo();
 
     int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
+    int recurringExec(C2Message& c2RetMessage) override;
     int process(C2Message& c2Message, C2Message& c2RetMessage);
     int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
     int osCompatibility() 
@@ -21,7 +22,12 @@ public:
     }
 
 private:
-    
+    int emitChunk(C2Message& c2RetMessage);
+
+    std::string m_outputfile;
+    std::string m_taskUuid;
+    std::string m_dumpBuffer;
+    std::size_t m_bytesSent = 0;
 };
 
 

@@ -199,6 +199,7 @@ std::string Powershell::getInfo()
     info += "To be sure to get the output of the commande do 'cmd | write-output'.\n";
     info += "You can import module using -i, added as New-Module at every execution.\n";
     info += "You run scripts using -s.\n";
+    info += "Script files for -i and -s are resolved from Scripts/Windows or Scripts/Any.\n";
     info += "AMSI bypass by patching the amsi.dll will work once for all.\n";
     info += "exemple:\n";
     info += " - powershell whoami | write-output\n";

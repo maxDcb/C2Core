@@ -185,9 +185,10 @@ std::string Script::getInfo()
     std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "script:\n";
-    info += "Launch the script on the victim machine\n";
+    info += "Launch a TeamServer-managed script artifact on the victim machine.\n";
+    info += "Scripts are resolved from Scripts/<platform> or Scripts/Any.\n";
     info += "exemple:\n";
-    info += " - script /tmp/toto.sh\n";
+    info += " - script collect.sh\n";
 #endif
     return info;
 }

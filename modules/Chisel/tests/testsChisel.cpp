@@ -61,11 +61,36 @@ int main()
     {
         Chisel module;
         module.setWindowsArch(currentArch);
-        std::vector<std::string> cmd = {"chisel", "missing.exe", "client", "host:8000", "R:socks"};
+        std::vector<std::string> cmd = {"chisel", "client", "host:8000", "R:socks"};
         C2Message message;
 
-        ok &= expect(module.init(cmd, message) == -1, "missing payload file should be rejected");
-        ok &= expect(!message.returnvalue().empty(), "missing payload file should explain the error");
+        ok &= expect(module.init(cmd, message) == -1, "start commands should be prepared by the TeamServer service");
+        ok &= expect(message.returnvalue().find("TeamServer shellcode service") != std::string::npos, "start command should explain server-side preparation");
+    }
+
+    {
+        Chisel module;
+        C2Message message;
+        ModulePreparedShellcodeTask task;
+        task.inputFile = "GeneratedArtifacts/payload/chisel.bin";
+        task.payload = "shellcode";
+        task.displayCommand = "client host:8000 R:socks";
+
+        ok &= expect(module.initPreparedShellcode(task, message) == 0, "prepared shellcode should be packed");
+        ok &= expect(message.instruction() == "chisel", "prepared instruction should be set");
+        ok &= expect(message.inputfile() == task.inputFile, "prepared input artifact path should be packed");
+        ok &= expect(message.cmd() == task.displayCommand, "prepared display command should be packed");
+        ok &= expect(message.data() == task.payload, "prepared shellcode bytes should be packed");
+    }
+
+    {
+        Chisel module;
+        C2Message message;
+        ModulePreparedShellcodeTask task;
+        task.displayCommand = "client host:8000 R:socks";
+
+        ok &= expect(module.initPreparedShellcode(task, message) == -1, "empty prepared shellcode should be rejected");
+        ok &= expect(message.returnvalue().find("empty") != std::string::npos, "empty prepared shellcode should explain the error");
     }
 
     return ok ? 0 : 1;

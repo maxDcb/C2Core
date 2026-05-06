@@ -1,0 +1,30 @@
+{
+  "name": "script",
+  "display_name": "script",
+  "kind": "module",
+  "description": "Run a TeamServer-managed script artifact on the beacon. Scripts are resolved from Scripts/<platform> or Scripts/Any.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows", "linux"],
+  "archs": ["any"],
+  "args": [
+    {
+      "name": "script_artifact",
+      "type": "artifact",
+      "required": true,
+      "description": "Script artifact compatible with the current session.",
+      "artifact_filter": {
+        "category": "script",
+        "scope": "server",
+        "target": "beacon",
+        "platform": "session.platform",
+        "runtime": "script"
+      }
+    }
+  ],
+  "examples": [
+    "script cleanup.sh",
+    "script collect.cmd"
+  ],
+  "source": "manifest"
+}

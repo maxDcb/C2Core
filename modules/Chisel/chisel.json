@@ -1,0 +1,38 @@
+{
+  "name": "chisel",
+  "display_name": "chisel",
+  "kind": "module",
+  "description": "Launch the TeamServer-managed chisel.exe tool on a Windows beacon. The TeamServer generates shellcode from Tools/Windows/<arch>/chisel.exe before sending the task.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "action",
+      "type": "enum",
+      "required": true,
+      "description": "Chisel action.",
+      "values": ["client", "status", "stop"]
+    },
+    {
+      "name": "server",
+      "type": "text",
+      "required": false,
+      "description": "Server host and port used by chisel client."
+    },
+    {
+      "name": "reverse_spec",
+      "type": "text",
+      "required": false,
+      "description": "Reverse socks or reverse port-forward specification."
+    }
+  ],
+  "examples": [
+    "chisel status",
+    "chisel stop 1234",
+    "chisel client 127.0.0.1:9001 R:socks",
+    "chisel client 127.0.0.1:9001 R:1080:127.0.0.1:1080"
+  ],
+  "source": "manifest"
+}

