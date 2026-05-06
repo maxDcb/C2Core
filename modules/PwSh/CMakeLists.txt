@@ -12,8 +12,13 @@ else()
 endif()
 set_property(TARGET PwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PwSh )
-add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 $<TARGET_FILE:PwSh> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:PwSh>")
+add_custom_command(TARGET PwSh POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${C2_RUNTIME_ROOT}/data/Tools/Any/any"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/PowerShellRunner/rdm.dll"
+        "${C2_RUNTIME_ROOT}/data/Tools/Any/any/rdm.dll")
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)
@@ -24,7 +29,7 @@ if(C2CORE_BUILD_TESTS)
     # add_executable(testsPwSh WIN32 tests/testsPwSh.cpp PwSh.cpp HostControl.cpp AssemblyManager.cpp AssemblyStore.cpp HostMalloc.cpp MemoryManager.cpp ../ModuleCmd/syscall.cpp ../ModuleCmd/syscall.x64.obj)
     target_link_libraries(testsPwSh )
     set_property(TARGET testsPwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-    add_custom_command(TARGET testsPwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
+    add_custom_command(TARGET testsPwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:testsPwSh> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPwSh>")
 
     add_test(NAME testsPwSh COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPwSh>")

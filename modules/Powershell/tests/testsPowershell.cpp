@@ -96,6 +96,36 @@ int main()
         std::filesystem::remove(script);
     }
 
+    {
+        Powershell module;
+        C2Message message;
+        message.set_instruction("powershell");
+        message.set_cmd("-s missing-payload.ps1 ");
+        C2Message retMessage;
+
+        ok &= expect(module.process(message, retMessage) == 0, "script command without payload should process");
+        ok &= expect(retMessage.instruction() == "powershell", "script command without payload should preserve instruction");
+        ok &= expect(retMessage.cmd() == message.cmd(), "script command without payload should preserve command");
+        ok &= expectContains(retMessage.returnvalue(), "Missing PowerShell script payload", "script command without payload should explain failure");
+    }
+
+#if defined(__linux__) && defined(C2CORE_BUILD_TESTS)
+    {
+        Powershell module;
+        C2Message message;
+        message.set_instruction("powershell");
+        message.set_cmd("-s testScript.ps1 ");
+        message.set_data("Invoke-Command -ScriptBlock  {\nWrite-Output \"script-process-ok\"\n};");
+        C2Message retMessage;
+
+        ok &= expect(module.process(message, retMessage) == 0, "script payload should process");
+        ok &= expect(retMessage.instruction() == "powershell", "script payload should preserve instruction");
+        ok &= expect(retMessage.cmd() == message.cmd(), "script payload should preserve display command");
+        ok &= expectContains(retMessage.returnvalue(), "script-process-ok", "script payload should be the executed command");
+        ok &= expect(retMessage.returnvalue().find("-s testScript.ps1") == std::string::npos, "script payload should not execute the -s display command");
+    }
+#endif
+
 #ifdef _WIN32
     {
         Powershell module;
@@ -131,6 +161,21 @@ int main()
             ok &= expect(module.process(message, retMessage) == 0, "imported function command should process");
             ok &= expectContains(retMessage.returnvalue(), "import-exec-ok", "imported function output should be captured");
         }
+
+        std::filesystem::remove(script);
+    }
+
+    {
+        const auto script = writeTempFile("c2core_powershell_exec_script.ps1", "Write-Output \"script-exec-ok\"\n");
+        Powershell module;
+        std::vector<std::string> cmd = {"powershell", "-s", script.string()};
+        C2Message message;
+        C2Message retMessage;
+
+        ok &= expect(module.init(cmd, message) == 0, "script execution file should be accepted");
+        ok &= expect(module.process(message, retMessage) == 0, "script execution file should process");
+        ok &= expectContains(retMessage.returnvalue(), "script-exec-ok", "script execution output should be captured");
+        ok &= expect(retMessage.cmd() == message.cmd(), "script execution return message should preserve command");
 
         std::filesystem::remove(script);
     }

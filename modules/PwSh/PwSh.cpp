@@ -160,7 +160,7 @@ std::string PwSh::getInfo()
 
     info += "Usage:\n";
     info += "  pwSh init\n";
-    info += "      - Loads the fixed PowerShell runner DLL from Tools/Windows/<arch>/rdm.dll.\n";
+    info += "      - Loads the fixed PowerShell runner DLL from Tools/Any/any/rdm.dll.\n";
     info += "      - The runner type is fixed to rdm.rdm and must implement Invoke(string command).\n\n";
 
     info += "  pwSh run <cmd>\n";

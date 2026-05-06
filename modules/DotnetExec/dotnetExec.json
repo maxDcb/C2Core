@@ -26,13 +26,24 @@
       "type": "artifact",
       "required": false,
       "description": "Assembly tool artifact for load.",
-      "artifact_filter": {
-        "category": "tool",
-        "scope": "server",
-        "target": "teamserver",
-        "platform": "windows",
-        "runtime": "any"
-      }
+      "artifact_filters": [
+        {
+          "category": "tool",
+          "scope": "server",
+          "target": "teamserver",
+          "platform": "windows",
+          "runtime": "any",
+          "name_contains": ".exe"
+        },
+        {
+          "category": "tool",
+          "scope": "server",
+          "target": "teamserver",
+          "platform": "windows",
+          "runtime": "any",
+          "name_contains": ".dll"
+        }
+      ]
     },
     {
       "name": "type_or_method",

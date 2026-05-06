@@ -2,7 +2,7 @@
   "name": "pwSh",
   "display_name": "pwSh",
   "kind": "module",
-  "description": "Initialize and use the in-memory PowerShell runner. The runner DLL is fixed to Tools/Windows/<arch>/rdm.dll.",
+  "description": "Initialize and use the in-memory PowerShell runner. The runner DLL is fixed to Tools/Any/any/rdm.dll.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

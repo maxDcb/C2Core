@@ -33,14 +33,25 @@
       "type": "flag",
       "required": false,
       "description": "Generate shellcode from an executable on the TeamServer.",
-      "artifact_filter": {
-        "category": "tool",
-        "scope": "server",
-        "target": "teamserver",
-        "platform": "windows",
-        "runtime": "any",
-        "name_contains": ".exe"
-      }
+      "artifact_filters": [
+        {
+          "category": "tool",
+          "scope": "server",
+          "target": "teamserver",
+          "platform": "windows",
+          "runtime": "any",
+          "name_contains": ".exe"
+        },
+        {
+          "category": "beacon",
+          "scope": "implant",
+          "target": "listener",
+          "platform": "windows",
+          "arch": "session.arch",
+          "runtime": "native",
+          "name_contains": ".exe"
+        }
+      ]
     },
     {
       "name": "--donut-dll",

