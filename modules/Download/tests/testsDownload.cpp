@@ -70,12 +70,15 @@ bool testDownload() {
         std::vector<std::string> cmd = {"download", src.string(), dst.string()};
         C2Message msg, ret; 
         dl.init(cmd, msg);
+        msg.set_uuid("download-uuid");
         dl.process(msg, ret);
         dl.followUp(ret);
         std::cout << "large first ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
         while(ret.returnvalue() != "Success") {
             C2Message next;
             dl.recurringExec(next);
+            ok &= next.uuid() == "download-uuid";
+            ok &= next.inputfile() == src.string();
             dl.followUp(next);
             ret = next;
         }

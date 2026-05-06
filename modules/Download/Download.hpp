@@ -23,7 +23,9 @@ public:
     }
 
 private:
+    std::string m_inputfile;
     std::string m_outputfile;
+    std::string m_taskUuid;
     std::ofstream m_output;
     std::ifstream m_input;
     std::streamsize m_fileSize;

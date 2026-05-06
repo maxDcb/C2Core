@@ -2,17 +2,25 @@
   "name": "upload",
   "display_name": "upload",
   "kind": "module",
-  "description": "Upload a local TeamServer file to the beacon.",
+  "description": "Upload an operator-managed artifact from the TeamServer to the beacon.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],
   "archs": ["any"],
   "args": [
     {
-      "name": "local_path",
-      "type": "path",
+      "name": "upload_artifact",
+      "type": "artifact",
       "required": true,
-      "description": "Source path on the TeamServer."
+      "description": "Artifact from UploadedArtifacts compatible with the current session.",
+      "artifact_filter": {
+        "category": "upload",
+        "scope": "operator",
+        "target": "beacon",
+        "platform": "session.platform",
+        "arch": "session.arch",
+        "runtime": "file"
+      }
     },
     {
       "name": "remote_path",
@@ -22,8 +30,8 @@
     }
   ],
   "examples": [
-    "upload /tmp/tool.exe C:\\Temp\\tool.exe",
-    "upload /tmp/tool /tmp/tool"
+    "upload tool.exe C:\\Temp\\tool.exe",
+    "upload tool /tmp/tool"
   ],
   "source": "manifest"
 }

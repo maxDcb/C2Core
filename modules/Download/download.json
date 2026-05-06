@@ -15,15 +15,15 @@
       "description": "Path of the file on the beacon."
     },
     {
-      "name": "local_path",
-      "type": "path",
-      "required": true,
-      "description": "Destination path on the TeamServer."
+      "name": "artifact_name",
+      "type": "text",
+      "required": false,
+      "description": "Optional generated artifact filename hint. The TeamServer controls the storage path."
     }
   ],
   "examples": [
-    "download /tmp/file.txt /tmp/file.txt",
-    "download C:\\Temp\\file.txt /tmp/file.txt"
+    "download /tmp/file.txt",
+    "download C:\\Temp\\file.txt file.txt"
   ],
   "source": "manifest"
 }

@@ -48,11 +48,11 @@ std::string Upload::getInfo()
 #ifdef BUILD_TEAMSERVER
     info += "Upload Module:\n";
     info += "Transfer a file from the attacker's machine to the victim's machine.\n";
-    info += "The file is read from the local system and written to the specified path on the remote target.\n";
+    info += "The TeamServer resolves an operator upload artifact and sends its content to the remote target.\n";
     info += "\nUsage example:\n";
-    info += " - upload /tmp/toto.exe C:\\Temp\\toto.exe\n";
+    info += " - upload toto.exe C:\\Temp\\toto.exe\n";
     info += "\nArguments:\n";
-    info += " <sourcePath>    Path to the file on the attacker's machine\n";
+    info += " <artifact>      Uploaded artifact name or id on the TeamServer\n";
     info += " <destPath>      Destination path on the victim's machine\n";
 #endif
     return info;
