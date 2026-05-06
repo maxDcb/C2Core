@@ -21,7 +21,7 @@ command spec instead.
   "description": "Print current user and group information from the beacon.",
   "target": "beacon",
   "requires_session": true,
-  "platforms": ["windows", "linux", "macos"],
+  "platforms": ["windows", "linux"],
   "archs": ["any"],
   "args": [],
   "examples": ["whoami"],
