@@ -38,14 +38,26 @@
       "type": "artifact",
       "required": true,
       "description": "Service executable artifact from Tools or UploadedArtifacts.",
-      "artifact_filter": {
-        "category": "tool",
-        "scope": "server",
-        "target": "teamserver",
-        "platform": "windows",
-        "runtime": "any",
-        "name_contains": ".exe"
-      }
+      "artifact_filters": [
+        {
+          "category": "tool",
+          "scope": "server",
+          "target": "teamserver",
+          "platform": "windows",
+          "arch": "session.arch",
+          "runtime": "any",
+          "name_contains": ".exe"
+        },
+        {
+          "category": "upload",
+          "scope": "operator",
+          "target": "beacon",
+          "platform": "session.platform",
+          "arch": "session.arch",
+          "runtime": "file",
+          "name_contains": ".exe"
+        }
+      ]
     }
   ],
   "examples": [

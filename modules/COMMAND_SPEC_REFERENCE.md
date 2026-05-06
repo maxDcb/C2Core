@@ -68,3 +68,34 @@ usage shapes that should be suggested by the console.
 
 `session.platform` and `session.arch` are resolved by the client from the current beacon
 before it asks `ListArtifacts` for contextual autocomplete candidates.
+
+When an argument can be resolved from several artifact categories, use `artifact_filters`
+instead of a single `artifact_filter`. Filters are treated as an OR-list by the client.
+
+```json
+{
+  "name": "service_artifact",
+  "type": "artifact",
+  "required": true,
+  "artifact_filters": [
+    {
+      "category": "tool",
+      "scope": "server",
+      "target": "teamserver",
+      "platform": "windows",
+      "arch": "session.arch",
+      "runtime": "any",
+      "name_contains": ".exe"
+    },
+    {
+      "category": "upload",
+      "scope": "operator",
+      "target": "beacon",
+      "platform": "session.platform",
+      "arch": "session.arch",
+      "runtime": "file",
+      "name_contains": ".exe"
+    }
+  ]
+}
+```
