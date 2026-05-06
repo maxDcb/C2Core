@@ -120,12 +120,13 @@ std::string PsExec::getInfo()
     info += "  * You can wrap arbitrary binaries with a service wrapper (e.g. nssm) if you need to run non-service executables as services.\n";
     info += "- The module uses a short-lived service: the service is expected to stop within ~2 seconds and will be deleted after stopping.\n";
     info += "  * Therefore the executable launched by the service MUST NOT perform long-running tasks inside the service process (it should perform a quick action and exit).\n";
-    info += "- Authentication: provide explicit credentials (-u/-p) or use Kerberos (-k) / current token (-n) as appropriate.\n";
+    info += "- Authentication: provide explicit credentials (-u) or use Kerberos (-k) / current token (-n) as appropriate.\n";
+    info += "- The service executable is resolved by the TeamServer from Tools first, then UploadedArtifacts.\n";
     info += "\nExamples:\n";
-    info += "- psExec -u DOMAIN\\\\Username Password m3dc.cyber.local /tmp/implant.exe\n";
-    info += "- psExec -k m3dc.cyber.local /tmp/implant.exe\n";
-    info += "- psExec -n m3dc.cyber.local /tmp/implant.exe\n";
-    info += "- psExec -n 10.9.20.10 /tmp/implant.exe\n";
+    info += "- psExec -u DOMAIN\\\\Username Password m3dc.cyber.local service.exe\n";
+    info += "- psExec -k m3dc.cyber.local service.exe\n";
+    info += "- psExec -n m3dc.cyber.local service.exe\n";
+    info += "- psExec -n 10.9.20.10 service.exe\n";
 #endif
     return info;
 }
@@ -576,4 +577,3 @@ int PsExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 #endif
     return 0;
 }
-

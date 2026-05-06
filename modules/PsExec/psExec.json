@@ -2,7 +2,7 @@
   "name": "psExec",
   "display_name": "psExec",
   "kind": "module",
-  "description": "Copy and run a service executable on a remote Windows host through PsExec.",
+  "description": "Copy and run a service executable on a remote Windows host. The service executable is resolved from Tools first, then UploadedArtifacts.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
@@ -34,10 +34,18 @@
       "description": "Target host name or IP."
     },
     {
-      "name": "service_file",
-      "type": "path",
+      "name": "service_artifact",
+      "type": "artifact",
       "required": true,
-      "description": "Local service executable file path to copy and run."
+      "description": "Service executable artifact from Tools or UploadedArtifacts.",
+      "artifact_filter": {
+        "category": "tool",
+        "scope": "server",
+        "target": "teamserver",
+        "platform": "windows",
+        "runtime": "any",
+        "name_contains": ".exe"
+      }
     }
   ],
   "examples": [

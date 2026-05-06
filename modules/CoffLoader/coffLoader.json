@@ -1,0 +1,44 @@
+{
+  "name": "coffLoader",
+  "display_name": "coffLoader",
+  "kind": "module",
+  "description": "Load a TeamServer-managed COFF/BOF tool artifact and execute an exported function.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "coff_file",
+      "type": "artifact",
+      "required": true,
+      "description": "COFF/BOF tool artifact from Tools compatible with the current session.",
+      "artifact_filter": {
+        "category": "tool",
+        "scope": "server",
+        "target": "teamserver",
+        "platform": "windows",
+        "runtime": "any",
+        "name_contains": ".o"
+      }
+    },
+    {
+      "name": "function_name",
+      "type": "text",
+      "required": true,
+      "description": "Exported function to execute, usually go."
+    },
+    {
+      "name": "packed_arguments",
+      "type": "text",
+      "required": false,
+      "description": "Optional COFF argument format and values.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "coffLoader whoami.x64.o go",
+    "coffLoader dir.x64.o go Zs c:\\ 0"
+  ],
+  "source": "manifest"
+}

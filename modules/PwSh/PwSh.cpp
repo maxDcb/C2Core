@@ -159,25 +159,22 @@ std::string PwSh::getInfo()
     info += "The execution occurs within the current process.\n\n";
 
     info += "Usage:\n";
-    info += "  pwSh init <inputFile> <typeForDll>\n";
-    info += "      - Arguments are optional. If not provided, the default PowerShell instance DLL will be loaded.\n";
-    info += "      - The DLL must implment this methode: \"public string Invoke(string command)\".\n";
-    info += "      - Loads the PowerShell .NET assembly DLL into memory.\n";
-    info += "      - For DLLs, you must specify the fully qualified type name (e.g., Namespace.ClassName).\n\n";
+    info += "  pwSh init\n";
+    info += "      - Loads the fixed PowerShell runner DLL from Tools/Windows/<arch>/rdm.dll.\n";
+    info += "      - The runner type is fixed to rdm.rdm and must implement Invoke(string command).\n\n";
 
     info += "  pwSh run <cmd>\n";
     info += "      - Executes the given PowerShell command.\n\n";
 
 
-    info += "  pwSh import <modulePsPath>\n";
-    info += "      - Import the powersehll module (e.g., PowerView.ps1)\n\n";
+    info += "  pwSh import <scriptArtifact>\n";
+    info += "      - Import the powersehll module from Scripts/Windows or Scripts/Any (e.g., PowerView.ps1)\n\n";
 
-    info += "  pwSh script <scriptPath>\n";
-    info += "      - execute the powersehll script.\n\n";
+    info += "  pwSh script <scriptArtifact>\n";
+    info += "      - execute the powersehll script from Scripts/Windows or Scripts/Any.\n\n";
 
     info += "Examples:\n";
     info += "  pwSh init\n";
-    info += "  pwSh init customPS.dll CustomPS.PowerShell\n\n";
     info += "  pwSh run whoami\n";
     info += "  pwSh run $x = 4; Write-Output $x\n\n";
 

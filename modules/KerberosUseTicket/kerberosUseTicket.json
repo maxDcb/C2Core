@@ -2,21 +2,30 @@
   "name": "kerberosUseTicket",
   "display_name": "kerberosUseTicket",
   "kind": "module",
-  "description": "Import a Kerberos ticket file into the current LUID.",
+  "description": "Import a Kerberos ticket upload artifact into the current LUID.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
   "archs": ["x86", "x64", "arm64"],
   "args": [
     {
-      "name": "ticket_file",
-      "type": "path",
+      "name": "ticket_artifact",
+      "type": "artifact",
       "required": true,
-      "description": "Local .kirbi ticket file read by the TeamServer before dispatch."
+      "description": ".kirbi ticket artifact from UploadedArtifacts.",
+      "artifact_filter": {
+        "category": "upload",
+        "scope": "operator",
+        "target": "beacon",
+        "platform": "session.platform",
+        "arch": "session.arch",
+        "runtime": "file",
+        "name_contains": ".kirbi"
+      }
     }
   ],
   "examples": [
-    "kerberosUseTicket /tmp/ticket.kirbi"
+    "kerberosUseTicket ticket.kirbi"
   ],
   "source": "manifest"
 }

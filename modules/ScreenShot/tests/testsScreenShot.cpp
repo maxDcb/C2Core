@@ -71,7 +71,11 @@ int main()
         C2Message ret;
 
         ok &= expect(module.init(cmd, message) == 0, "process setup should initialize");
+        message.set_outputfile("generated-screenshot.bmp");
         ok &= expect(module.process(message, ret) == 0, "process should return success");
+        ok &= expect(ret.instruction() == "screenShot", "process should preserve instruction");
+        ok &= expect(ret.outputfile() == "generated-screenshot.bmp", "process should preserve generated artifact output path");
+        ok &= expect(ret.args() == "0", "process should mark screenshot as the first artifact chunk");
 
 #ifdef _WIN32
         ok &= expect(ret.returnvalue() == "Success", "Windows process should report Success");

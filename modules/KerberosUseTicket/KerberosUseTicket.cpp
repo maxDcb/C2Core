@@ -69,9 +69,9 @@ std::string KerberosUseTicket::getInfo()
     std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "KerberosUseTicket:\n";
-    info += "Import a kerberos ticket from a file to the curent LUID. \n";
+    info += "Import a kerberos ticket upload artifact to the curent LUID. \n";
     info += "exemple:\n";
-    info += "- KerberosUseTicket /tmp/ticket.kirbi\n";
+    info += "- kerberosUseTicket ticket.kirbi\n";
 #endif
     return info;
 }

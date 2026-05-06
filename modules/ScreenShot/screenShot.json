@@ -2,14 +2,22 @@
   "name": "screenShot",
   "display_name": "screenShot",
   "kind": "module",
-  "description": "Capture a screenshot from the beacon host.",
+  "description": "Capture a screenshot from the beacon host and register it as a generated TeamServer artifact.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
   "archs": ["x86", "x64", "arm64"],
-  "args": [],
+  "args": [
+    {
+      "name": "artifact_name",
+      "type": "text",
+      "required": false,
+      "description": "Optional generated artifact filename hint."
+    }
+  ],
   "examples": [
-    "screenShot"
+    "screenShot",
+    "screenShot desktop.bmp"
   ],
   "source": "manifest"
 }

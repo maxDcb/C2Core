@@ -65,11 +65,11 @@ std::string CoffLoader::getInfo()
     std::string info;
 #ifdef BUILD_TEAMSERVER
     info += "coffLoader:\n";
-    info += "Load a .o coff file and execute it.\n";
+    info += "Load a TeamServer-managed .o COFF/BOF tool artifact and execute it.\n";
     info += "Coff take packed argument as entry, you get to specify the type as a string of [Z,z,s,i] for wstring, string, short, int.\n";
     info += "exemple:\n";
-    info += "- coffLoader ./dir.x64.o go Zs c:\\ 0\n";
-    info += "- coffLoader ./whoami.x64.o\n";
+    info += "- coffLoader dir.x64.o go Zs c:\\ 0\n";
+    info += "- coffLoader whoami.x64.o go\n";
 #endif
     return info;
 }

@@ -160,8 +160,9 @@ std::string DotnetExec::getInfo()
     info += "Once an assembly is loaded, it can be reused using its assigned short name.\n\n";
 
     info += "Usage:\n";
-    info += "  dotnetExec load <moduleShortName> <inputFile> <typeForDll>\n";
+    info += "  dotnetExec load <moduleShortName> <toolArtifact> <typeForDll>\n";
     info += "      - Load a .NET assembly (EXE or DLL) into memory.\n";
+    info += "      - The TeamServer resolves the assembly from Tools/<platform>/<arch>.\n";
     info += "      - For DLLs, you must specify the fully-qualified type name (e.g., Namespace.ClassName).\n\n";
 
     info += "  dotnetExec runExe <moduleShortName> <arguments>\n";
@@ -172,9 +173,9 @@ std::string DotnetExec::getInfo()
     info += "      - You must have specified the type when loading the DLL.\n\n";
 
     info += "Examples:\n";
-    info += "  dotnetExec load mytool ./Tool.exe\n";
+    info += "  dotnetExec load mytool Tool.exe\n";
     info += "  dotnetExec runExe mytool \"--list --verbose\"\n\n";
-    info += "  dotnetExec load libmodule ./Library.dll MyNamespace.MyClass\n";
+    info += "  dotnetExec load libmodule Library.dll MyNamespace.MyClass\n";
     info += "  dotnetExec runDll libmodule Run \"param1 param2\"\n\n";
 
     info += "Notes:\n";

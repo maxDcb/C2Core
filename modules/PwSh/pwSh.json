@@ -1,0 +1,47 @@
+{
+  "name": "pwSh",
+  "display_name": "pwSh",
+  "kind": "module",
+  "description": "Initialize and use the in-memory PowerShell runner. The runner DLL is fixed to Tools/Windows/<arch>/rdm.dll.",
+  "target": "beacon",
+  "requires_session": true,
+  "platforms": ["windows"],
+  "archs": ["x86", "x64", "arm64"],
+  "args": [
+    {
+      "name": "action",
+      "type": "enum",
+      "required": true,
+      "description": "PwSh action.",
+      "values": ["init", "run", "import", "script"]
+    },
+    {
+      "name": "command_or_script",
+      "type": "text",
+      "required": false,
+      "description": "PowerShell command for run, or script artifact for import/script.",
+      "artifact_filter": {
+        "category": "script",
+        "scope": "server",
+        "target": "beacon",
+        "platform": "windows",
+        "runtime": "script",
+        "name_contains": ".ps1"
+      }
+    },
+    {
+      "name": "arguments",
+      "type": "text",
+      "required": false,
+      "description": "Optional PowerShell command tail.",
+      "variadic": true
+    }
+  ],
+  "examples": [
+    "pwSh init",
+    "pwSh run whoami",
+    "pwSh import PowerView.ps1",
+    "pwSh script collect.ps1"
+  ],
+  "source": "manifest"
+}
