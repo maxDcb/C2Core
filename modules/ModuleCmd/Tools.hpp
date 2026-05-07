@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -481,7 +483,9 @@ int static inline patchAmsiPowershell()
 class StdCapture
 {
 public:
-    StdCapture(): m_capturing(false), m_init(false), m_oldStdOut(0), m_oldStdErr(0)
+    StdCapture(): m_capturing(false), m_init(false), m_oldStdOut(0), m_oldStdErr(0),
+        m_oldStdOutHandle(INVALID_HANDLE_VALUE), m_oldStdErrHandle(INVALID_HANDLE_VALUE),
+        m_pipeReadHandle(INVALID_HANDLE_VALUE), m_pipeWriteHandle(INVALID_HANDLE_VALUE)
     {
         m_pipe[READ] = 0;
         m_pipe[WRITE] = 0;
@@ -491,6 +495,14 @@ public:
         m_oldStdErr = dup(fileno(stderr));
         if (m_oldStdOut == -1 || m_oldStdErr == -1)
             return;
+
+        m_pipeReadHandle = reinterpret_cast<HANDLE>(_get_osfhandle(m_pipe[READ]));
+        m_pipeWriteHandle = reinterpret_cast<HANDLE>(_get_osfhandle(m_pipe[WRITE]));
+        if (m_pipeReadHandle == INVALID_HANDLE_VALUE || m_pipeWriteHandle == INVALID_HANDLE_VALUE)
+            return;
+
+        m_oldStdOutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        m_oldStdErrHandle = GetStdHandle(STD_ERROR_HANDLE);
 
         m_init = true;
     }
@@ -518,11 +530,36 @@ public:
             return;
         if (m_capturing)
             EndCapture();
+        m_captured.clear();
         fflush(stdout);
         fflush(stderr);
         dup2(m_pipe[WRITE], fileno(stdout));
         dup2(m_pipe[WRITE], fileno(stderr));
+        SetStdHandle(STD_OUTPUT_HANDLE, m_pipeWriteHandle);
+        SetStdHandle(STD_ERROR_HANDLE, m_pipeWriteHandle);
         m_capturing = true;
+    }
+
+    void DrainCapture()
+    {
+        if (!m_init || m_pipeReadHandle == INVALID_HANDLE_VALUE)
+            return;
+
+        for (;;)
+        {
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(m_pipeReadHandle, NULL, 0, NULL, &bytesAvailable, NULL) || bytesAvailable == 0)
+                break;
+
+            const int bytesToRead = static_cast<int>(std::min<DWORD>(bytesAvailable, 4096));
+            std::string buf;
+            buf.resize(bytesToRead);
+            const int bytesRead = read(m_pipe[READ], &(*buf.begin()), bytesToRead);
+            if (bytesRead <= 0)
+                break;
+            buf.resize(bytesRead);
+            m_captured += buf;
+        }
     }
 
     bool EndCapture()
@@ -535,30 +572,10 @@ public:
         fflush(stderr);
         dup2(m_oldStdOut, fileno(stdout));
         dup2(m_oldStdErr, fileno(stderr));
-        m_captured.clear();
-
-        std::string buf;
-        const int bufSize = 1024;
-        buf.resize(bufSize);
-        int bytesRead = 0;
-        if (!eof(m_pipe[READ]))
-        {
-            bytesRead = read(m_pipe[READ], &(*buf.begin()), bufSize);
-        }
-        while(bytesRead == bufSize)
-        {
-            m_captured += buf;
-            bytesRead = 0;
-            if (!eof(m_pipe[READ]))
-            {
-                bytesRead = read(m_pipe[READ], &(*buf.begin()), bufSize);
-            }
-        }
-        if (bytesRead > 0)
-        {
-            buf.resize(bytesRead);
-            m_captured += buf;
-        }
+        SetStdHandle(STD_OUTPUT_HANDLE, m_oldStdOutHandle);
+        SetStdHandle(STD_ERROR_HANDLE, m_oldStdErrHandle);
+        DrainCapture();
+        m_capturing = false;
         return true;
     }
 
@@ -580,6 +597,10 @@ private:
     int m_pipe[2];
     int m_oldStdOut;
     int m_oldStdErr;
+    HANDLE m_oldStdOutHandle;
+    HANDLE m_oldStdErrHandle;
+    HANDLE m_pipeReadHandle;
+    HANDLE m_pipeWriteHandle;
     bool m_capturing;
     bool m_init;
     std::string m_captured;

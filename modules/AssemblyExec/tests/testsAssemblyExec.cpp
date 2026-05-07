@@ -3,9 +3,15 @@
 #include "../../tests/TestHelpers.hpp"
 
 #include <filesystem>
+#include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#include "../../ModuleCmd/Tools.hpp"
+#endif
 
 using namespace test_helpers;
 
@@ -78,6 +84,22 @@ int main()
     bool ok = true;
     const std::string dummyExe = dummyExePath();
     const std::string currentArch = buildWindowsArch();
+
+#ifdef _WIN32
+    {
+        StdCapture capture;
+        capture.BeginCapture();
+        const char* crtOutput = "crt-output\n";
+        std::fwrite(crtOutput, 1, std::strlen(crtOutput), stdout);
+        const char* winOutput = "win32-output\n";
+        DWORD written = 0;
+        WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), winOutput, static_cast<DWORD>(std::strlen(winOutput)), &written, nullptr);
+        capture.EndCapture();
+        const std::string captured = capture.GetCapture();
+        ok &= expect(captured.find("crt-output") != std::string::npos, "StdCapture should capture CRT stdout");
+        ok &= expect(captured.find("win32-output") != std::string::npos, "StdCapture should capture Win32 stdout handle");
+    }
+#endif
 
     {
         AssemblyExec module;

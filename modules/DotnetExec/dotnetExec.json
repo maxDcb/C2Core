@@ -32,7 +32,9 @@
           "scope": "server",
           "target": "teamserver",
           "platform": "windows",
+          "arch": "session.arch",
           "runtime": "any",
+          "format": "exe",
           "name_contains": ".exe"
         },
         {
@@ -40,7 +42,9 @@
           "scope": "server",
           "target": "teamserver",
           "platform": "windows",
+          "arch": "session.arch",
           "runtime": "any",
+          "format": "dll",
           "name_contains": ".dll"
         }
       ]

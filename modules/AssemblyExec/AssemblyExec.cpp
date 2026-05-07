@@ -519,19 +519,62 @@ int AssemblyExec::createNewThread(const std::string& payload, std::string& resul
     }
     
     HANDLE thread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE) ptr, NULL, CREATE_SUSPENDED, 0);
+    if (thread == NULL)
+    {
+        stdCapture.EndCapture();
+        result += "Error: Thread failed to start.\n";
+        return -1;
+    }
 
     BYTE* baseAddress = (BYTE*)GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlExitUserProcess");
     HANDLE phHwBpHandler;
     int indexHWBP = 0;
-    set_hwbp(thread, baseAddress, handlerRtlExitUserProcess, indexHWBP, &phHwBpHandler);
+    if (baseAddress != NULL)
+        set_hwbp(thread, baseAddress, handlerRtlExitUserProcess, indexHWBP, &phHwBpHandler);
 
-    if (thread != NULL) 
-        ResumeThread(thread);
+    ResumeThread(thread);
 
-    WaitForSingleObject(thread, maxDurationShellCode*1000);
+    DWORD waitStatus = WAIT_TIMEOUT;
+    const auto begin = std::chrono::steady_clock::now();
+    for (;;)
+    {
+        waitStatus = WaitForSingleObject(thread, 50);
+        stdCapture.DrainCapture();
+        if (waitStatus != WAIT_TIMEOUT)
+            break;
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - begin).count();
+        if (elapsed >= maxDurationShellCode)
+            break;
+    }
 
     stdCapture.EndCapture();
-    result+=stdCapture.GetCapture();
+    const std::string capturedOutput = stdCapture.GetCapture();
+    if (!capturedOutput.empty())
+    {
+        result += "Stdout:\n";
+        result += capturedOutput;
+        result += "\n";
+    }
+
+    if (waitStatus == WAIT_FAILED)
+    {
+        result += "Error: Thread wait failed.\n";
+        if (thread != NULL)
+            CloseHandle(thread);
+        return -1;
+    }
+    if (waitStatus == WAIT_TIMEOUT)
+    {
+        result += "Error: Thread execution timed out.\n";
+        if (thread != NULL)
+            CloseHandle(thread);
+        return -1;
+    }
+
+    if (thread != NULL)
+        CloseHandle(thread);
 
     return 0;
 }

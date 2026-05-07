@@ -24,7 +24,9 @@
         "scope": "server",
         "target": "teamserver",
         "platform": "windows",
+        "arch": "session.arch",
         "runtime": "any",
+        "format": "bin",
         "name_contains": ".bin"
       }
     },
@@ -39,7 +41,9 @@
           "scope": "server",
           "target": "teamserver",
           "platform": "windows",
+          "arch": "session.arch",
           "runtime": "any",
+          "format": "exe",
           "name_contains": ".exe"
         },
         {
@@ -49,6 +53,7 @@
           "platform": "windows",
           "arch": "session.arch",
           "runtime": "native",
+          "format": "exe",
           "name_contains": ".exe"
         }
       ]
@@ -63,7 +68,9 @@
         "scope": "server",
         "target": "teamserver",
         "platform": "windows",
+        "arch": "session.arch",
         "runtime": "any",
+        "format": "dll",
         "name_contains": ".dll"
       }
     },

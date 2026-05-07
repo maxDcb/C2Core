@@ -18,7 +18,9 @@
         "scope": "server",
         "target": "teamserver",
         "platform": "windows",
+        "arch": "session.arch",
         "runtime": "any",
+        "format": "o",
         "name_contains": ".o"
       }
     },
