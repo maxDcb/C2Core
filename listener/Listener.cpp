@@ -21,6 +21,43 @@ constexpr std::string_view mainKeyConfig = ".CRT$XCL";
 // compile time encryption
 constexpr std::array<char, 29> _EncryptedKeyTraficEncryption_ = compileTimeXOR<29, 8>(_KeyTraficEncryption_, mainKeyConfig);
 
+namespace
+{
+bool parseListenerMetadata(const std::string& listenerMetadata, std::string& type, std::string& param1, std::string& param2)
+{
+        nlohmann::json parsed = nlohmann::json::parse(listenerMetadata, nullptr, false);
+        if(parsed.is_discarded() || !parsed.is_object())
+                return false;
+
+        auto typeIt = parsed.find("1");
+        auto param1It = parsed.find("2");
+        auto param2It = parsed.find("3");
+        if(typeIt == parsed.end() || param1It == parsed.end() || param2It == parsed.end())
+                return false;
+        if(!typeIt->is_string() || !param1It->is_string() || !param2It->is_string())
+                return false;
+
+        type = typeIt->get<std::string>();
+        param1 = param1It->get<std::string>();
+        param2 = param2It->get<std::string>();
+        return !type.empty() && !param1.empty() && !param2.empty();
+}
+
+bool extractListenerReport(const C2Message& c2Message, bool allowLegacySwap, std::string& listenerHash, std::string& type, std::string& param1, std::string& param2)
+{
+        listenerHash = c2Message.returnvalue();
+        if(parseListenerMetadata(c2Message.data(), type, param1, param2))
+                return !listenerHash.empty();
+
+        if(!allowLegacySwap)
+                return false;
+
+        listenerHash = c2Message.data();
+        return parseListenerMetadata(c2Message.returnvalue(), type, param1, param2)
+                && !listenerHash.empty();
+}
+}
+
 #ifdef BUILD_TEAMSERVER
 namespace
 {
@@ -213,6 +250,7 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
     std::lock_guard<std::mutex> lock(m_mutex);
 
         bool sessionExist = false;
+        bool listenerAdded = false;
 
         // Iterate through all active sessions to find the one matching the given beacon hash.
         for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
@@ -222,9 +260,9 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
                         sessionExist=true;
 
                         // Add the listener to the matching session if it doesn't already exist.
-                        (*it)->addListener(listenerHash, type, param1, param2);
+                        listenerAdded = (*it)->addListener(listenerHash, type, param1, param2);
 #ifdef BUILD_TEAMSERVER
-                        if(m_logger)
+                        if(listenerAdded && m_logger)
                                 m_logger->info("Listener {} registered child listener {} ({})", beaconHash, listenerHash, type);
 #endif
                         break;
@@ -236,8 +274,8 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
                 m_logger->warn("Unable to register listener {} for beacon {} - session not found", listenerHash, beaconHash);
 #endif
 
-        // Return true if the session was found and updated, false otherwise.
-        return sessionExist;
+        // Return true only when the session was updated with a new child listener.
+        return sessionExist && listenerAdded;
 }
 
 
@@ -574,23 +612,15 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 
                 if(splitedCmd[0]==StartCmd)
                 {
-                    std::string listenerMetadata = c2Message.data();
-                    std::string listenerHash = c2Message.returnvalue();
+                    std::string listenerHash;
+                    std::string type;
+                    std::string param1;
+                    std::string param2;
 
-                    nlohmann::json parsed;
-                    try
-                    {
-                        parsed = nlohmann::json::parse(listenerMetadata);
-                        std::string type = parsed["1"];
-                        std::string param1 = parsed["2"];
-                        std::string param2 = parsed["3"];
-
+                    if(extractListenerReport(c2Message, false, listenerHash, type, param1, param2))
                         addSessionListener(beaconHash, listenerHash, type, param1, param2);
-                    } 
-                    catch (...)
-                    {
+                    else
                         continue;
-                    }
                 }
                 else if(splitedCmd[0]==StopCmd)
                 {
@@ -600,23 +630,15 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
             // Handle proof of life of listeners
             else if(c2Message.instruction()==ListenerPollCmd)
             {                    
-                std::string listenerMetadata = c2Message.data();
-                std::string listenerHash = c2Message.returnvalue();
+                std::string listenerHash;
+                std::string type;
+                std::string param1;
+                std::string param2;
 
-                nlohmann::json parsed;
-                try
-                {
-                    parsed = nlohmann::json::parse(listenerMetadata);
-                    std::string type = parsed["1"];
-                    std::string param1 = parsed["2"];
-                    std::string param2 = parsed["3"];
-
+                if(extractListenerReport(c2Message, true, listenerHash, type, param1, param2))
                     addSessionListener(beaconHash, listenerHash, type, param1, param2);
-                } 
-                catch (...)
-                {
+                else
                     continue;
-                }
             }
         }
         

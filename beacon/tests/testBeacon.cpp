@@ -2,6 +2,7 @@
 #include "../../modules/ModuleCmd/CommonCommand.hpp"
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 class BeaconTestProxy : public Beacon {
@@ -10,13 +11,33 @@ public:
     using Beacon::cmdToTasks;
     using Beacon::taskResultsToCmd;
     using Beacon::execInstruction;
+    using Beacon::runTasks;
+#if defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    using Beacon::addTestListener;
+#endif
 
     void checkIn() override {}
 
     void pushResult(const C2Message& msg) { m_taskResult.push(msg); }
+    C2Message popResult()
+    {
+        C2Message msg = m_taskResult.front();
+        m_taskResult.pop();
+        return msg;
+    }
     size_t resultCount() const { return m_taskResult.size(); }
     size_t taskCount() const { return m_tasks.size(); }
     const std::string& arch() const { return m_arch; }
+};
+
+class FakeListener : public Listener {
+public:
+    FakeListener()
+        : Listener("0.0.0.0", "4444", ListenerTcpType)
+    {
+        m_listenerHash = "child-listener";
+        m_metadata = R"({"1":"tcp","2":"0.0.0.0","3":"4444"})";
+    }
 };
 
 namespace {
@@ -80,6 +101,20 @@ int main()
         ok &= expect(!out.empty(), "serialized task results should not be empty");
         ok &= expect(b.resultCount() == 0, "taskResultsToCmd should clear result queue");
     }
+#if defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    {
+        BeaconTestProxy b;
+        b.addTestListener(std::make_unique<FakeListener>());
+
+        ok &= expect(!b.runTasks(), "listener poll should keep beacon running");
+        ok &= expect(b.resultCount() == 1, "listener poll should queue one proof of life");
+
+        C2Message poll = b.popResult();
+        ok &= expect(poll.instruction() == ListenerPollCmd, "listener poll instruction mismatch");
+        ok &= expect(poll.data() == R"({"1":"tcp","2":"0.0.0.0","3":"4444"})", "listener poll should carry metadata in data");
+        ok &= expect(poll.returnvalue() == "child-listener", "listener poll should carry listener hash in return value");
+    }
+#endif
     {
         BeaconTestProxy b;
         C2Message sleepMsg;

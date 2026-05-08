@@ -588,9 +588,9 @@ bool Beacon::runTasks()
     {
         C2Message listenerProofOfLife;
 
-        listenerProofOfLife.set_instruction(ListenerPollCmd);                            // Indicate this is a poll/proof message.
-        listenerProofOfLife.set_data(m_listeners[i]->getListenerHash());                // Include unique listener identifier.
-        listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerMetadata());     // Include listener status/metadata.
+        listenerProofOfLife.set_instruction(ListenerPollCmd);                           // Indicate this is a poll/proof message.
+        listenerProofOfLife.set_data(m_listeners[i]->getListenerMetadata());            // Include listener status/metadata.
+        listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerHash());         // Include unique listener identifier.
 
         // Add the heartbeat to the response queue.
         m_taskResult.push(listenerProofOfLife);

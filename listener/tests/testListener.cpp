@@ -53,8 +53,9 @@ int main()
         ListenerTestProxy l;
         l.addSession(makeSession());
         ok &= expect(l.addSessionListener("bhash", "child", "tcp", "p1", "p2"), "session listener should be added");
+        ok &= expect(!l.addSessionListener("bhash", "child", "tcp", "p1", "p2"), "duplicate session listener should not be added");
         auto infos = l.getSessionListenerInfos();
-        ok &= expect(infos.size() == 1, "session listener info should be visible");
+        ok &= expect(infos.size() == 1, "session listener info should be visible once");
         ok &= expect(l.rmSessionListener("bhash", "child"), "session listener should be removed");
     }
     {
@@ -103,6 +104,30 @@ int main()
 
         auto result = l.getTaskResult(beaconHash);
         ok &= expect(result.instruction().empty(), "listener poll should not be queued as a command result");
+    }
+    {
+        const std::string beaconHash = "ABCDEFGH12345678ABCDEFGH12345678";
+        ListenerTestProxy l;
+        l.addSession(makeSession("lhash", beaconHash));
+
+        MultiBundleC2Message incoming;
+        BundleC2Message* bundle = incoming.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("lhash");
+        bundle->set_lastProofOfLife("0");
+
+        C2Message* poll = bundle->add_c2messages();
+        poll->set_instruction(ListenerPollCmd);
+        poll->set_data("child-listener");
+        poll->set_returnvalue(R"({"1":"tcp","2":"0.0.0.0","3":"4444"})");
+
+        std::string output;
+        l.process(l.encode(incoming), output);
+
+        auto infos = l.getSessionListenerInfos();
+        ok &= expect(infos.size() == 1, "legacy listener poll should update session listener metadata");
+        ok &= expect(infos[0].getListenerHash() == "child-listener", "legacy listener poll should preserve child listener hash");
+        ok &= expect(infos[0].getType() == "tcp", "legacy listener poll should preserve child listener type");
     }
 
     return ok ? 0 : 1;

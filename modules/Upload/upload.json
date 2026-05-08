@@ -18,8 +18,7 @@
         "scope": "operator",
         "target": "beacon",
         "platform": "session.platform",
-        "arch": "session.arch",
-        "runtime": "file"
+        "arch": "session.arch"
       }
     },
     {

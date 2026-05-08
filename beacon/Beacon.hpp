@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
@@ -69,4 +70,11 @@ private:
         bool handleUnloadModuleInstruction(C2Message& c2Message, C2Message& c2RetMessage);
         bool handleModuleInstruction(C2Message& c2Message, C2Message& c2RetMessage);
 
+#if defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+protected:
+        void addTestListener(std::unique_ptr<Listener> listener)
+        {
+                m_listeners.push_back(std::move(listener));
+        }
+#endif
 };
