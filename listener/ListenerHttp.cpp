@@ -125,6 +125,16 @@ int ListenerHttp::init()
         return -1;
     }
 
+    if(!m_svr->bind_to_port(m_host.c_str(), m_port))
+    {
+#ifdef BUILD_TEAMSERVER
+        if(m_logger)
+            m_logger->error("Failed to bind {} listener on {}:{}", m_isHttps ? "HTTPS" : "HTTP", m_host, m_port);
+#endif
+        m_svr.reset();
+        return -1;
+    }
+
     m_httpServ = std::make_unique<std::thread>(&ListenerHttp::launchHttpServ, this);
 
 #ifdef BUILD_TEAMSERVER
@@ -393,7 +403,13 @@ void ListenerHttp::launchHttpServ()
         });
     }
 
-    m_svr->listen(m_host.c_str(), m_port);
+    if(!m_svr->listen_after_bind())
+    {
+#ifdef BUILD_TEAMSERVER
+        if(m_logger)
+            m_logger->error("{} listener stopped because listen failed on {}:{}", m_isHttps ? "HTTPS" : "HTTP", m_host, m_port);
+#endif
+    }
 }
 
 bool ListenerHttp::processPayload(const std::string& requestData, std::string& responseData)
