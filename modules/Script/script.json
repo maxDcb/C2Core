@@ -17,8 +17,7 @@
         "category": "script",
         "scope": "server",
         "target": "beacon",
-        "platform": "session.platform",
-        "runtime": "script"
+        "platform": "session.platform"
       }
     }
   ],

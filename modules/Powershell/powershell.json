@@ -18,7 +18,7 @@
         "scope": "server",
         "target": "beacon",
         "platform": "windows",
-        "runtime": "script",
+        "runtime": "powershell",
         "name_contains": ".ps1"
       }
     },
@@ -32,7 +32,7 @@
         "scope": "server",
         "target": "beacon",
         "platform": "windows",
-        "runtime": "script",
+        "runtime": "powershell",
         "name_contains": ".ps1"
       }
     },
