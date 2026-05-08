@@ -16,6 +16,14 @@ public:
     using Listener::rmSessionListener;
 
     void addSession(const std::shared_ptr<Session>& s) { m_sessions.push_back(s); }
+    bool process(const std::string& input, std::string& output) { return handleMessages(input, output); }
+    std::string encode(const MultiBundleC2Message& message)
+    {
+        std::string data;
+        const_cast<MultiBundleC2Message&>(message).SerializeToString(&data);
+        XOR(data, m_key);
+        return base64_encode(data);
+    }
 };
 
 namespace {
@@ -29,9 +37,11 @@ namespace {
         return true;
     }
 
-    std::shared_ptr<Session> makeSession()
+    std::shared_ptr<Session> makeSession(
+        const std::string& listenerHash = "lhash",
+        const std::string& beaconHash = "bhash")
     {
-        return std::make_shared<Session>("lhash", "bhash", "host", "user", "arch", "priv", "os");
+        return std::make_shared<Session>(listenerHash, beaconHash, "host", "user", "arch", "priv", "os");
     }
 }
 
@@ -66,6 +76,33 @@ int main()
         ok &= expect(l.addTaskResult(msg, hash), "task result should be queued for session");
         auto out = l.getTaskResult(hash);
         ok &= expect(out.instruction() == "RES", "queued task result should be retrievable");
+    }
+    {
+        const std::string beaconHash = "ABCDEFGH12345678ABCDEFGH12345678";
+        ListenerTestProxy l;
+        l.addSession(makeSession("lhash", beaconHash));
+
+        MultiBundleC2Message incoming;
+        BundleC2Message* bundle = incoming.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("lhash");
+        bundle->set_lastProofOfLife("0");
+
+        C2Message* poll = bundle->add_c2messages();
+        poll->set_instruction(ListenerPollCmd);
+        poll->set_data(R"({"1":"tcp","2":"0.0.0.0","3":"4444"})");
+        poll->set_returnvalue("child-listener");
+
+        std::string output;
+        l.process(l.encode(incoming), output);
+
+        auto infos = l.getSessionListenerInfos();
+        ok &= expect(infos.size() == 1, "listener poll should update session listener metadata");
+        ok &= expect(infos[0].getListenerHash() == "child-listener", "listener poll should preserve child listener hash");
+        ok &= expect(infos[0].getType() == "tcp", "listener poll should preserve child listener type");
+
+        auto result = l.getTaskResult(beaconHash);
+        ok &= expect(result.instruction().empty(), "listener poll should not be queued as a command result");
     }
 
     return ok ? 0 : 1;

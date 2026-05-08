@@ -526,7 +526,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
         {
             const C2Message& c2Message = bundleC2Message->c2messages(j);
 
-                        addTaskResult(c2Message, beaconHash);
+            if (c2Message.instruction() != ListenerPollCmd)
+                addTaskResult(c2Message, beaconHash);
 
             // Handle instruction that have impact on this Listener
             // Here if a beacon is terminated, we need to remove the list of sessions associeted with it.

@@ -704,11 +704,7 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
 
             std::string localHost = splitedCmd[2];
             int localPort;
-            try
-            {
-                localPort = std::stoi(splitedCmd[3]);
-            }
-            catch (const std::invalid_argument&)
+            if (!parseTcpListenerPort(splitedCmd[3], localPort))
             {
                 c2RetMessage.set_errorCode(ERROR_PORT_FORMAT);
                 return false;

@@ -101,6 +101,20 @@ int main()
         C2Message endRet;
         ok &= expect(b.execInstruction(endMsg, endRet), "end command should stop beacon");
         ok &= expect(endRet.returnvalue() == CmdStatusSuccess, "end command should return success");
+
+        C2Message badListenerPort;
+        badListenerPort.set_instruction(ListenerCmd);
+        badListenerPort.set_cmd(StartCmd + " " + ListenerTcpType + " 0.0.0.0 notaport");
+        C2Message badListenerRet;
+        ok &= expect(!b.execInstruction(badListenerPort, badListenerRet), "bad listener port should keep beacon running");
+        ok &= expect(badListenerRet.errorCode() == ERROR_PORT_FORMAT, "bad listener port should be rejected");
+
+        C2Message zeroListenerPort;
+        zeroListenerPort.set_instruction(ListenerCmd);
+        zeroListenerPort.set_cmd(StartCmd + " " + ListenerTcpType + " 0.0.0.0 0");
+        C2Message zeroListenerRet;
+        ok &= expect(!b.execInstruction(zeroListenerPort, zeroListenerRet), "zero listener port should keep beacon running");
+        ok &= expect(zeroListenerRet.errorCode() == ERROR_PORT_FORMAT, "zero listener port should be rejected");
     }
     {
         BeaconTestProxy b;

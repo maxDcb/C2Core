@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <random>
@@ -43,6 +44,26 @@ const std::string StopSocksCmd = "SSO";
 const std::string CmdStatusSuccess = "Success";
 const std::string CmdStatusFail = "Fail";
 const std::string CmdModuleNotFound = "Module not loaded";
+
+static inline bool parseTcpListenerPort(const std::string& value, int& port)
+{
+    if (value.empty())
+        return false;
+
+    std::size_t parsed = 0;
+    try
+    {
+        int parsedPort = std::stoi(value, &parsed);
+        if (parsed != value.size() || parsedPort < 1 || parsedPort > 65535)
+            return false;
+        port = parsedPort;
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
 
 
 #ifdef BUILD_TEAMSERVER
@@ -131,6 +152,7 @@ class CommonCommands
         output += "  Examples:\n";
         output += "    - listener start tcp <IP> <port>\n";
         output += "    - listener start tcp 10.2.4.8 4444\n";
+        output += "  Port must be an integer between 1 and 65535.\n";
         output += "    - listener start smb <IP/hostname> <pipename>\n";
         output += "    - listener start smb pipename\n";
     }
@@ -214,13 +236,9 @@ class CommonCommands
                     {
                         std::string host = splitedCmd[3];
                         int port=-1;
-                        try 
+                        if (!parseTcpListenerPort(splitedCmd[4], port))
                         {
-                            port = std::atoi(splitedCmd[4].c_str());
-                        }
-                        catch (const std::invalid_argument& ia) 
-                        {
-                            std::cerr << "Invalid argument: " << ia.what() << '\n';
+                            c2Message.set_returnvalue("Error: Invalid TCP listener port. Expected an integer between 1 and 65535.");
                             return -1;
                         }
 
