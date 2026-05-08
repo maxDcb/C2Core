@@ -153,8 +153,8 @@ class CommonCommands
         output += "    - listener start tcp <IP> <port>\n";
         output += "    - listener start tcp 10.2.4.8 4444\n";
         output += "  Port must be an integer between 1 and 65535.\n";
-        output += "    - listener start smb <IP/hostname> <pipename>\n";
-        output += "    - listener start smb pipename\n";
+        output += "    - listener start smb <pipename>\n";
+        output += "    - listener start smb pipe1\n";
     }
     else if (cmd == LoadC2ModuleCmd)
     {
@@ -261,15 +261,14 @@ class CommonCommands
                 }
                 else if(splitedCmd[1]==StartInstruction && splitedCmd[2]==ListenerSmbType)
                 {
-                    if(splitedCmd.size()==5)
+                    if(splitedCmd.size()==4)
                     {
-                        std::string host = splitedCmd[3];
-                        std::string pipeName = splitedCmd[4];
+                        std::string pipeName = splitedCmd[3];
                         std::string cmd = StartCmd;
                         cmd+=" ";
                         cmd+=ListenerSmbType;
                         cmd+=" ";
-                        cmd+=host;
+                        cmd+="beacon";
                         cmd+=" ";
                         cmd+=pipeName;
                         c2Message.set_instruction(ListenerCmd);
@@ -277,7 +276,7 @@ class CommonCommands
                     }
                     else
                     {
-                        std::string errorMsg = "listener smb start: not enough arguments";
+                        std::string errorMsg = "Usage: listener start smb <pipe_name>";
                         c2Message.set_returnvalue(errorMsg);    
                         return -1;
                     }

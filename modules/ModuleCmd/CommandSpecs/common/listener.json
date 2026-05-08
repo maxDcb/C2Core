@@ -23,21 +23,21 @@
       "values": ["tcp", "smb"]
     },
     {
-      "name": "host",
+      "name": "host_or_pipe",
       "type": "text",
       "required": false,
-      "description": "Host/IP displayed for the listener."
+      "description": "TCP host/IP for start tcp, or SMB pipe name for start smb."
     },
     {
-      "name": "port_or_pipe",
+      "name": "tcp_port",
       "type": "text",
       "required": false,
-      "description": "TCP port or SMB pipe name."
+      "description": "TCP port for start tcp. Not used for SMB."
     }
   ],
   "examples": [
     "listener start tcp 10.2.4.8 4444",
-    "listener start smb host1 pipe1",
+    "listener start smb pipe1",
     "listener stop <listener_hash>"
   ],
   "source": "manifest"

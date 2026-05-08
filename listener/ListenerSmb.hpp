@@ -2,6 +2,8 @@
 
 #include "Listener.hpp"
 
+#include <atomic>
+
 
 namespace PipeHandler
 {
@@ -17,9 +19,10 @@ public:
 
 private:
     void launchSmbServ();
+    void wakeServer();
 
     PipeHandler::Server* m_serverSmb;
 
-    bool m_stopThread;
+    std::atomic_bool m_stopThread;
     std::unique_ptr<std::thread> m_smbServ;
 };

@@ -742,6 +742,9 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
     }
     else if (splitedCmd[0] == StopCmd)
     {
+        if (splitedCmd.size() != 2)
+            return false;
+
         std::string listenerHash = splitedCmd[1];
         auto object = std::find_if(m_listeners.begin(), m_listeners.end(),
             [&](const std::unique_ptr<Listener>& obj){ return obj->getListenerHash().rfind(listenerHash, 0) == 0; });
@@ -750,7 +753,7 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
         {
             c2RetMessage.set_cmd(cmd);
             c2RetMessage.set_returnvalue((*object)->getListenerHash());
-            m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), *object));
+            m_listeners.erase(object);
             return false;
         }
         else

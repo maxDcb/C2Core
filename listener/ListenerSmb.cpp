@@ -43,15 +43,18 @@ ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName, con
         m_logger->info("Initializing SMB listener on {} using pipe {}", ip, pipeName);
 #endif
 
-        m_stopThread=false;
+        m_stopThread.store(false);
         m_smbServ = std::make_unique<std::thread>(&ListenerSmb::launchSmbServ, this);
 }
 
 
 ListenerSmb::~ListenerSmb()
 {
-    m_stopThread=true;
-    m_smbServ->join();
+    m_stopThread.store(true);
+    wakeServer();
+
+    if(m_smbServ && m_smbServ->joinable())
+        m_smbServ->join();
 
         delete m_serverSmb;
 
@@ -61,25 +64,49 @@ ListenerSmb::~ListenerSmb()
 #endif
 }
 
+void ListenerSmb::wakeServer()
+{
+    try
+    {
+        PipeHandler::Client client(".", m_param2);
+        if(client.initConnection())
+        {
+            std::string stopMessage = "__stop__";
+            client.sendData(stopMessage);
+            client.closeConnection();
+        }
+    }
+    catch (...)
+    {
+    }
+}
+
 
 void ListenerSmb::launchSmbServ()
 {
     try 
     {
-        while(1)
+        while(!m_stopThread.load())
         {
-            if(m_stopThread)
-                return;
-
-                        m_serverSmb->initServer();
+                        if(!m_serverSmb->initServer())
+                        {
+                                if(!m_stopThread.load())
+                                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                                continue;
+                        }
 
                         bool res = false;
                         string input;
-                        while(input.empty())
+                        do
                         {
                                 res = m_serverSmb->receiveData(input);
-                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                                if(input.empty() && !m_stopThread.load())
+                                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
                         }
+                        while(!m_stopThread.load() && input.empty());
+
+                        if(m_stopThread.load())
+                                return;
 
 #ifdef BUILD_TEAMSERVER
                         if(m_logger && m_logger->should_log(spdlog::level::debug))
@@ -114,4 +141,3 @@ void ListenerSmb::launchSmbServ()
 
     return;
 }
-
