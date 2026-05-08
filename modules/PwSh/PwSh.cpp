@@ -182,8 +182,8 @@ std::string PwSh::getInfo()
     info += "  - Assemblies are kept in memory and can be reused without reloading.\n";
     info += "  - Ensure the correct type and method names are specified when using custom DLLs.\n";
     info += "  - This module avoids writing files to disk, enhancing stealth.\n";
-    info += "  - If you run 'init' in a process where the CLR is already loaded, you may encounter:\n";
-    info += "    'Failed: DefaultAppDomain - Load_2'.\n";
+    info += "  - If you run 'init' in a process with an incompatible CLR/AppDomain already loaded,\n";
+    info += "    initialize PwSh from a fresh beacon process or a process without that CLR context.\n";
 #endif
     return info;
 }
@@ -943,7 +943,7 @@ int PwSh::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
         else if(errorCode==ERROR_LOAD_ASSEMLBY_2)
             errorMsg = "Failed: IdentityMnaager - GetBindingIdentityFromStream";
         else if(errorCode==ERROR_LOAD_ASSEMLBY_3)
-            errorMsg = "Failed: DefaultAppDomain - Load_2";
+            errorMsg = "Failed: PwSh runner assembly could not be loaded in the current CLR AppDomain. This usually means the beacon process already has an incompatible CLR/AppDomain context; retry from a fresh beacon process or a process without an existing conflicting CLR. Original stage: DefaultAppDomain - Load_2";
         else if(errorCode==ERROR_LOAD_ASSEMLBY_4)
             errorMsg = "Failed: DefaultAppDomain - Load_3";
         else if(errorCode==ERROR_LOAD_ASSEMLBY_5)

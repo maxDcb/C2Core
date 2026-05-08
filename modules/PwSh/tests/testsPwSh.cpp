@@ -195,7 +195,7 @@ int main()
         ok &= expectErrorMessage(module, 8, "Failed: AppDomainThunk - QueryInterface", "error code 8");
         ok &= expectErrorMessage(module, 11, "Failed: IdentityManagerProc", "error code 11");
         ok &= expectErrorMessage(module, 12, "Failed: IdentityMnaager - GetBindingIdentityFromStream", "error code 12");
-        ok &= expectErrorMessage(module, 13, "Failed: DefaultAppDomain - Load_2", "error code 13");
+        ok &= expectErrorMessage(module, 13, "Failed: PwSh runner assembly could not be loaded in the current CLR AppDomain. This usually means the beacon process already has an incompatible CLR/AppDomain context; retry from a fresh beacon process or a process without an existing conflicting CLR. Original stage: DefaultAppDomain - Load_2", "error code 13");
         ok &= expectErrorMessage(module, 14, "Failed: DefaultAppDomain - Load_3", "error code 14");
         ok &= expectErrorMessage(module, 15, "Failed: No module loaded", "error code 15");
         ok &= expectErrorMessage(module, 21, "Failed: Assembly - GetType_2", "error code 21");

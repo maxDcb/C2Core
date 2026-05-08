@@ -27,7 +27,8 @@
         "platform": "windows",
         "runtime": "script",
         "name_contains": ".ps1"
-      }
+      },
+      "completion_parents": ["import", "script"]
     },
     {
       "name": "arguments",
