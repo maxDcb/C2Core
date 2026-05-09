@@ -124,12 +124,33 @@ int main()
         ok &= expect(!b.execInstruction(sleepMsg, sleepRet), "sleep command should keep beacon running");
         ok &= expect(sleepRet.returnvalue() == "2000ms", "sleep command should convert seconds to ms");
 
+        C2Message zeroSleep;
+        zeroSleep.set_instruction(SleepCmd);
+        zeroSleep.set_cmd("0");
+        C2Message zeroRet;
+        ok &= expect(!b.execInstruction(zeroSleep, zeroRet), "zero sleep should keep beacon running");
+        ok &= expect(zeroRet.returnvalue() == "0ms", "zero sleep should be accepted");
+
         C2Message badSleep;
         badSleep.set_instruction(SleepCmd);
         badSleep.set_cmd("abc");
         C2Message badRet;
         ok &= expect(!b.execInstruction(badSleep, badRet), "bad sleep should keep beacon running");
         ok &= expect(badRet.returnvalue() == CmdStatusFail, "bad sleep should fail cleanly");
+
+        C2Message partialSleep;
+        partialSleep.set_instruction(SleepCmd);
+        partialSleep.set_cmd("1abc");
+        C2Message partialRet;
+        ok &= expect(!b.execInstruction(partialSleep, partialRet), "partial sleep should keep beacon running");
+        ok &= expect(partialRet.returnvalue() == CmdStatusFail, "partial sleep should fail cleanly");
+
+        C2Message negativeSleep;
+        negativeSleep.set_instruction(SleepCmd);
+        negativeSleep.set_cmd("-1");
+        C2Message negativeRet;
+        ok &= expect(!b.execInstruction(negativeSleep, negativeRet), "negative sleep should keep beacon running");
+        ok &= expect(negativeRet.returnvalue() == CmdStatusFail, "negative sleep should fail cleanly");
 
         C2Message endMsg;
         endMsg.set_instruction(EndCmd);

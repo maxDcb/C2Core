@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -57,6 +58,26 @@ static inline bool parseTcpListenerPort(const std::string& value, int& port)
         if (parsed != value.size() || parsedPort < 1 || parsedPort > 65535)
             return false;
         port = parsedPort;
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
+
+static inline bool parseSleepSeconds(const std::string& value, float& seconds)
+{
+    if (value.empty())
+        return false;
+
+    std::size_t parsed = 0;
+    try
+    {
+        float parsedSeconds = std::stof(value, &parsed);
+        if (parsed != value.size() || !std::isfinite(parsedSeconds) || parsedSeconds < 0.0f)
+            return false;
+        seconds = parsedSeconds;
         return true;
     }
     catch (const std::exception&)
@@ -195,14 +216,10 @@ class CommonCommands
         {
             if(splitedCmd.size()==2)
             {
-                float sleepTimeSec=5;
-                try 
+                float sleepTimeSec=0.0f;
+                if (!parseSleepSeconds(splitedCmd[1], sleepTimeSec))
                 {
-                    sleepTimeSec = atof(splitedCmd[1].c_str());
-                }
-                catch (const std::invalid_argument& ia) 
-                {
-                    std::cerr << "Invalid argument: " << ia.what() << '\n';
+                    c2Message.set_returnvalue("Error: Invalid sleep interval. Expected a numeric value greater than or equal to 0.");
                     return -1;
                 }
                 c2Message.set_instruction(SleepCmd);
