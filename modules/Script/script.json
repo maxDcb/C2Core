@@ -2,7 +2,7 @@
   "name": "script",
   "display_name": "script",
   "kind": "module",
-  "description": "Run a TeamServer-managed script artifact on the beacon. Scripts are resolved from Scripts/<platform> or Scripts/Any.",
+  "description": "Run a TeamServer-managed script artifact on the beacon. Scripts are resolved from Scripts/<platform>, Scripts/Any, or UploadedArtifacts.",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],
@@ -13,12 +13,38 @@
       "type": "artifact",
       "required": true,
       "description": "Script artifact compatible with the current session.",
-      "artifact_filter": {
-        "category": "script",
-        "scope": "server",
-        "target": "beacon",
-        "platform": "session.platform"
-      }
+      "artifact_filters": [
+        {
+          "category": "script",
+          "scope": "server",
+          "target": "beacon",
+          "platform": "session.platform",
+          "runtime": "cmd"
+        },
+        {
+          "category": "script",
+          "scope": "server",
+          "target": "beacon",
+          "platform": "session.platform",
+          "runtime": "shell"
+        },
+        {
+          "category": "upload",
+          "scope": "operator",
+          "target": "beacon",
+          "platform": "session.platform",
+          "arch": "session.arch",
+          "runtime": "cmd"
+        },
+        {
+          "category": "upload",
+          "scope": "operator",
+          "target": "beacon",
+          "platform": "session.platform",
+          "arch": "session.arch",
+          "runtime": "shell"
+        }
+      ]
     }
   ],
   "examples": [
