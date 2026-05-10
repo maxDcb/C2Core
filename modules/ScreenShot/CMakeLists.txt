@@ -2,12 +2,18 @@ include_directories(../)
 add_library(ScreenShot SHARED ScreenShot.cpp ScreenShooter.cpp)
 set_property(TARGET ScreenShot PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(ScreenShot )
+if(WIN32)
+    target_link_libraries(ScreenShot gdiplus ole32)
+endif()
 add_custom_command(TARGET ScreenShot POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 $<TARGET_FILE:ScreenShot> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:ScreenShot>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsScreenShot tests/testsScreenShot.cpp ScreenShot.cpp ScreenShooter.cpp)
     target_link_libraries(testsScreenShot )
+    if(WIN32)
+        target_link_libraries(testsScreenShot gdiplus ole32)
+    endif()
     add_custom_command(TARGET testsScreenShot POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsScreenShot> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsScreenShot>")
 

@@ -2,14 +2,44 @@
 
 #include "ScreenShooter.h"
 
+#include <gdiplus.h>
+#include <objidl.h>
+
+#include <cwchar>
 #include <iostream>
+#include <vector>
 
 using namespace guards;
 
 
-void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int nScreenWidth, int nScreenHeight);
+bool CreatePngFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp);
 void CaptureDesktop(CDCGuard &desktopGuard, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int * width, int * height, int left, int top);
 void SpliceImages(ScreenShooter::CDisplayHandlesPool * pHdcPool, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int * width, int * height);
+
+
+int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
+{
+    UINT num = 0;
+    UINT size = 0;
+    Gdiplus::GetImageEncodersSize(&num, &size);
+    if (size == 0)
+        return -1;
+
+    std::vector<BYTE> buffer(size);
+    auto imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>(buffer.data());
+    if (Gdiplus::GetImageEncoders(num, size, imageCodecInfo) != Gdiplus::Ok)
+        return -1;
+
+    for (UINT index = 0; index < num; ++index)
+    {
+        if (std::wcscmp(imageCodecInfo[index].MimeType, format) == 0)
+        {
+            *pClsid = imageCodecInfo[index].Clsid;
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
+}
 
 
 BOOL CALLBACK ScreenShooter::MonitorEnumProc(
@@ -46,58 +76,58 @@ void ScreenShooter::CaptureScreen(std::vector<unsigned char>& dataScreen)
     
     SpliceImages(& displayHandles, captureGuard, bmpGuard, originalBmp, &width, &height);
 
-    CreateBitmapFinal(dataScreen, captureGuard, bmpGuard, originalBmp, width, height);
+    CreatePngFinal(dataScreen, captureGuard, bmpGuard, originalBmp);
 }
 
 
-void CreateBitmapFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp, int nScreenWidth, int nScreenHeight)
+bool CreatePngFinal(std::vector<unsigned char> & data, CDCGuard &captureGuard, CBitMapGuard & bmpGuard, HGDIOBJ & originalBmp)
 {
-    // save data to buffer
-    unsigned char charBitmapInfo[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)] = {0};
-    LPBITMAPINFO lpbi = (LPBITMAPINFO)charBitmapInfo;
-    lpbi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    lpbi->bmiHeader.biHeight = nScreenHeight;
-    lpbi->bmiHeader.biWidth = nScreenWidth;
-    lpbi->bmiHeader.biPlanes = 1; 
-    lpbi->bmiHeader.biBitCount = 32;
-    lpbi->bmiHeader.biCompression = BI_RGB;
+    data.clear();
+    if (!bmpGuard.get())
+        return false;
 
-    SelectObject(captureGuard.get(), originalBmp); 
+    if (originalBmp)
+        SelectObject(captureGuard.get(), originalBmp);
 
-    if (!GetDIBits(captureGuard.get(), bmpGuard.get(), 0, nScreenHeight, NULL, lpbi, DIB_RGB_COLORS))
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken = 0;
+    if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL) != Gdiplus::Ok)
+        return false;
+
+    CLSID pngClsid;
+    bool success = false;
+    IStream* stream = NULL;
+    if (GetEncoderClsid(L"image/png", &pngClsid) >= 0
+        && CreateStreamOnHGlobal(NULL, TRUE, &stream) == S_OK)
     {
-        int err = GetLastError();
-        // throw std::runtime_error("CreateBitmapFinal: GetDIBits failed");
+        Gdiplus::Bitmap bitmap(bmpGuard.get(), NULL);
+        if (bitmap.GetLastStatus() == Gdiplus::Ok
+            && bitmap.Save(stream, &pngClsid, NULL) == Gdiplus::Ok)
+        {
+            HGLOBAL global = NULL;
+            if (GetHGlobalFromStream(stream, &global) == S_OK)
+            {
+                STATSTG stat = {};
+                void* memory = GlobalLock(global);
+                if (memory != NULL
+                    && stream->Stat(&stat, STATFLAG_NONAME) == S_OK
+                    && stat.cbSize.QuadPart > 0)
+                {
+                    const SIZE_T size = static_cast<SIZE_T>(stat.cbSize.QuadPart);
+                    auto begin = static_cast<unsigned char*>(memory);
+                    data.assign(begin, begin + size);
+                    success = true;
+                }
+                if (memory != NULL)
+                    GlobalUnlock(global);
+            }
+        }
     }
 
-    DWORD ImageSize = lpbi->bmiHeader.biSizeImage; //known image size
-
-    DWORD PalEntries = 3;
-    if (lpbi->bmiHeader.biCompression != BI_BITFIELDS) 
-        PalEntries = (lpbi->bmiHeader.biBitCount <= 8) ?(int)(1 << lpbi->bmiHeader.biBitCount) : 0;
-    if (lpbi->bmiHeader.biClrUsed) 
-        PalEntries = lpbi->bmiHeader.biClrUsed; 
-    //known pal entrys count
-
-    //all resize
-    data.resize(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + PalEntries * sizeof(RGBQUAD) + ImageSize);
-    //set screenshot size
-
-    DWORD imageOffset = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + PalEntries * sizeof(RGBQUAD);
-    DWORD infoHeaderOffset = sizeof(BITMAPFILEHEADER);
-    BITMAPFILEHEADER * pFileHeader = (BITMAPFILEHEADER *)&data[0];
-    pFileHeader->bfType            = 19778; // always the same, 'BM'
-    pFileHeader->bfReserved1    = pFileHeader->bfReserved2 = 0; 
-    pFileHeader->bfOffBits        = imageOffset;
-    pFileHeader->bfSize            = ImageSize;
-
-    if (!GetDIBits(captureGuard.get(), bmpGuard.get(), 0, nScreenHeight, &data[imageOffset], lpbi, DIB_RGB_COLORS))
-    {
-        // throw std::runtime_error("CreateBitmapFinal: GetDIBits failed");
-    }
-
-    memcpy(&data[sizeof(BITMAPFILEHEADER)], &lpbi->bmiHeader, sizeof(BITMAPINFOHEADER));
-
+    if (stream != NULL)
+        stream->Release();
+    Gdiplus::GdiplusShutdown(gdiplusToken);
+    return success;
 }
 
 

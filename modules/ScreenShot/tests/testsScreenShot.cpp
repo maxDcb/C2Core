@@ -1,6 +1,7 @@
 #include "../ScreenShot.hpp"
 #include "../../tests/TestHelpers.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -11,9 +12,18 @@ namespace
 {
 constexpr std::size_t ChunkSize = 1 * 1024 * 1024;
 
-bool hasBmpHeader(const std::string& data)
+bool hasPngHeader(const std::string& data)
 {
-    return data.size() >= 2 && data[0] == 'B' && data[1] == 'M';
+    const unsigned char expected[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+    return data.size() >= sizeof(expected)
+        && std::equal(
+            expected,
+            expected + sizeof(expected),
+            data.begin(),
+            [](unsigned char lhs, char rhs)
+            {
+                return lhs == static_cast<unsigned char>(rhs);
+            });
 }
 }
 
@@ -62,8 +72,8 @@ int main()
         C2Message ret;
 
         ok &= expect(module.followUp(ret) == 0, "followUp should accept an empty response");
-        ret.set_outputfile("generated-screenshot.bmp");
-        ret.set_data("not-a-bmp");
+        ret.set_outputfile("generated-screenshot.png");
+        ret.set_data("not-a-png");
         ok &= expect(module.followUp(ret) == 0, "followUp should accept response data");
     }
 
@@ -74,14 +84,14 @@ int main()
         C2Message ret;
 
         ok &= expect(module.init(cmd, message) == 0, "process setup should initialize");
-        message.set_outputfile("generated-screenshot.bmp");
+        message.set_outputfile("generated-screenshot.png");
         ok &= expect(module.process(message, ret) == 0, "process should return success");
 #ifdef _WIN32
         ok &= expect(!ret.instruction().empty(), "process should return a screenshot instruction");
 #else
         ok &= expect(ret.instruction() == "screenShot", "process should preserve instruction");
 #endif
-        ok &= expect(ret.outputfile() == "generated-screenshot.bmp", "process should preserve generated artifact output path");
+        ok &= expect(ret.outputfile() == "generated-screenshot.png", "process should preserve generated artifact output path");
         ok &= expect(ret.args() == "0", "process should mark screenshot as the first artifact chunk");
 
 #ifdef _WIN32
@@ -93,7 +103,7 @@ int main()
         {
             ok &= expect(ret.returnvalue() == "Success" || ret.returnvalue().find("/") != std::string::npos,
                          "Windows process should report success or chunk progress");
-            ok &= expect(hasBmpHeader(ret.data()), "Windows screenshot data should have a BMP header when data is captured");
+            ok &= expect(hasPngHeader(ret.data()), "Windows screenshot data should have a PNG header when data is captured");
         }
 #else
         ok &= expect(ret.returnvalue().empty(), "non-Windows process should not report screenshot output");
@@ -111,19 +121,19 @@ int main()
 
         message.set_instruction("screenShot");
         message.set_uuid("shot-0001");
-        message.set_outputfile("generated-screenshot.bmp");
+        message.set_outputfile("generated-screenshot.png");
         message.set_data(payload);
 
         ok &= expect(module.process(message, firstChunk) == 0, "test payload process should return success");
         ok &= expect(firstChunk.uuid() == "shot-0001", "first chunk should preserve task uuid");
-        ok &= expect(firstChunk.outputfile() == "generated-screenshot.bmp", "first chunk should preserve output file");
+        ok &= expect(firstChunk.outputfile() == "generated-screenshot.png", "first chunk should preserve output file");
         ok &= expect(firstChunk.args() == "0", "first chunk should be marked as initial artifact data");
         ok &= expect(firstChunk.data().size() == ChunkSize, "first chunk should use the screenshot chunk size");
         ok &= expect(firstChunk.returnvalue().find("/") != std::string::npos, "first chunk should report transfer progress");
 
         ok &= expect(module.recurringExec(finalChunk) == 1, "recurringExec should emit the remaining screenshot chunk");
         ok &= expect(finalChunk.uuid() == "shot-0001", "final chunk should preserve task uuid");
-        ok &= expect(finalChunk.outputfile() == "generated-screenshot.bmp", "final chunk should preserve output file");
+        ok &= expect(finalChunk.outputfile() == "generated-screenshot.png", "final chunk should preserve output file");
         ok &= expect(finalChunk.args() == "1", "final chunk should be marked as a continuation artifact chunk");
         ok &= expect(finalChunk.data().size() == 3, "final chunk should contain the remaining screenshot bytes");
         ok &= expect(finalChunk.returnvalue() == "Success", "final chunk should complete the screenshot transfer");

