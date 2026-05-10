@@ -3,6 +3,7 @@
   "display_name": "reversePortForward",
   "kind": "module",
   "description": "Start a reverse port forward from the beacon to a local service.",
+  "command_template": "reversePortForward {remote_port} {local_host:q} {local_port}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

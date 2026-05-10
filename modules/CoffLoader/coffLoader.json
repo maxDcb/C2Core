@@ -3,6 +3,7 @@
   "display_name": "coffLoader",
   "kind": "module",
   "description": "Load a TeamServer-managed COFF/BOF tool artifact and execute an exported function.",
+  "command_template": "coffLoader {coff_file:q} {function_name:q} {packed_arguments:raw?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

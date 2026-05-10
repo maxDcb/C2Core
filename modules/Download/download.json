@@ -3,6 +3,7 @@
   "display_name": "download",
   "kind": "module",
   "description": "Download a remote file from the beacon.",
+  "command_template": "download {remote_path:q} {artifact_name:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

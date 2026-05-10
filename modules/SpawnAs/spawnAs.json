@@ -3,6 +3,7 @@
   "display_name": "spawnAs",
   "kind": "module",
   "description": "Spawn a command under explicit Windows credentials.",
+  "command_template": "spawnAs [-d {d:q}] [-l {l}] [-p {p:flag}] [--with-profile {with_profile:flag}] [--no-profile {no_profile:flag}] [-w {w:flag}] [--show-window {show_window:flag}] [--netonly {netonly:flag}] {username:q} {password:q} -- {command:raw}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

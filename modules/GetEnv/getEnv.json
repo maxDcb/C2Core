@@ -3,6 +3,7 @@
   "display_name": "getEnv",
   "kind": "module",
   "description": "List environment variables available to the beacon process.",
+  "command_template": "getEnv",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

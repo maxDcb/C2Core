@@ -3,6 +3,7 @@
   "display_name": "keyLogger",
   "kind": "module",
   "description": "Start, stop, or locally dump the keylogger buffer.",
+  "command_template": "keyLogger {action}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

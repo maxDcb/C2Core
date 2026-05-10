@@ -3,6 +3,7 @@
   "display_name": "sshExec",
   "kind": "module",
   "description": "Execute a command on a remote SSH server using username/password authentication.",
+  "command_template": "sshExec -h {h:q} [-P {P}] -u {u:q} -p {p:q} -- {command:raw}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

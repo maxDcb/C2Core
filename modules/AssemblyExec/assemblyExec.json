@@ -3,6 +3,7 @@
   "display_name": "assemblyExec",
   "kind": "module",
   "description": "Execute shellcode in the current beacon using a thread, process, or spoofed-parent process mode. Donut inputs are prepared by the TeamServer shellcode service before the task is sent to the beacon.",
+  "command_template": "assemblyExec [--mode {mode}] [--raw {raw:q}] [--donut-exe {donut_exe:q}] [--donut-dll {donut_dll:q}] [--method {method:q}] [-- {arguments:raw}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

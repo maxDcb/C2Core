@@ -3,6 +3,7 @@
   "display_name": "loadModule",
   "kind": "common",
   "description": "Load a beacon module into the current session.",
+  "command_template": "loadModule {module:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

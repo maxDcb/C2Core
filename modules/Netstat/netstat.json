@@ -3,6 +3,7 @@
   "display_name": "netstat",
   "kind": "module",
   "description": "Show active network connections on the beacon.",
+  "command_template": "netstat",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

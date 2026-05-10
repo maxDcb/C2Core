@@ -3,6 +3,7 @@
   "display_name": "kerberosUseTicket",
   "kind": "module",
   "description": "Import a Kerberos ticket upload artifact into the current LUID.",
+  "command_template": "kerberosUseTicket {ticket_artifact:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

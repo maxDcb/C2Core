@@ -3,6 +3,7 @@
   "display_name": "sleep",
   "kind": "common",
   "description": "Set the beacon sleep interval in seconds.",
+  "command_template": "sleep {seconds}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

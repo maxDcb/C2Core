@@ -3,6 +3,7 @@
   "display_name": "rev2self",
   "kind": "module",
   "description": "Return the beacon to its original token context.",
+  "command_template": "rev2self",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

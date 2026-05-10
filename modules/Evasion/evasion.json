@@ -3,6 +3,7 @@
   "display_name": "evasion",
   "kind": "module",
   "description": "Run an evasion action on the beacon.",
+  "command_template": "evasion {action} {address:q?} {value:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

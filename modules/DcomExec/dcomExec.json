@@ -3,6 +3,7 @@
   "display_name": "dcomExec",
   "kind": "module",
   "description": "Execute a command on a remote Windows host through DCOM.",
+  "command_template": "dcomExec -h {h:q} -c {c:q} [-a {a:q}] [-w {w:q}] [-k {k:q}] [-u {u:q}] [-p {p:q}] [-n {n:flag}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

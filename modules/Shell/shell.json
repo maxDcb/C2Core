@@ -3,6 +3,7 @@
   "display_name": "shell",
   "kind": "module",
   "description": "Start or interact with a persistent shell on the beacon.",
+  "command_template": "shell {command:raw?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

@@ -3,6 +3,7 @@
   "display_name": "chisel",
   "kind": "module",
   "description": "Launch the TeamServer-managed chisel.exe tool on a Windows beacon. The TeamServer generates shellcode from Tools/Windows/<arch>/chisel.exe before sending the task.",
+  "command_template": "chisel {action} {server:q?} {reverse_spec:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

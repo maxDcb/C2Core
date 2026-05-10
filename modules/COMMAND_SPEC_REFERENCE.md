@@ -19,6 +19,7 @@ command spec instead.
   "display_name": "whoami",
   "kind": "module",
   "description": "Print current user and group information from the beacon.",
+  "command_template": "whoami",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],
@@ -47,6 +48,21 @@ Supported `type` values are currently descriptive, not enforced: `text`, `number
 
 Use `values` for short static completions, especially enums. Use `examples` for complete
 usage shapes that should be suggested by the console.
+
+## Command template
+
+`command_template` is the canonical renderer used by the assistant to turn structured
+arguments into the exact beacon command line. Keep it in the CommandSpec; do not add
+client-side assistant schemas.
+
+Placeholders use the same normalized argument name exposed to the assistant:
+
+- positional args: `{path:q}` or `{command:raw}`
+- optional args: `{path:q?}` or `[-s {s:q}]`
+- boolean flags: `[--no-run {no_run:flag}]`
+
+For flag args, strip leading dashes and replace dashes with underscores. For example,
+`--donut-exe` becomes `{donut_exe:q}` and `-P` remains `{P}`.
 
 ## Artifact-backed arguments
 

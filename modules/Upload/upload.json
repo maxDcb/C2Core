@@ -3,6 +3,7 @@
   "display_name": "upload",
   "kind": "module",
   "description": "Upload an operator-managed artifact from the TeamServer to the beacon.",
+  "command_template": "upload {upload_artifact:q} {remote_path:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

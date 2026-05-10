@@ -3,6 +3,7 @@
   "display_name": "psExec",
   "kind": "module",
   "description": "Copy and run a service executable on a remote Windows host. The service executable is resolved from Tools first, then UploadedArtifacts.",
+  "command_template": "psExec {auth_mode} {username:q?} {password:q?} {target:q} {service_artifact:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

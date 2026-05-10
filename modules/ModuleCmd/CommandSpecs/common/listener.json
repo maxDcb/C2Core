@@ -3,6 +3,7 @@
   "display_name": "listener",
   "kind": "common",
   "description": "Start or stop a TCP/SMB listener on the beacon.",
+  "command_template": "listener {action} {type_or_hash} {host_or_pipe:q?} {tcp_port?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

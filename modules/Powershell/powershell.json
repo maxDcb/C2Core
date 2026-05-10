@@ -3,6 +3,7 @@
   "display_name": "powershell",
   "kind": "module",
   "description": "Execute a PowerShell command, import a script module, or run a TeamServer-managed script artifact.",
+  "command_template": "powershell [-i {i:q}] [-s {s:q}] {command:raw?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

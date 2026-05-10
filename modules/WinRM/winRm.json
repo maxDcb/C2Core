@@ -3,6 +3,7 @@
   "display_name": "winRm",
   "kind": "module",
   "description": "Execute a command remotely over WinRM.",
+  "command_template": "winRm {auth_mode} {username:q?} {password:q?} {target:q} {command:raw?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

@@ -3,6 +3,7 @@
   "display_name": "tree",
   "kind": "module",
   "description": "Recursively list a remote directory structure.",
+  "command_template": "tree {path:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

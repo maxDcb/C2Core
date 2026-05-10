@@ -3,6 +3,7 @@
   "display_name": "registry",
   "kind": "module",
   "description": "Manipulate local or remote Windows registry keys.",
+  "command_template": "registry {operation} [-s {s:q}] -h {h:q} -k {k:q} [-n {n:q}] [-d {d:q}] [-t {t}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

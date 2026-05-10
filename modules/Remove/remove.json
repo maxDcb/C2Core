@@ -3,6 +3,7 @@
   "display_name": "remove",
   "kind": "module",
   "description": "Remove a remote file or directory from the beacon.",
+  "command_template": "remove {path:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

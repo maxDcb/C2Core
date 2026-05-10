@@ -3,6 +3,7 @@
   "display_name": "mkDir",
   "kind": "module",
   "description": "Create a remote directory on the beacon.",
+  "command_template": "mkDir {path:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

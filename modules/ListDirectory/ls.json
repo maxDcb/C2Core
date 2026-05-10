@@ -3,6 +3,7 @@
   "display_name": "ls",
   "kind": "module",
   "description": "List the contents of a directory on the beacon.",
+  "command_template": "ls {path:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

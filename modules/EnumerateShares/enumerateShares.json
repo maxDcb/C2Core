@@ -3,6 +3,7 @@
   "display_name": "enumerateShares",
   "kind": "module",
   "description": "Enumerate SMB shares from the beacon context.",
+  "command_template": "enumerateShares {host:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

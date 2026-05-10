@@ -3,6 +3,7 @@
   "display_name": "listModule",
   "kind": "common",
   "description": "List modules currently tracked for the active beacon session.",
+  "command_template": "listModule",
   "target": "operator",
   "requires_session": true,
   "platforms": ["windows", "linux"],

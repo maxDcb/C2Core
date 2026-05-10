@@ -3,6 +3,7 @@
   "display_name": "pwd",
   "kind": "module",
   "description": "Print the current working directory on the beacon.",
+  "command_template": "pwd",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

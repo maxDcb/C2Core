@@ -3,6 +3,7 @@
   "display_name": "cat",
   "kind": "module",
   "description": "Read and print a remote file from the beacon.",
+  "command_template": "cat {path:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

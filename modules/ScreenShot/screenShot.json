@@ -3,6 +3,7 @@
   "display_name": "screenShot",
   "kind": "module",
   "description": "Capture a screenshot from the beacon host and register it as a generated PNG TeamServer artifact.",
+  "command_template": "screenShot {artifact_name:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

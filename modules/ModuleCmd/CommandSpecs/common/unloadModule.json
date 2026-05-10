@@ -3,6 +3,7 @@
   "display_name": "unloadModule",
   "kind": "common",
   "description": "Unload a previously loaded beacon module from the current session.",
+  "command_template": "unloadModule {module_name}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

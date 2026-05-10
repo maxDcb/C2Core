@@ -3,6 +3,7 @@
   "display_name": "killProcess",
   "kind": "module",
   "description": "Terminate a process on the beacon host by PID.",
+  "command_template": "killProcess {pid}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

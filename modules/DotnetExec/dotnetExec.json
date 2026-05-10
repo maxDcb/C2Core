@@ -3,6 +3,7 @@
   "display_name": "dotnetExec",
   "kind": "module",
   "description": "Load and execute .NET assemblies in memory. Assembly load inputs are resolved from Tools by the TeamServer.",
+  "command_template": "dotnetExec {action} {module_name:q} {assembly_artifact:q?} {type_or_method:q?} {arguments:raw?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

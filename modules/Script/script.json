@@ -3,6 +3,7 @@
   "display_name": "script",
   "kind": "module",
   "description": "Run a TeamServer-managed script artifact on the beacon. Scripts are resolved from Scripts/<platform>, Scripts/Any, or UploadedArtifacts.",
+  "command_template": "script {script_artifact:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

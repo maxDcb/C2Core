@@ -3,6 +3,7 @@
   "display_name": "cimExec",
   "kind": "module",
   "description": "Execute a command on a remote Windows host through CIM/WMI.",
+  "command_template": "cimExec -h {h:q} -c {c:q} [-n {n:q}] [-a {a:q}] [-u {u:q}] [-p {p:q}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

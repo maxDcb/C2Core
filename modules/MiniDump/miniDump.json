@@ -3,6 +3,7 @@
   "display_name": "miniDump",
   "kind": "module",
   "description": "Dump LSASS to an XORed generated TeamServer artifact, or decrypt an XORed dump locally.",
+  "command_template": "miniDump {action} {artifact_name:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

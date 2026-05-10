@@ -3,6 +3,7 @@
   "display_name": "taskScheduler",
   "kind": "module",
   "description": "Create and optionally run a scheduled task on a local or remote Windows host.",
+  "command_template": "taskScheduler -c {c:q} [-s {s:q}] [-t {t:q}] [-a {a:q}] [-u {u:q}] [-p {p:q}] [--no-run {no_run:flag}] [--nocleanup {nocleanup:flag}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

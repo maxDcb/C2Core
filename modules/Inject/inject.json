@@ -3,6 +3,7 @@
   "display_name": "inject",
   "kind": "module",
   "description": "Inject prepared shellcode into an existing process or a newly spawned process. Donut inputs are prepared by the TeamServer shellcode service before the task is sent to the beacon.",
+  "command_template": "inject --pid {pid} [--raw {raw:q}] [--donut-exe {donut_exe:q}] [--donut-dll {donut_dll:q}] [--method {method:q}] [-- {arguments:raw}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

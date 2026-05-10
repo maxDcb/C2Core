@@ -3,6 +3,7 @@
   "display_name": "wmiExec",
   "kind": "module",
   "description": "Execute a command through WMI.",
+  "command_template": "wmiExec {auth_mode} {username:q?} {password:q?} {dc:q?} {target:q} {command:raw}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

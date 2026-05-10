@@ -3,6 +3,7 @@
   "display_name": "cd",
   "kind": "module",
   "description": "Change the beacon current working directory.",
+  "command_template": "cd {path:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],

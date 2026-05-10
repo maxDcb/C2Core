@@ -3,6 +3,7 @@
   "display_name": "help",
   "kind": "common",
   "description": "Show available commands or command-specific help in the beacon console.",
+  "command_template": "help {command?}",
   "target": "operator",
   "requires_session": false,
   "platforms": ["any"],

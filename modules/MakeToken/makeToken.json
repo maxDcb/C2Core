@@ -3,6 +3,7 @@
   "display_name": "makeToken",
   "kind": "module",
   "description": "Create and impersonate a token from explicit credentials.",
+  "command_template": "makeToken {username:q} {password:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

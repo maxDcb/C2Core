@@ -3,6 +3,7 @@
   "display_name": "enumerateRdpSessions",
   "kind": "module",
   "description": "Enumerate local or remote RDP sessions using the Windows WTS APIs.",
+  "command_template": "enumerateRdpSessions [-s {s:q}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

@@ -3,6 +3,7 @@
   "display_name": "stealToken",
   "kind": "module",
   "description": "Steal and impersonate a token from a process id.",
+  "command_template": "stealToken {pid}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],

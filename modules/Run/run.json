@@ -3,6 +3,7 @@
   "display_name": "run",
   "kind": "module",
   "description": "Run a system command on the beacon and return its output.",
+  "command_template": "run {command:raw}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows", "linux"],
