@@ -172,7 +172,7 @@ __attribute__((visibility("default"))) MiniDump* MiniDumpConstructor()
 
 
 MiniDump::MiniDump()
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     : ModuleCmd(std::string(moduleName), moduleHash)
 #else
     : ModuleCmd("", moduleHash)
@@ -191,7 +191,7 @@ MiniDump::~MiniDump()
 std::string MiniDump::getInfo()
 {
     std::string info;
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     info += "MiniDump Module:\n";
     info += "Dump the LSASS process memory and return it as an XOR-encrypted generated TeamServer artifact.\n";
     info += "The XORed dump can then be decrypted locally with the decrypt action.\n\n";
@@ -215,7 +215,7 @@ std::string xorKey = "nY5LkT7dXmiWeF2QApDLMQmnHaCR4VzsC6zuN3QgZtTqU7qaaf";
 
 int MiniDump::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
 
     if(splitedCmd.size() == 3 && splitedCmd[1]=="dump")
     {
