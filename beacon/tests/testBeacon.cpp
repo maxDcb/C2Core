@@ -174,6 +174,32 @@ int main()
     }
     {
         BeaconTestProxy b;
+        C2Message hostSocksInit;
+        hostSocksInit.set_instruction(Socks5Cmd);
+        hostSocksInit.set_cmd(InitCmd);
+        hostSocksInit.set_data("host:");
+        hostSocksInit.set_args("80");
+        hostSocksInit.set_pid(7);
+        C2Message hostSocksRet;
+
+        ok &= expect(!b.execInstruction(hostSocksInit, hostSocksRet), "hostname socks init failure should keep beacon running");
+        ok &= expect(hostSocksRet.instruction() == Socks5Cmd, "hostname socks init should preserve instruction");
+        ok &= expect(hostSocksRet.cmd() == InitCmd, "hostname socks init should preserve command");
+        ok &= expect(hostSocksRet.pid() == 7, "hostname socks init should preserve tunnel id");
+        ok &= expect(hostSocksRet.data() == "fail:connect", "empty hostname should fail cleanly");
+
+        C2Message invalidSocksInit;
+        invalidSocksInit.set_instruction(Socks5Cmd);
+        invalidSocksInit.set_cmd(InitCmd);
+        invalidSocksInit.set_data("not-a-number");
+        invalidSocksInit.set_args("80");
+        C2Message invalidSocksRet;
+
+        ok &= expect(!b.execInstruction(invalidSocksInit, invalidSocksRet), "invalid socks init failure should keep beacon running");
+        ok &= expect(invalidSocksRet.data() == "fail:invalid_destination", "invalid socks destination should fail cleanly");
+    }
+    {
+        BeaconTestProxy b;
         C2Message msg;
         msg.set_instruction("UNKNOWN");
         C2Message ret;

