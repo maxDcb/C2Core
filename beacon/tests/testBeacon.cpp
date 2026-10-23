@@ -205,6 +205,7 @@ int main()
         C2Message ret;
         ok &= expect(!b.execInstruction(msg, ret), "unknown module should keep beacon running");
         ok &= expect(ret.returnvalue() == CmdModuleNotFound, "unknown module should report module not found");
+        ok &= expect(ret.errorCode() == ERROR_MODULE_NOT_FOUND, "unknown module should set error code");
     }
 
     return ok ? 0 : 1;

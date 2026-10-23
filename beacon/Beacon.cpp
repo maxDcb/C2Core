@@ -1057,6 +1057,7 @@ bool Beacon::handleModuleInstruction(C2Message& c2Message, C2Message& c2RetMessa
     }
     if (!isModuleFound)
     {
+        c2RetMessage.set_errorCode(ERROR_MODULE_NOT_FOUND);
         c2RetMessage.set_returnvalue(CmdModuleNotFound);
     }
     return false;
