@@ -14,11 +14,14 @@ set_property(TARGET PwSh PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 target_link_libraries(PwSh )
 add_custom_command(TARGET PwSh POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 $<TARGET_FILE:PwSh> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:PwSh>")
-add_custom_command(TARGET PwSh POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${C2_RUNTIME_ROOT}/data/Tools/Any/any"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/PowerShellRunner/rdm.dll"
-        "${C2_RUNTIME_ROOT}/data/Tools/Any/any/rdm.dll")
+
+if(DEFINED C2_RUNTIME_ROOT AND NOT "${C2_RUNTIME_ROOT}" STREQUAL "")
+    add_custom_command(TARGET PwSh POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${C2_RUNTIME_ROOT}/data/Tools/Any/any"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/PowerShellRunner/rdm.dll"
+            "${C2_RUNTIME_ROOT}/data/Tools/Any/any/rdm.dll")
+endif()
 
 if(C2CORE_BUILD_TESTS)
     if(WIN32)

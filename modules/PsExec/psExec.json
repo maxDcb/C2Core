@@ -3,16 +3,25 @@
   "display_name": "psExec",
   "kind": "module",
   "description": "Copy and run a service executable on a remote Windows host. The service executable is resolved from Tools first, then UploadedArtifacts.",
-  "command_template": "psExec {auth_mode} {username:q?} {password:q?} {target:q} {service_artifact:q}",
+  "command_template": "psExec [--vault {vault:q}] [{auth_mode} {username:q?} {password:q?}] {target:q} {service_artifact:q}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
   "archs": ["x86", "x64", "arm64"],
   "args": [
     {
+      "name": "--vault",
+      "type": "credential",
+      "required": false,
+      "description": "TeamServer vault credential reference. The TeamServer resolves it to DOMAIN\\user and password before dispatch.",
+      "credential_filter": {
+        "type": "password"
+      }
+    },
+    {
       "name": "auth_mode",
       "type": "enum",
-      "required": true,
+      "required": false,
       "description": "Authentication mode.",
       "values": ["-u", "-k", "-n"]
     },
@@ -20,7 +29,7 @@
       "name": "username",
       "type": "text",
       "required": false,
-      "description": "DOMAIN\\Username for -u mode."
+      "description": "DOMAIN\\Username for explicit -u mode."
     },
     {
       "name": "password",
@@ -62,6 +71,7 @@
     }
   ],
   "examples": [
+    "psExec --vault cred:credentialId fileserver service.exe",
     "psExec -u DOMAIN\\Username Password123! fileserver service.exe",
     "psExec -k fileserver service.exe",
     "psExec -n fileserver service.exe"

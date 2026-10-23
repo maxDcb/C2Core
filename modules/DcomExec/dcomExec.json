@@ -3,12 +3,21 @@
   "display_name": "dcomExec",
   "kind": "module",
   "description": "Execute a command on a remote Windows host through DCOM.",
-  "command_template": "dcomExec -h {h:q} -c {c:q} [-a {a:q}] [-w {w:q}] [-k {k:q}] [-u {u:q}] [-p {p:q}] [-n {n:flag}]",
+  "command_template": "dcomExec [--vault {vault:q}] -h {h:q} -c {c:q} [-a {a:q}] [-w {w:q}] [-k {k:q}] [-u {u:q}] [-p {p:q}] [-n {n:flag}]",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
   "archs": ["x86", "x64", "arm64"],
   "args": [
+    {
+      "name": "--vault",
+      "type": "credential",
+      "required": false,
+      "description": "TeamServer vault credential reference. The TeamServer resolves it to -u DOMAIN\\user -p password before dispatch.",
+      "credential_filter": {
+        "type": "password"
+      }
+    },
     {
       "name": "-h",
       "type": "flag",
@@ -43,7 +52,7 @@
       "name": "-u",
       "type": "flag",
       "required": false,
-      "description": "Username for explicit credentials."
+      "description": "Username for explicit credential mode."
     },
     {
       "name": "-p",
@@ -59,6 +68,7 @@
     }
   ],
   "examples": [
+    "dcomExec --vault cred:credentialId -h fileserver -c cmd.exe -a \"/c whoami\"",
     "dcomExec -h fileserver -c cmd.exe -a \"/c whoami\"",
     "dcomExec -h fileserver -k HOST/fileserver.domain -u DOMAIN\\user -p Passw0rd -c cmd.exe -a \"/c whoami\""
   ],

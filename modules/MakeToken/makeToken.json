@@ -2,13 +2,22 @@
   "name": "makeToken",
   "display_name": "makeToken",
   "kind": "module",
-  "description": "Create and impersonate a token from explicit credentials.",
-  "command_template": "makeToken {username:q} {password:q}",
+  "description": "Create and impersonate a token from explicit credentials or a TeamServer vault credential reference.",
+  "command_template": "makeToken [--vault {vault:q}] {username:q?} {password:q?}",
   "target": "beacon",
   "requires_session": true,
   "platforms": ["windows"],
   "archs": ["x86", "x64", "arm64"],
   "args": [
+    {
+      "name": "--vault",
+      "type": "credential",
+      "required": false,
+      "description": "TeamServer vault credential reference. The TeamServer resolves it to DOMAIN\\user and password before dispatch.",
+      "credential_filter": {
+        "type": "password"
+      }
+    },
     {
       "name": "username",
       "type": "text",
@@ -23,6 +32,7 @@
     }
   ],
   "examples": [
+    "makeToken --vault cred:credentialId",
     "makeToken DOMAIN\\Username Password123!"
   ],
   "source": "manifest"
