@@ -49,6 +49,8 @@ public:
     // Task & Task Result
     void queueTask(const std::string& beaconHash, const C2Message& c2Message);
     bool addTask(const C2Message& task, const std::string& beaconHash);
+    bool queueTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
+    bool queueStopTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
         C2Message getTask(const std::string& beaconHash);
         bool addTaskResult(const C2Message& taskResult, const std::string& beaconHash);
         C2Message getTaskResult(const std::string& beaconHash);

@@ -370,6 +370,39 @@ bool Listener::addTask(const C2Message& task, const std::string& beaconHash)
         return sessionExist;
 }
 
+bool Listener::queueTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    for (const auto& session : m_sessions)
+    {
+        if (session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerHash)
+        {
+            if (session->isSessionKilled())
+                return false;
+            session->addTask(task);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Listener::queueStopTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    for (const auto& session : m_sessions)
+    {
+        if (session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerHash)
+        {
+            if (session->isSessionKilled())
+                return false;
+            session->addTask(task);
+            session->setSessionKilled();
+            return true;
+        }
+    }
+    return false;
+}
+
 
 C2Message Listener::getTask(const std::string& beaconHash)
 {

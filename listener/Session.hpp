@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <iostream>
 #include <chrono>
 #include <queue>
@@ -160,9 +161,9 @@ public:
         m_lastProofOfLifeSec = duration_in_seconds.count()-lastProofOfLifeSec;
     }
 
-    bool isSessionKilled()
+    bool isSessionKilled() const
     {
-        return m_killed;
+        return m_killed.load();
     }
 
     void setSessionAlive()
@@ -181,7 +182,7 @@ public:
         auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
 
         std::string output = std::to_string(duration_in_seconds.count()-m_lastProofOfLifeSec);
-        if(m_killed)
+        if(m_killed.load())
             output="-1";
 
         return output;
@@ -298,7 +299,7 @@ private:
 
     std::vector<SessionListener> m_sessionListener;
 
-    bool m_killed;
+    std::atomic<bool> m_killed;
 };
 
 

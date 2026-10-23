@@ -70,6 +70,30 @@ int main()
     }
     {
         ListenerTestProxy l;
+        auto session = makeSession();
+        l.addSession(session);
+        C2Message command;
+        command.set_instruction("CMD");
+        C2Message stop;
+        stop.set_instruction(EndCmd);
+
+        ok &= expect(l.queueTaskIfSessionAlive("bhash", "lhash", command),
+            "command should queue for a live session");
+        ok &= expect(l.queueStopTaskIfSessionAlive("bhash", "lhash", stop),
+            "stop task should queue for a live session");
+        ok &= expect(session->isSessionKilled(), "stop task should mark the session killed");
+        ok &= expect(l.isSessionExist("bhash", "lhash"),
+            "stopped session should remain known for beacon check-ins");
+        ok &= expect(!l.queueTaskIfSessionAlive("bhash", "lhash", command),
+            "command should be rejected after stop");
+        ok &= expect(!l.queueStopTaskIfSessionAlive("bhash", "lhash", stop),
+            "duplicate stop task should be rejected");
+        ok &= expect(l.getTask("bhash").instruction() == "CMD", "accepted command should precede stop");
+        ok &= expect(l.getTask("bhash").instruction() == EndCmd, "stop task should follow accepted commands");
+        ok &= expect(l.getTask("bhash").instruction().empty(), "stopped session should have no later tasks");
+    }
+    {
+        ListenerTestProxy l;
         l.addSession(makeSession());
         C2Message msg;
         msg.set_instruction("RES");
