@@ -52,6 +52,9 @@ add_executable(testListenerTcp
     ../Listener.cpp
     ../ListenerTcp.cpp)
 target_link_libraries(testListenerTcp nlohmann_json::nlohmann_json SocketHandler c2_base64 ${additionalLib})
+if(C2CORE_BUILD_TESTS)
+    add_test(NAME listener_tcp_transport_tests COMMAND testListenerTcp)
+endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testListenerDnsFunctional COMMAND testListenerDns)

@@ -173,6 +173,7 @@ const std::string & Listener::getListenerHash() const
 
 std::size_t Listener::getNumberOfSession() const
 {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_sessions.size();
 }
 
@@ -307,6 +308,7 @@ bool Listener::rmSessionListener(const std::string& beaconHash, const std::strin
 
 std::vector<SessionListener> Listener::getSessionListenerInfos()
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     std::vector<SessionListener> sessionListenerList;
     for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
     {
@@ -559,37 +561,32 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
         if(beaconHash.size()!=SizeBeaconHash)
             continue;
 
-        bool isExist = isSessionExist(beaconHash, listenerhash);
-
-        // If the session does not exist, create a new one
-                if(isExist==false)
-                {
-                        // TODO if no info are provided, queu a getInfo cmd
-#ifdef BUILD_TEAMSERVER
-                        if(m_logger)
-                                m_logger->info("Registering new session for beacon {} handled by listener {}", beaconHash, listenerhash);
-#endif
-
-            std::string username = bundleC2Message->username();
-            std::string hostname = bundleC2Message->hostname();
-            std::string arch = bundleC2Message->arch();
-            std::string privilege = bundleC2Message->privilege();
-            std::string os = bundleC2Message->os();
-            std::string internalIps = bundleC2Message->internalIps();
-            std::string processId = bundleC2Message->processId();
-            std::string additionalInformation = bundleC2Message->additionalInformation();
-
-                        std::shared_ptr<Session> session = std::make_shared<Session>(listenerhash, beaconHash, hostname, username, arch, privilege, os);
-                        session->setInternalIps(internalIps);
-                        session->setProcessId(processId);
-                        session->setAdditionalInformation(additionalInformation);
-                        m_sessions.push_back(std::move(session));
-        }
-        // If the session already exist, update the information
-        else
         {
-            std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
-                        updateSessionProofOfLife(beaconHash, lastProofOfLife);
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto sessionIt = std::find_if(m_sessions.begin(), m_sessions.end(),
+                [&](const std::shared_ptr<Session>& session)
+                {
+                    return session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerhash;
+                });
+            if (sessionIt == m_sessions.end())
+            {
+                auto session = std::make_shared<Session>(listenerhash, beaconHash,
+                    bundleC2Message->hostname(), bundleC2Message->username(),
+                    bundleC2Message->arch(), bundleC2Message->privilege(), bundleC2Message->os());
+                session->setInternalIps(bundleC2Message->internalIps());
+                session->setProcessId(bundleC2Message->processId());
+                session->setAdditionalInformation(bundleC2Message->additionalInformation());
+                m_sessions.push_back(std::move(session));
+#ifdef BUILD_TEAMSERVER
+                if (m_logger)
+                    m_logger->info("Registering new session for beacon {} handled by listener {}", beaconHash, listenerhash);
+#endif
+            }
+            else
+            {
+                std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
+                (*sessionIt)->updatePoofOfLife(lastProofOfLife);
+            }
         }
 
         // For each message in this session
@@ -622,16 +619,22 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
             // Check if the listener is primary - meaning launched by the teamserver. Otherwise don't do this and just relay the task to the next listener
             else if(c2Message.instruction()==Socks5Cmd && m_isPrimary)
             {
-                                bool isExist = isSocksSessionExist(beaconHash, listenerhash);
-                                if(isExist==false)
-                                {
-                                        std::shared_ptr<SocksSession> session = std::make_shared<SocksSession>(listenerhash, beaconHash);
-                                        m_socksSessions.push_back(std::move(session));
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    auto socksIt = std::find_if(m_socksSessions.begin(), m_socksSessions.end(),
+                        [&](const std::shared_ptr<SocksSession>& session)
+                        {
+                            return session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerhash;
+                        });
+                    if (socksIt == m_socksSessions.end())
+                    {
+                        m_socksSessions.push_back(std::make_shared<SocksSession>(listenerhash, beaconHash));
 #ifdef BUILD_TEAMSERVER
-                                        if(m_logger)
-                                                m_logger->info("Created socks session for beacon {} via listener {}", beaconHash, listenerhash);
+                        if(m_logger)
+                            m_logger->info("Created socks session for beacon {} via listener {}", beaconHash, listenerhash);
 #endif
-                                }
+                    }
+                }
 
                 addSocksTaskResult(c2Message, beaconHash);
             }

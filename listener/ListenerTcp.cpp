@@ -1,5 +1,8 @@
 #include "ListenerTcp.hpp"
 #include <SocketServer.hpp>
+#include "../TcpFrameBuffer.hpp"
+
+#include <unordered_map>
 
 using namespace std;
 using json = nlohmann::json;
@@ -46,28 +49,16 @@ int ListenerTcp::init()
 {
     try
     {
-        int maxAttempt=10;
-        int attempts=0;
-        while(!m_serverTcp->isServerLaunched())
-        {
-            m_serverTcp->stop();
-            m_serverTcp->launch();
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            // std::cout << "Wait for SocksServer to start on port " << m_port << std::endl;
-            attempts++;
-            if(attempts>maxAttempt)
-            {            
-                // std::cout << "Unable to start the SocksServer on port " << m_port << " after " << maxAttempt << " attempts" << std::endl;
-#ifdef BUILD_TEAMSERVER
-                                if(m_logger)
-                                        m_logger->error("Unable to start the SocksServer on port {}", m_port);
-#endif
-            }
-        }
+        if (m_tcpServ && m_tcpServ->joinable())
+            return 1;
 
-        if(m_serverTcp->isServerStoped())
+        m_serverTcp->launch();
+        if (!m_serverTcp->isServerLaunched())
         {
-            // std::cout << "Start SocksServer failed on port " << m_port << std::endl;
+#ifdef BUILD_TEAMSERVER
+            if(m_logger)
+                m_logger->error("Unable to start TCP listener on port {}", m_port);
+#endif
             return -1;
         }
 
@@ -76,7 +67,7 @@ int ListenerTcp::init()
                         m_logger->info("TCP listener started on port {}", m_port);
 #endif
 
-        m_stopThread=false;
+        m_stopThread.store(false);
         m_tcpServ = std::make_unique<std::thread>(&ListenerTcp::launchTcpServ, this);
     }
     catch(const std::exception& e)
@@ -86,6 +77,7 @@ int ListenerTcp::init()
                 if(m_logger)
                         m_logger->error("TCP listener initialization failure: {}", e.what());
 #endif
+        m_serverTcp->stop();
         return -1;
     }
     
@@ -95,11 +87,10 @@ int ListenerTcp::init()
 
 ListenerTcp::~ListenerTcp()
 {
-    if(m_stopThread==false)
-    {
-        m_stopThread=true;
+    m_stopThread.store(true);
+    m_serverTcp->stop();
+    if(m_tcpServ && m_tcpServ->joinable())
         m_tcpServ->join();
-    }    
 
     delete m_serverTcp;
 
@@ -110,64 +101,67 @@ ListenerTcp::~ListenerTcp()
 }
 
 
-int ListenerTcp::splitInPacket(const std::string& input, std::vector<std::string>& output) 
-{
-    std::string delimiter = "<TCP-666>";
-    size_t pos = 0;
-    size_t start = 0;
-
-    while ((pos = input.find(delimiter, start)) != std::string::npos) {
-        output.push_back(input.substr(start, pos - start));
-        start = pos + delimiter.length();
-    }
-
-    if (start < input.length()) 
-    {
-        output.push_back(input.substr(start));
-    }
-
-    return output.size();
-}
-
-
 void ListenerTcp::launchTcpServ()
 {
+    std::unordered_map<SocketTunnelServer*, TcpFrameBuffer> frameBuffers;
     try 
     {
-        while(!m_stopThread)
+        while(!m_stopThread.load())
         {
-            for(int i=0; i<m_serverTcp->m_socketTunnelServers.size(); i++)
+            const auto tunnels = m_serverTcp->getTunnels();
+            for(const auto& tunnel : tunnels)
             {
-                if(m_serverTcp->m_socketTunnelServers[i]!=nullptr)
+                if(!tunnel)
+                    continue;
+                if(tunnel->isClosed())
+                {
+                    frameBuffers.erase(tunnel.get());
+                    continue;
+                }
+                try
                 {
                     std::string input;
-                    int res = m_serverTcp->m_socketTunnelServers[i]->recv(input);
+                    int res = tunnel->recv(input);
 
-                                        if(res<0)
-                                        {
-                                                m_serverTcp->m_socketTunnelServers[i].reset(nullptr);
+                    if(res <= 0)
+                    {
+                        tunnel->close();
+                        frameBuffers.erase(tunnel.get());
 #ifdef BUILD_TEAMSERVER
-                                                if(m_logger)
-                                                        m_logger->warn("Closed TCP tunnel {} due to read failure", i);
+                        if(m_logger)
+                            m_logger->warn("Closed TCP tunnel due to read failure");
 #endif
-                                        }
+                    }
                     else if(!input.empty())
                     {
-                        std::vector<std::string> trames;
-                        splitInPacket(input, trames);
+                        std::vector<std::string> frames;
+                        if (!frameBuffers[tunnel.get()].append(input, frames))
+                        {
+                            tunnel->close();
+                            frameBuffers.erase(tunnel.get());
+                            continue;
+                        }
 
-                        for(int j=0; j<trames.size(); j++)
+                        for(const auto& frame : frames)
                         {
                             std::string output;
-                            handleMessages(trames[j], output);
-                            output.append("<TCP-666>");
-                            m_serverTcp->m_socketTunnelServers[i]->send(output);
+                            handleMessages(frame, output);
+                            output.append(TcpFrameBuffer::delimiter());
+                            if (tunnel->send(output) < 0)
+                            {
+                                frameBuffers.erase(tunnel.get());
+                                break;
+                            }
                         }
                     }
                 }
+                catch (...)
+                {
+                    tunnel->close();
+                    frameBuffers.erase(tunnel.get());
+                }
             }
 
-            // Remove ended tunnels
             m_serverTcp->cleanTunnel();
 
             std::this_thread::sleep_for(std::chrono::milliseconds(20));

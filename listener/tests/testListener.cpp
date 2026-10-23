@@ -4,6 +4,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <atomic>
+#include <thread>
 
 class ListenerTestProxy : public Listener {
 public:
@@ -152,6 +154,33 @@ int main()
         ok &= expect(infos.size() == 1, "legacy listener poll should update session listener metadata");
         ok &= expect(infos[0].getListenerHash() == "child-listener", "legacy listener poll should preserve child listener hash");
         ok &= expect(infos[0].getType() == "tcp", "legacy listener poll should preserve child listener type");
+    }
+
+    {
+        const std::string beaconHash = "CONCURRENT123456CONCURRENT123456";
+        ListenerTestProxy l;
+        MultiBundleC2Message incoming;
+        auto* bundle = incoming.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("listener");
+        bundle->set_lastProofOfLife("0");
+        const std::string encoded = l.encode(incoming);
+        std::atomic<bool> start{false};
+        std::vector<std::thread> workers;
+        for (int i = 0; i < 24; ++i)
+        {
+            workers.emplace_back([&]
+            {
+                while (!start.load())
+                    std::this_thread::yield();
+                std::string response;
+                l.process(encoded, response);
+            });
+        }
+        start.store(true);
+        for (auto& worker : workers)
+            worker.join();
+        ok &= expect(l.getNumberOfSession() == 1, "concurrent check-ins must register one session");
     }
 
     return ok ? 0 : 1;

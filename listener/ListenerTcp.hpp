@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Listener.hpp"
+#include <atomic>
 
 
 class SocketServer;
@@ -16,12 +17,11 @@ public:
 
 private:
     void launchTcpServ();
-    int splitInPacket(const std::string& input, std::vector<std::string>& output);
 
     SocketServer* m_serverTcp;
 
     int m_port;
 
-    bool m_stopThread;
+    std::atomic<bool> m_stopThread;
     std::unique_ptr<std::thread> m_tcpServ;
 };

@@ -92,5 +92,5 @@ protected:
 #endif
 
 private:
-    std::mutex m_mutex;    
+    mutable std::mutex m_mutex;
 };

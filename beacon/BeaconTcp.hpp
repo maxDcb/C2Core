@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Beacon.hpp"
+#include "../TcpFrameBuffer.hpp"
 
 class SocketTunnelClient;
 
@@ -18,7 +19,6 @@ private:
 
     void checkIn();
 
-    int splitInPacket(const std::string& input, std::vector<std::string>& output);
-
     SocketTunnelClient* m_client;
+    TcpFrameBuffer m_frames;
 };
