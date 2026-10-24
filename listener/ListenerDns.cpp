@@ -10,7 +10,7 @@ using json = nlohmann::json;
 ListenerDns::ListenerDns(const std::string& domainToResolve, int port, const nlohmann::json& config)
         : Listener(domainToResolve, std::to_string(port), ListenerDnsType)
 {
-        m_serverDns = new dns::Server(port, domainToResolve);
+        m_serverDns = std::make_unique<dns::Server>(port, domainToResolve);
 
         m_listenerHash = random_string(SizeListenerHash);
 
@@ -39,26 +39,30 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port, const nlo
         m_logger->info("Initializing DNS listener for {} on port {}", domainToResolve, port);
 #endif
 
-        m_serverDns->launch();
+        if (!m_serverDns->launch())
+                return;
+
+        m_running.store(true);
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
                 m_logger->info("DNS listener started for {} on port {}", domainToResolve, port);
 #endif
 
-        m_stopThread=false;
+        m_stopThread.store(false);
         m_dnsListener = std::make_unique<std::thread>(&ListenerDns::launchDnsListener, this);
 }
 
 
 ListenerDns::~ListenerDns()
 {
-        m_serverDns->stop();
+        m_stopThread.store(true);
+        if (m_serverDns)
+                m_serverDns->stop();
 
-        m_stopThread=true;
-        m_dnsListener->join();
-
-        delete m_serverDns;
+        if (m_dnsListener && m_dnsListener->joinable())
+                m_dnsListener->join();
+        m_running.store(false);
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -69,14 +73,11 @@ ListenerDns::~ListenerDns()
 
 void ListenerDns::launchDnsListener()
 {
-    try 
+    while(!m_stopThread.load())
     {
-        while(1)
+        try
         {
-            if(m_stopThread)
-                return;
-
-                        auto [clientId, input] = m_serverDns->getAvailableMessage();
+            auto [clientId, input] = m_serverDns->getAvailableMessage();
 
 #ifdef BUILD_TEAMSERVER
                         if(m_logger && m_logger->should_log(spdlog::level::debug))
@@ -86,25 +87,35 @@ void ListenerDns::launchDnsListener()
                         if(!input.empty())
                         {
                                 string output;
-                                bool ret = handleMessages(input, output);
+                                std::vector<PendingTask> dequeuedTasks;
+                                try
+                                {
+                                        handleMessages(input, output, &dequeuedTasks);
 
 #ifdef BUILD_TEAMSERVER
-                                if(m_logger && m_logger->should_log(spdlog::level::debug))
-                                        m_logger->debug("Sending {} bytes to DNS client {}", output.size(), clientId);
+                                        if(m_logger && m_logger->should_log(spdlog::level::debug))
+                                                m_logger->debug("Sending {} bytes to DNS client {}", output.size(), clientId);
 #endif
 
-                                if(!output.empty())
-                                        m_serverDns->setMessageToSend(output, clientId);
+                                        if((output.empty() && !dequeuedTasks.empty()) ||
+                                           (!output.empty() &&
+                                            !m_serverDns->setMessageToSend(output, clientId)))
+                                                restoreTasks(dequeuedTasks);
+                                }
+                                catch (...)
+                                {
+                                        restoreTasks(dequeuedTasks);
+                                }
                         }
-            
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
-    }
-    catch (...)
-    {
-        return;
+        catch (...)
+        {
+            // A malformed exchange must not terminate the listener worker.
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    return;
+    m_running.store(false);
 }
 

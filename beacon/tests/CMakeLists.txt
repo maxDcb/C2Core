@@ -44,6 +44,7 @@ add_executable(testBeaconDns
     ../Beacon.cpp
     ../BeaconDns.cpp
     ../../listener/Listener.cpp
+    ../../listener/ListenerDns.cpp
     ../../listener/ListenerTcp.cpp
     ../../listener/ListenerSmb.cpp)
 
@@ -140,6 +141,7 @@ endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testBeaconDnsFunctional COMMAND testBeaconDns)
+    set_tests_properties(testBeaconDnsFunctional PROPERTIES TIMEOUT 60)
     add_test(NAME testBeaconGithubFunctional COMMAND testBeaconGithub)
     add_test(NAME testBeaconHttpFunctional COMMAND testBeaconHttp)
     if(WIN32)

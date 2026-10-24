@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Listener.hpp"
+#include <atomic>
 
 
 namespace dns
@@ -14,12 +15,14 @@ class ListenerDns : public Listener
 public:
         ListenerDns(const std::string& domainToResolve, int port, const nlohmann::json& config = nlohmann::json::object());
     ~ListenerDns();
+    bool isRunning() const { return m_running.load(); }
 
 private:
     void launchDnsListener();
 
-    dns::Server* m_serverDns;
+    std::unique_ptr<dns::Server> m_serverDns;
 
-    bool m_stopThread;
+    std::atomic<bool> m_stopThread{false};
+    std::atomic<bool> m_running{false};
     std::unique_ptr<std::thread> m_dnsListener;
 };
