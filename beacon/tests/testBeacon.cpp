@@ -206,6 +206,20 @@ int main()
 
         ok &= expect(!b.execInstruction(invalidSocksInit, invalidSocksRet), "invalid socks init failure should keep beacon running");
         ok &= expect(invalidSocksRet.data() == "fail:invalid_destination", "invalid socks destination should fail cleanly");
+
+        C2Message stopAll;
+        stopAll.set_instruction(Socks5Cmd);
+        stopAll.set_cmd(StopSocksCmd);
+        C2Message stopAllRet;
+        ok &= expect(!b.execInstruction(stopAll, stopAllRet), "stopping all socks tunnels should keep beacon running");
+
+        C2Message runAfterStop;
+        runAfterStop.set_instruction(Socks5Cmd);
+        runAfterStop.set_cmd(RunCmd);
+        runAfterStop.set_pid(7);
+        C2Message runAfterStopRet;
+        ok &= expect(!b.execInstruction(runAfterStop, runAfterStopRet), "a late socks packet should not crash the beacon");
+        ok &= expect(runAfterStopRet.cmd() == StopCmd, "a late socks packet should close the missing tunnel");
     }
     {
         BeaconTestProxy b;

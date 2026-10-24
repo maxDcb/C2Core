@@ -341,9 +341,9 @@ bool Listener::markSessionKilled(const std::string& beaconHash)
 }
 
 
-void Listener::queueTask(const std::string& beaconHash, const C2Message& c2Message)
+bool Listener::queueTask(const std::string& beaconHash, const C2Message& c2Message)
 {
-    addTask(c2Message, beaconHash);
+    return addTask(c2Message, beaconHash);
 }
 
 

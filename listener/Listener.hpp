@@ -47,7 +47,7 @@ public:
     std::vector<SessionListener> getSessionListenerInfos();
 
     // Task & Task Result
-    void queueTask(const std::string& beaconHash, const C2Message& c2Message);
+    bool queueTask(const std::string& beaconHash, const C2Message& c2Message);
     bool addTask(const C2Message& task, const std::string& beaconHash);
     bool queueTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
     bool queueStopTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
