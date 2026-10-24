@@ -813,7 +813,7 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
         SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
         if (c2Message.uuid().empty())
         {
-            c2RetMessage.set_data("fail:invalid_generation");
+            c2RetMessage.set_data("fail");
             return false;
         }
         if (m_socksRouteGeneration != c2Message.uuid())
