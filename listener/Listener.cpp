@@ -595,7 +595,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
         {
             const C2Message& c2Message = bundleC2Message->c2messages(j);
 
-            if (c2Message.instruction() != ListenerPollCmd)
+            if (c2Message.instruction() != ListenerPollCmd &&
+                c2Message.instruction() != HttpExchangeCmd)
                 addTaskResult(c2Message, beaconHash);
 
             // Handle instruction that have impact on this Listener

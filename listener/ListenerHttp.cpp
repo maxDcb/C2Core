@@ -1,6 +1,7 @@
 #include "ListenerHttp.hpp"
 
 #include <cstdio>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <openssl/md5.h>
@@ -95,6 +96,11 @@ ListenerHttp::ListenerHttp(const std::string& ip, int localPort, const nlohmann:
 
 int ListenerHttp::init()
 {
+    if (isRunning())
+        return 1;
+    if (m_httpServ && m_httpServ->joinable())
+        m_httpServ->join();
+
     try
     {
         if(m_isHttps)
@@ -135,7 +141,40 @@ int ListenerHttp::init()
         return -1;
     }
 
-    m_httpServ = std::make_unique<std::thread>(&ListenerHttp::launchHttpServ, this);
+    m_running.store(false);
+    m_threadExited.store(false);
+    try
+    {
+        m_httpServ = std::make_unique<std::thread>(&ListenerHttp::launchHttpServ, this);
+    }
+    catch (...)
+    {
+        m_threadExited.store(true);
+        m_svr.reset();
+        return -1;
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (m_svr->is_running())
+        {
+            m_running.store(true);
+            break;
+        }
+        if (m_threadExited.load())
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    if (!m_running.load())
+    {
+        m_svr->stop();
+        if (m_httpServ->joinable())
+            m_httpServ->join();
+        m_svr.reset();
+        return -1;
+    }
 
 #ifdef BUILD_TEAMSERVER
     if(m_logger)
@@ -156,6 +195,11 @@ ListenerHttp::~ListenerHttp()
     if(m_logger)
         m_logger->info("{} listener stopped on {}:{}", m_isHttps ? "HTTPS" : "HTTP", m_host, m_port);
 #endif
+}
+
+bool ListenerHttp::isRunning() const
+{
+    return m_running.load() && m_svr && m_svr->is_running();
 }
 
 bool ListenerHttp::isAllowedPath(const std::string& path) const
@@ -179,6 +223,19 @@ bool ListenerHttp::isAllowedPath(const std::string& path) const
 }
 
 void ListenerHttp::launchHttpServ()
+{
+    try
+    {
+        runHttpServ();
+    }
+    catch (...)
+    {
+    }
+    m_running.store(false);
+    m_threadExited.store(true);
+}
+
+void ListenerHttp::runHttpServ()
 {
     if (!m_svr)
         return;
@@ -403,7 +460,8 @@ void ListenerHttp::launchHttpServ()
         });
     }
 
-    if(!m_svr->listen_after_bind())
+    const bool served = m_svr->listen_after_bind();
+    if (!served)
     {
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -422,7 +480,37 @@ bool ListenerHttp::processPayload(const std::string& requestData, std::string& r
     }
 #endif
 
-    bool ret = handleMessages(requestData, responseData);
+    std::string beaconHash;
+    std::string exchangeId;
+    if (!extractExchangeIdentity(requestData, beaconHash, exchangeId))
+        return handleMessages(requestData, responseData);
+
+    std::lock_guard<std::mutex> lock(m_exchangeMutex);
+    const std::string cacheKey = beaconHash + ":" + exchangeId;
+    auto cached = m_exchangeCache.find(cacheKey);
+    if (cached != m_exchangeCache.end())
+    {
+        responseData = cached->second.response;
+        return cached->second.hasTasks;
+    }
+
+    auto previous = m_beaconExchange.find(beaconHash);
+    if (previous != m_beaconExchange.end() && previous->second != cacheKey)
+        m_exchangeCache.erase(previous->second);
+
+    std::vector<PendingTask> dequeuedTasks;
+    bool ret = false;
+    try
+    {
+        ret = handleMessages(requestData, responseData, &dequeuedTasks);
+    }
+    catch (...)
+    {
+        restoreTasks(dequeuedTasks);
+        throw;
+    }
+    m_exchangeCache.emplace(cacheKey, CachedExchange{responseData, ret});
+    m_beaconExchange[beaconHash] = cacheKey;
 
 #ifdef BUILD_TEAMSERVER
     if(m_logger)
@@ -430,6 +518,46 @@ bool ListenerHttp::processPayload(const std::string& requestData, std::string& r
 #endif
 
     return ret;
+}
+
+bool ListenerHttp::extractExchangeIdentity(const std::string& requestData,
+                                           std::string& beaconHash,
+                                           std::string& exchangeId) const
+{
+    try
+    {
+        std::string data = base64_decode(requestData);
+        XOR(data, m_key);
+
+        MultiBundleC2Message bundles;
+        bundles.ParseFromArray(data.data(), static_cast<int>(data.size()));
+
+        for (int bundleIndex = 0;
+             bundleIndex < bundles.bundlec2messages_size();
+             ++bundleIndex)
+        {
+            auto* bundle = bundles.bundlec2messages(bundleIndex);
+            if (!bundle || bundle->beaconhash().size() != SizeBeaconHash)
+                continue;
+            for (int messageIndex = 0;
+                 messageIndex < bundle->c2messages_size();
+                 ++messageIndex)
+            {
+                const auto message = bundle->c2messages(messageIndex);
+                if (message.instruction() == HttpExchangeCmd &&
+                    message.cmd().size() == SizeBeaconHash)
+                {
+                    beaconHash = bundle->beaconhash();
+                    exchangeId = message.cmd();
+                    return true;
+                }
+            }
+        }
+    }
+    catch (...)
+    {
+    }
+    return false;
 }
 
 int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& res)
@@ -443,7 +571,7 @@ int ListenerHttp::HandleCheckIn(const httplib::Request& req, httplib::Response& 
 #endif
 
     std::string output;
-    bool ret = handleMessages(req.body, output);
+    bool ret = processPayload(req.body, output);
 
     json httpHeaders;
     try

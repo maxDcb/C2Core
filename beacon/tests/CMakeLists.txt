@@ -131,6 +131,7 @@ target_link_libraries(testBeaconTcp
 
 if(C2CORE_BUILD_TESTS)
     add_test(NAME beacon_tcp_contract_tests COMMAND testBeaconTcp)
+    add_test(NAME beacon_http_delivery_tests COMMAND testBeaconHttp)
     if(WIN32)
         add_test(NAME beacon_smb_contract_tests COMMAND testBeaconSmb)
         set_tests_properties(beacon_smb_contract_tests PROPERTIES TIMEOUT 45)

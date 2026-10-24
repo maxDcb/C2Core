@@ -39,6 +39,9 @@ public:
     ~BeaconHttp();
 
     void checkIn();
+#if defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    bool hasPendingOutputForTest() const { return !m_pendingOutput.empty(); }
+#endif
 
 private:
     bool ensureWebSocketConnected();
@@ -52,6 +55,7 @@ private:
     nlohmann::json m_beaconHttpConfig;
     bool m_isHttps;
     std::string m_wsEndpoint;
+    std::string m_pendingOutput;
 
 #ifdef __linux__
     std::unique_ptr<httplib::ws::WebSocketClient> m_wsClient;
