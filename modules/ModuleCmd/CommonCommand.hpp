@@ -17,6 +17,7 @@
 #define ERROR_GET_PROC_ADDRESS 10005
 #define ERROR_MODULE_NOT_FOUND 10006
 #define ERROR_MODULE_ALREADY_LOADED 10007
+#define ERROR_UNSUPPORTED_PLATFORM 10008
 
 
 // TODO set an enum
@@ -418,6 +419,8 @@ class CommonCommands
                 errorMsg = "Error: Module not found";
             else if(errorCode==ERROR_MODULE_ALREADY_LOADED)
                 errorMsg = "Error: Module already loaded";
+            else if(errorCode==ERROR_UNSUPPORTED_PLATFORM)
+                errorMsg = "Error: Unsupported platform";
         }
         return 0;
     }

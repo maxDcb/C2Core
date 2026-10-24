@@ -15,9 +15,11 @@ public:
     BeaconSmb(std::string& config, const std::string& ip, const std::string& pipeName);
     ~BeaconSmb();
 
-private:
-    void checkIn();
+protected:
+    void checkIn() override;
 
+private:
     PipeHandler::Client* m_clientSmb;
+    std::string m_pendingOutput;
 
 };

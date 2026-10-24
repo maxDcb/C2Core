@@ -171,6 +171,15 @@ int main()
         C2Message zeroListenerRet;
         ok &= expect(!b.execInstruction(zeroListenerPort, zeroListenerRet), "zero listener port should keep beacon running");
         ok &= expect(zeroListenerRet.errorCode() == ERROR_PORT_FORMAT, "zero listener port should be rejected");
+
+#ifndef _WIN32
+        C2Message smbListener;
+        smbListener.set_instruction(ListenerCmd);
+        smbListener.set_cmd(StartCmd + " " + ListenerSmbType + " . pipe");
+        C2Message smbRet;
+        ok &= expect(!b.execInstruction(smbListener, smbRet), "Linux SMB listener request should keep beacon running");
+        ok &= expect(smbRet.errorCode() == ERROR_UNSUPPORTED_PLATFORM, "Linux SMB listener should be rejected explicitly");
+#endif
     }
     {
         BeaconTestProxy b;

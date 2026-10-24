@@ -93,6 +93,7 @@ target_link_libraries(testBeaconHttp
     c2_base64
     ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
 
+if(WIN32)
 add_executable(testBeaconSmb
     testBeaconSmb.cpp
     ../Beacon.cpp
@@ -109,6 +110,7 @@ target_link_libraries(testBeaconSmb
     MemoryModule
     SocksServer
     c2_base64)
+endif()
 
 add_executable(testBeaconTcp
     testBeaconTcp.cpp
@@ -129,19 +131,25 @@ target_link_libraries(testBeaconTcp
 
 if(C2CORE_BUILD_TESTS)
     add_test(NAME beacon_tcp_contract_tests COMMAND testBeaconTcp)
+    if(WIN32)
+        add_test(NAME beacon_smb_contract_tests COMMAND testBeaconSmb)
+        set_tests_properties(beacon_smb_contract_tests PROPERTIES TIMEOUT 45)
+    endif()
 endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testBeaconDnsFunctional COMMAND testBeaconDns)
     add_test(NAME testBeaconGithubFunctional COMMAND testBeaconGithub)
     add_test(NAME testBeaconHttpFunctional COMMAND testBeaconHttp)
-    add_test(NAME testBeaconSmbFunctional COMMAND testBeaconSmb)
+    if(WIN32)
+        add_test(NAME testBeaconSmbFunctional COMMAND testBeaconSmb)
+        set_tests_properties(testBeaconSmbFunctional PROPERTIES LABELS "functional;transport;beacon")
+    endif()
     add_test(NAME testBeaconTcpFunctional COMMAND testBeaconTcp)
     set_tests_properties(
         testBeaconDnsFunctional
         testBeaconGithubFunctional
         testBeaconHttpFunctional
-        testBeaconSmbFunctional
         testBeaconTcpFunctional
         PROPERTIES LABELS "functional;transport;beacon")
 endif()

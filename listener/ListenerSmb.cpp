@@ -43,15 +43,38 @@ ListenerSmb::ListenerSmb(const std::string& ip, const std::string& pipeName, con
         m_logger->info("Initializing SMB listener on {} using pipe {}", ip, pipeName);
 #endif
 
-        m_stopThread.store(false);
+        m_stopThread.store(true);
+}
+
+int ListenerSmb::init()
+{
+#ifdef _WIN32
+    if (m_smbServ && m_smbServ->joinable())
+        return 1;
+    if (!m_serverSmb->openServer())
+        return -1;
+    m_stopThread.store(false);
+    try
+    {
         m_smbServ = std::make_unique<std::thread>(&ListenerSmb::launchSmbServ, this);
+    }
+    catch (...)
+    {
+        m_stopThread.store(true);
+        m_serverSmb->stop();
+        return -1;
+    }
+    return 1;
+#else
+    return -1;
+#endif
 }
 
 
 ListenerSmb::~ListenerSmb()
 {
     m_stopThread.store(true);
-    wakeServer();
+    m_serverSmb->stop();
 
     if(m_smbServ && m_smbServ->joinable())
         m_smbServ->join();
@@ -64,74 +87,64 @@ ListenerSmb::~ListenerSmb()
 #endif
 }
 
-void ListenerSmb::wakeServer()
-{
-    try
-    {
-        PipeHandler::Client client(".", m_param2);
-        if(client.initConnection())
-        {
-            std::string stopMessage = "__stop__";
-            client.sendData(stopMessage);
-            client.closeConnection();
-        }
-    }
-    catch (...)
-    {
-    }
-}
-
-
 void ListenerSmb::launchSmbServ()
 {
     try 
     {
         while(!m_stopThread.load())
         {
-                        if(!m_serverSmb->initServer())
+                        if(!m_serverSmb->acceptConnection())
                         {
-                                if(!m_stopThread.load())
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                                continue;
+                            if(m_stopThread.load())
+                                break;
+                            if(!m_serverSmb->openServer())
+                                break;
+                            continue;
                         }
 
-                        bool res = false;
                         string input;
-                        do
+                        if(!m_serverSmb->receiveData(input) || input.empty())
                         {
-                                res = m_serverSmb->receiveData(input);
-                                if(input.empty() && !m_stopThread.load())
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                            if(!m_stopThread.load() && !m_serverSmb->openServer())
+                                break;
+                            continue;
                         }
-                        while(!m_stopThread.load() && input.empty());
-
                         if(m_stopThread.load())
-                                return;
+                            break;
 
 #ifdef BUILD_TEAMSERVER
                         if(m_logger && m_logger->should_log(spdlog::level::debug))
                                 m_logger->debug("Received {} bytes via SMB pipe {}", input.size(), m_param2);
 #endif
 
-                        if(res && !input.empty())
+                        string output;
+                        std::vector<PendingTask> dequeuedTasks;
+                        try
                         {
-                                string output;
-                                bool ret = handleMessages(input, output);
+                                handleMessages(input, output, &dequeuedTasks);
 
 #ifdef BUILD_TEAMSERVER
                                 if(m_logger && m_logger->should_log(spdlog::level::debug))
                                         m_logger->debug("Sending {} bytes via SMB pipe {}", output.size(), m_param2);
 #endif
 
-                                res = m_serverSmb->sendData(output);
-                                if(res)
+                                if(!m_serverSmb->sendData(output))
                                 {
+                                    restoreTasks(dequeuedTasks);
 #ifdef BUILD_TEAMSERVER
-                                        if(m_logger && m_logger->should_log(spdlog::level::debug))
-                                                m_logger->debug("SMB response sent successfully");
+                                    if(m_logger)
+                                        m_logger->warn("SMB response failed; restored {} queued tasks", dequeuedTasks.size());
 #endif
                                 }
+                                else
+                                    m_serverSmb->waitForClientClose();
                         }
+                        catch (...)
+                        {
+                            restoreTasks(dequeuedTasks);
+                        }
+                        if(!m_stopThread.load() && !m_serverSmb->openServer())
+                            break;
         }
     }
     catch (...)

@@ -16,10 +16,10 @@ class ListenerSmb : public Listener
 public:
         ListenerSmb(const std::string& ip, const std::string& pipeName, const nlohmann::json& config = nlohmann::json::object());
     ~ListenerSmb();
+    int init();
 
 private:
     void launchSmbServ();
-    void wakeServer();
 
     PipeHandler::Server* m_serverSmb;
 
