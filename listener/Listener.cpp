@@ -485,14 +485,15 @@ bool Listener::isSocksSessionExist(const std::string& beaconHash, const std::str
 }
 
 
-bool Listener::addSocksTaskResult(const C2Message& taskResult, const std::string& beaconHash)
+bool Listener::addSocksTaskResult(const C2Message& taskResult, const std::string& beaconHash,
+                                  const std::string& listenerHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
         bool sessionExist = false;
         for(auto it = m_socksSessions.begin() ; it != m_socksSessions.end(); ++it )
         {
-                if (beaconHash == (*it)->getBeaconHash())
+		if (beaconHash == (*it)->getBeaconHash() && listenerHash == (*it)->getListenerHash())
                 {
                         sessionExist=true;
                         (*it)->addTaskResult(taskResult);
@@ -511,14 +512,14 @@ bool Listener::addSocksTaskResult(const C2Message& taskResult, const std::string
 }
 
 
-C2Message Listener::getSocksTaskResult(const std::string& beaconHash)
+C2Message Listener::getSocksTaskResult(const std::string& beaconHash, const std::string& listenerHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
         C2Message output;
         for(auto it = m_socksSessions.begin() ; it != m_socksSessions.end(); ++it )
         {
-                if (beaconHash == (*it)->getBeaconHash())
+		if (beaconHash == (*it)->getBeaconHash() && listenerHash == (*it)->getListenerHash())
                 {
                         output = (*it)->getTaskResult();
                         break;
@@ -526,6 +527,20 @@ C2Message Listener::getSocksTaskResult(const std::string& beaconHash)
         }
 
         return output;
+}
+
+
+void Listener::clearSocksSession(const std::string& beaconHash, const std::string& listenerHash)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_socksSessions.erase(
+        std::remove_if(m_socksSessions.begin(), m_socksSessions.end(),
+            [&](const std::shared_ptr<SocksSession>& session)
+            {
+                return session->getBeaconHash() == beaconHash &&
+                       session->getListenerHash() == listenerHash;
+            }),
+        m_socksSessions.end());
 }
 
 
@@ -595,8 +610,9 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
         {
             const C2Message& c2Message = bundleC2Message->c2messages(j);
 
-            if (c2Message.instruction() != ListenerPollCmd &&
-                c2Message.instruction() != HttpExchangeCmd)
+		if (c2Message.instruction() != ListenerPollCmd &&
+		    c2Message.instruction() != HttpExchangeCmd &&
+		    c2Message.instruction() != Socks5Cmd)
                 addTaskResult(c2Message, beaconHash);
 
             // Handle instruction that have impact on this Listener
@@ -619,7 +635,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
             }    
             // Handle socks5 messages
             // Check if the listener is primary - meaning launched by the teamserver. Otherwise don't do this and just relay the task to the next listener
-            else if(c2Message.instruction()==Socks5Cmd && m_isPrimary)
+		else if(c2Message.instruction()==Socks5Cmd && m_isPrimary &&
+		        c2Message.cmd()!=StopSocksCmd)
             {
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
@@ -638,7 +655,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                     }
                 }
 
-                addSocksTaskResult(c2Message, beaconHash);
+			addSocksTaskResult(c2Message, beaconHash, listenerhash);
             }
             // Handle return instruction sent to beacon to start/stop listeners
             else if(c2Message.instruction()==ListenerCmd)

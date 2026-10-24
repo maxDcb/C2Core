@@ -57,8 +57,10 @@ public:
 
     // SocksSession
         bool isSocksSessionExist(const std::string& beaconHash, const std::string& listenerHash);
-        bool addSocksTaskResult(const C2Message& taskResult, const std::string& beaconHash);
-    C2Message getSocksTaskResult(const std::string& beaconHash);
+	bool addSocksTaskResult(const C2Message& taskResult, const std::string& beaconHash,
+	                        const std::string& listenerHash);
+	C2Message getSocksTaskResult(const std::string& beaconHash, const std::string& listenerHash);
+	void clearSocksSession(const std::string& beaconHash, const std::string& listenerHash);
 
     // set the listener as primary (meaning launch from the teamserver)
     void setIsPrimary()

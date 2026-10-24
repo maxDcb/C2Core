@@ -189,6 +189,7 @@ int main()
         hostSocksInit.set_data("host:");
         hostSocksInit.set_args("80");
         hostSocksInit.set_pid(7);
+        hostSocksInit.set_uuid("route-generation");
         C2Message hostSocksRet;
 
         ok &= expect(!b.execInstruction(hostSocksInit, hostSocksRet), "hostname socks init failure should keep beacon running");
@@ -202,6 +203,7 @@ int main()
         invalidSocksInit.set_cmd(InitCmd);
         invalidSocksInit.set_data("not-a-number");
         invalidSocksInit.set_args("80");
+        invalidSocksInit.set_uuid("route-generation");
         C2Message invalidSocksRet;
 
         ok &= expect(!b.execInstruction(invalidSocksInit, invalidSocksRet), "invalid socks init failure should keep beacon running");
@@ -210,6 +212,7 @@ int main()
         C2Message stopAll;
         stopAll.set_instruction(Socks5Cmd);
         stopAll.set_cmd(StopSocksCmd);
+        stopAll.set_uuid("route-generation");
         C2Message stopAllRet;
         ok &= expect(!b.execInstruction(stopAll, stopAllRet), "stopping all socks tunnels should keep beacon running");
 
@@ -217,6 +220,7 @@ int main()
         runAfterStop.set_instruction(Socks5Cmd);
         runAfterStop.set_cmd(RunCmd);
         runAfterStop.set_pid(7);
+        runAfterStop.set_uuid("route-generation");
         C2Message runAfterStopRet;
         ok &= expect(!b.execInstruction(runAfterStop, runAfterStopRet), "a late socks packet should not crash the beacon");
         ok &= expect(runAfterStopRet.cmd() == StopCmd, "a late socks packet should close the missing tunnel");

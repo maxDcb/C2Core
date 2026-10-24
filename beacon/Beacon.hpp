@@ -58,6 +58,7 @@ private:
         std::vector<std::unique_ptr<ModuleCmd>> m_moduleCmd;
         std::vector<std::unique_ptr<Listener>> m_listeners;
         std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;
+        std::string m_socksRouteGeneration;
 
         using InstructionHandler = bool (Beacon::*)(C2Message&, C2Message&);
         std::unordered_map<std::string, InstructionHandler> m_instructionHandlers;

@@ -132,6 +132,37 @@ int main()
         ok &= expect(result.instruction().empty(), "listener poll should not be queued as a command result");
     }
     {
+        const std::string beaconHash = "SOCKSRES12345678SOCKSRES12345678";
+        ListenerTestProxy l;
+        l.setIsPrimary();
+        l.addSession(makeSession("route-a", beaconHash));
+
+        MultiBundleC2Message incoming;
+        BundleC2Message* bundle = incoming.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("route-a");
+        bundle->set_lastProofOfLife("0");
+        C2Message* socks = bundle->add_c2messages();
+        socks->set_instruction(Socks5Cmd);
+        socks->set_cmd(RunCmd);
+        socks->set_pid(3);
+        socks->set_uuid("generation");
+
+        std::string output;
+        l.process(l.encode(incoming), output);
+        ok &= expect(l.getTaskResult(beaconHash).instruction().empty(),
+            "SOCKS results must not pollute the general result queue");
+        ok &= expect(l.getSocksTaskResult(beaconHash, "wrong-route").instruction().empty(),
+            "SOCKS results must be isolated by listener route");
+        ok &= expect(l.getSocksTaskResult(beaconHash, "route-a").pid() == 3,
+            "SOCKS result should be available on its exact route");
+
+        l.process(l.encode(incoming), output);
+        l.clearSocksSession(beaconHash, "route-a");
+        ok &= expect(l.getSocksTaskResult(beaconHash, "route-a").instruction().empty(),
+            "clearing a SOCKS route must remove stale results");
+    }
+    {
         const std::string beaconHash = "ABCDEFGH12345678ABCDEFGH12345678";
         ListenerTestProxy l;
         l.addSession(makeSession("lhash", beaconHash));
