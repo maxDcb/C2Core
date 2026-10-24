@@ -4,6 +4,11 @@ include_directories(../../listener)
 include_directories(../../modules/ModuleCmd)
 
 set(C2CORE_BEACON_TEST_HTTP_LINK_LIBS)
+set(C2CORE_BEACON_TEST_LOG_LIBS)
+
+if(BUILD_TEAMSERVER)
+    list(APPEND C2CORE_BEACON_TEST_LOG_LIBS spdlog::spdlog)
+endif()
 
 if(NOT WIN32)
     list(APPEND C2CORE_BEACON_TEST_HTTP_LINK_LIBS
@@ -21,7 +26,7 @@ if(C2CORE_BUILD_TESTS)
 
     target_link_libraries(beacon_unit_tests
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
+        ${C2CORE_BEACON_TEST_LOG_LIBS}
         SocketHandler
         PipeHandler
         MemoryModule
@@ -44,7 +49,7 @@ add_executable(testBeaconDns
 
 target_link_libraries(testBeaconDns
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
+    ${C2CORE_BEACON_TEST_LOG_LIBS}
     SocketHandler
     Dnscommunication
     PipeHandler
@@ -62,7 +67,7 @@ add_executable(testBeaconGithub
 
 target_link_libraries(testBeaconGithub
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
+    ${C2CORE_BEACON_TEST_LOG_LIBS}
     SocketHandler
     PipeHandler
     MemoryModule
@@ -80,7 +85,7 @@ add_executable(testBeaconHttp
 
 target_link_libraries(testBeaconHttp
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
+    ${C2CORE_BEACON_TEST_LOG_LIBS}
     SocketHandler
     PipeHandler
     MemoryModule
@@ -98,7 +103,7 @@ add_executable(testBeaconSmb
 
 target_link_libraries(testBeaconSmb
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
+    ${C2CORE_BEACON_TEST_LOG_LIBS}
     SocketHandler
     PipeHandler
     MemoryModule
@@ -115,7 +120,7 @@ add_executable(testBeaconTcp
 
 target_link_libraries(testBeaconTcp
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
+    ${C2CORE_BEACON_TEST_LOG_LIBS}
     SocketHandler
     PipeHandler
     MemoryModule
