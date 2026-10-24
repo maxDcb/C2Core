@@ -29,7 +29,7 @@ add_executable(testListenerDns
     ../ListenerDns.cpp)
 target_link_libraries(testListenerDns nlohmann_json::nlohmann_json Dnscommunication c2_base64 ${additionalLib})
 
-if(TARGET httplib::httplib)
+if(C2_ENABLE_GITHUB_TRANSPORT AND TARGET httplib::httplib)
     add_executable(testListenerGithub
         testListenerGithub.cpp
         ../Listener.cpp
@@ -60,7 +60,7 @@ endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testListenerDnsFunctional COMMAND testListenerDns)
-    if(TARGET testListenerGithub)
+    if(C2_ENABLE_GITHUB_TRANSPORT AND TARGET testListenerGithub)
         add_test(NAME testListenerGithubFunctional COMMAND testListenerGithub)
         set_tests_properties(testListenerGithubFunctional PROPERTIES LABELS "functional;transport;listener")
     endif()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <atomic>
 #include <queue>
 #include <mutex>
 #include <vector>
@@ -21,6 +22,13 @@ class Listener
 {
 
 public:
+    enum class State { Created, Starting, Running, Stopping, Stopped, Failed };
+    struct SessionRoute
+    {
+        std::string beaconHash;
+        std::string listenerHash;
+    };
+
     Listener(const std::string& param1, const std::string& param2, const std::string& type);
     virtual ~Listener() = default;
 
@@ -33,6 +41,8 @@ public:
                 return m_metadata;
         }
         std::size_t getNumberOfSession() const;
+        std::vector<std::shared_ptr<Session>> getSessionsSnapshot() const;
+        std::size_t pruneStoppedSessions();
 
     // Session
     std::shared_ptr<Session> getSessionPtr(int idxSession);
@@ -40,20 +50,30 @@ public:
         bool isSessionExist(const std::string& beaconHash, const std::string& listenerHash);
         bool updateSessionProofOfLife(const std::string& beaconHash, std::string& lastProofOfLife);
         bool markSessionKilled(const std::string& beaconhash);
+        bool markSessionKilled(const std::string& beaconHash, const std::string& listenerHash);
 
     // Session Listener
     bool addSessionListener(const std::string& beaconHash, const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2);
+    bool addSessionListener(const std::string& beaconHash, const std::string& parentListenerHash,
+                            const std::string& listenerHash, const std::string& type,
+                            const std::string& param1, const std::string& param2);
     bool rmSessionListener(const std::string& beaconHash, const std::string& listenerHash);
+    bool rmSessionListener(const std::string& beaconHash, const std::string& parentListenerHash,
+                           const std::string& listenerHash);
     std::vector<SessionListener> getSessionListenerInfos();
 
     // Task & Task Result
     bool queueTask(const std::string& beaconHash, const C2Message& c2Message);
+    bool queueTask(const std::string& beaconHash, const std::string& listenerHash, const C2Message& c2Message);
     bool addTask(const C2Message& task, const std::string& beaconHash);
     bool queueTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
     bool queueStopTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task);
         C2Message getTask(const std::string& beaconHash);
+        C2Message getTask(const std::string& beaconHash, const std::string& listenerHash);
         bool addTaskResult(const C2Message& taskResult, const std::string& beaconHash);
+        bool addTaskResult(const C2Message& taskResult, const std::string& beaconHash, const std::string& listenerHash);
         C2Message getTaskResult(const std::string& beaconHash);
+        C2Message getTaskResult(const std::string& beaconHash, const std::string& listenerHash);
 
     // SocksSession
         bool isSocksSessionExist(const std::string& beaconHash, const std::string& listenerHash);
@@ -65,21 +85,26 @@ public:
     // set the listener as primary (meaning launch from the teamserver)
     void setIsPrimary()
     {
-        m_isPrimary=true;
+        m_isPrimary.store(true);
     }
 
+    virtual bool isRunning() const { return m_state.load() == State::Running; }
+    State getState() const { return m_state.load(); }
+
 protected:
-        using PendingTask = std::pair<std::string, C2Message>;
+        struct PendingTask { SessionRoute route; C2Message message; };
         bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
         bool handleMessages(const std::string& input, std::string& output,
                             std::vector<PendingTask>* dequeuedTasks = nullptr);
         void restoreTasks(const std::vector<PendingTask>& tasks);
+        void setState(State state) { m_state.store(state); }
 
         std::string m_key;
     std::string m_param1;
     std::string m_param2;
     std::string m_type;
-    bool m_isPrimary;
+    std::atomic_bool m_isPrimary;
+    std::atomic<State> m_state{State::Created};
 
     std::string m_listenerHash;
     std::string m_hostname;

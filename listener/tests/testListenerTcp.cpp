@@ -33,13 +33,13 @@ public:
 
         std::vector<PendingTask> firstAttempt;
         handleMessages(request, response, &firstAttempt);
-        if (firstAttempt.size() != 1 || firstAttempt.front().second.instruction() != "tcp-retry-task")
+        if (firstAttempt.size() != 1 || firstAttempt.front().message.instruction() != "tcp-retry-task")
             return false;
 
         restoreTasks(firstAttempt); // Simulate a failed socket send.
         std::vector<PendingTask> retry;
         handleMessages(request, response, &retry);
-        return retry.size() == 1 && retry.front().second.instruction() == "tcp-retry-task";
+        return retry.size() == 1 && retry.front().message.instruction() == "tcp-retry-task";
     }
 };
 

@@ -10,10 +10,14 @@ int main()
     reservation.stop();
 
     ListenerDns listener("listener.test", port);
+    if (listener.init() != 1)
+        return 1;
     if (!listener.isRunning())
         return 1;
 
     ListenerDns conflicting("listener.test", port);
+    if (conflicting.init() != -1)
+        return 1;
     if (conflicting.isRunning())
         return 1;
 

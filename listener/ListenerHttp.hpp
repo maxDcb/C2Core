@@ -20,7 +20,7 @@ public:
     ~ListenerHttp();
 
     int init();
-    bool isRunning() const;
+    bool isRunning() const override;
 
 private:
     void launchHttpServ();

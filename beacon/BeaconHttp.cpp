@@ -568,13 +568,16 @@ BeaconHttp::BeaconHttp(std::string& config, std::string& ip, int port, bool isHt
     m_ip = ip;
     m_port = port;
 
-    nlohmann::json configJson = nlohmann::json::parse(config);
-    if(isHttps)
-        m_beaconHttpConfig = configJson["ListenerHttpsConfig"];
-    else
-        m_beaconHttpConfig = configJson["ListenerHttpConfig"];
+    const nlohmann::json configJson = nlohmann::json::parse(config, nullptr, false);
+    if (configJson.is_object())
+    {
+        const char* section = isHttps ? "ListenerHttpsConfig" : "ListenerHttpConfig";
+        auto listenerConfig = configJson.find(section);
+        if (listenerConfig != configJson.end() && listenerConfig->is_object())
+            m_beaconHttpConfig = *listenerConfig;
+    }
 
-    initConfig(config);
+    (void)initConfig(config);
 
     for(int i=0; i<config.size(); i++)
         config[i]='.';

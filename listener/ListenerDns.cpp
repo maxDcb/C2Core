@@ -39,30 +39,50 @@ ListenerDns::ListenerDns(const std::string& domainToResolve, int port, const nlo
         m_logger->info("Initializing DNS listener for {} on port {}", domainToResolve, port);
 #endif
 
-        if (!m_serverDns->launch())
-                return;
+}
 
-        m_running.store(true);
+int ListenerDns::init()
+{
+        if (isRunning())
+                return 1;
+        setState(State::Starting);
+        if (!m_serverDns->launch())
+        {
+                setState(State::Failed);
+                return -1;
+        }
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
-                m_logger->info("DNS listener started for {} on port {}", domainToResolve, port);
+                m_logger->info("DNS listener started for {} on port {}", m_param1, m_param2);
 #endif
 
         m_stopThread.store(false);
-        m_dnsListener = std::make_unique<std::thread>(&ListenerDns::launchDnsListener, this);
+        try
+        {
+                m_dnsListener = std::make_unique<std::thread>(&ListenerDns::launchDnsListener, this);
+        }
+        catch (...)
+        {
+                m_serverDns->stop();
+                setState(State::Failed);
+                return -1;
+        }
+        setState(State::Running);
+        return 1;
 }
 
 
 ListenerDns::~ListenerDns()
 {
+        setState(State::Stopping);
         m_stopThread.store(true);
         if (m_serverDns)
                 m_serverDns->stop();
 
         if (m_dnsListener && m_dnsListener->joinable())
                 m_dnsListener->join();
-        m_running.store(false);
+        setState(State::Stopped);
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -116,6 +136,6 @@ void ListenerDns::launchDnsListener()
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    m_running.store(false);
+    setState(State::Stopped);
 }
 

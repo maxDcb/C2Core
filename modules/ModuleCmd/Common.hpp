@@ -160,10 +160,13 @@ inline constexpr std::array<char, N> compileTimeXOR(const std::string_view data,
 }
 
 
-void static inline XOR(std::string& data, const std::string& key) 
+bool static inline XOR(std::string& data, const std::string& key)
 {
-    int j = 0;
-    for (int i = 0; i < data.size(); i++) 
+    if (key.empty())
+        return false;
+
+    std::size_t j = 0;
+    for (std::size_t i = 0; i < data.size(); i++)
     {
         if (j == key.size()) 
             j = 0;
@@ -171,6 +174,7 @@ void static inline XOR(std::string& data, const std::string& key)
         data[i] = data[i] ^ key[j];
         j++;
     }
+    return true;
 }
 
 

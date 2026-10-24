@@ -58,23 +58,25 @@ target_link_libraries(testBeaconDns
     SocksServer
     c2_base64)
 
-add_executable(testBeaconGithub
-    testBeaconGithub.cpp
-    ../Beacon.cpp
-    ../BeaconGithub.cpp
-    ../../listener/Listener.cpp
-    ../../listener/ListenerTcp.cpp
-    ../../listener/ListenerSmb.cpp)
+if(C2_ENABLE_GITHUB_TRANSPORT)
+    add_executable(testBeaconGithub
+        testBeaconGithub.cpp
+        ../Beacon.cpp
+        ../BeaconGithub.cpp
+        ../../listener/Listener.cpp
+        ../../listener/ListenerTcp.cpp
+        ../../listener/ListenerSmb.cpp)
 
-target_link_libraries(testBeaconGithub
-    nlohmann_json::nlohmann_json
-    ${C2CORE_BEACON_TEST_LOG_LIBS}
-    SocketHandler
-    PipeHandler
-    MemoryModule
-    SocksServer
-    c2_base64
-    ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
+    target_link_libraries(testBeaconGithub
+        nlohmann_json::nlohmann_json
+        ${C2CORE_BEACON_TEST_LOG_LIBS}
+        SocketHandler
+        PipeHandler
+        MemoryModule
+        SocksServer
+        c2_base64
+        ${C2CORE_BEACON_TEST_HTTP_LINK_LIBS})
+endif()
 
 add_executable(testBeaconHttp
     testBeaconHttp.cpp
@@ -142,7 +144,10 @@ endif()
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testBeaconDnsFunctional COMMAND testBeaconDns)
     set_tests_properties(testBeaconDnsFunctional PROPERTIES TIMEOUT 60)
-    add_test(NAME testBeaconGithubFunctional COMMAND testBeaconGithub)
+    if(C2_ENABLE_GITHUB_TRANSPORT)
+        add_test(NAME testBeaconGithubFunctional COMMAND testBeaconGithub)
+        set_tests_properties(testBeaconGithubFunctional PROPERTIES LABELS "functional;transport;beacon")
+    endif()
     add_test(NAME testBeaconHttpFunctional COMMAND testBeaconHttp)
     if(WIN32)
         add_test(NAME testBeaconSmbFunctional COMMAND testBeaconSmb)
@@ -151,7 +156,6 @@ if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testBeaconTcpFunctional COMMAND testBeaconTcp)
     set_tests_properties(
         testBeaconDnsFunctional
-        testBeaconGithubFunctional
         testBeaconHttpFunctional
         testBeaconTcpFunctional
         PROPERTIES LABELS "functional;transport;beacon")

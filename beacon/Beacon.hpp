@@ -4,10 +4,12 @@
 #include <ListenerSmb.hpp>
 
 #include <queue>
+#include <deque>
 #include <string>
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include <nlohmann/json.hpp>
@@ -52,6 +54,8 @@ protected:
         std::queue<C2Message> m_taskResult;
 
 private:
+        static constexpr std::size_t MaxPendingMessages = 4096;
+        bool m_initialized{false};
         std::string m_key;
         nlohmann::json m_modulesConfig;
 
@@ -59,6 +63,12 @@ private:
         std::vector<std::unique_ptr<Listener>> m_listeners;
         std::vector<std::unique_ptr<SocksTunnelClient>> m_socksTunnelClient;
         std::string m_socksRouteGeneration;
+        std::unordered_set<std::string> m_queuedTaskIds;
+        std::unordered_set<std::string> m_processedTaskIds;
+        std::deque<std::string> m_processedTaskOrder;
+        std::unordered_set<std::string> m_pendingListenerPolls;
+
+        void rememberProcessedTask(const std::string& uuid);
 
         using InstructionHandler = bool (Beacon::*)(C2Message&, C2Message&);
         std::unordered_map<std::string, InstructionHandler> m_instructionHandlers;

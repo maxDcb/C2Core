@@ -100,6 +100,7 @@ int ListenerHttp::init()
         return 1;
     if (m_httpServ && m_httpServ->joinable())
         m_httpServ->join();
+    setState(State::Starting);
 
     try
     {
@@ -113,6 +114,7 @@ int ListenerHttp::init()
                 if(m_logger)
                     m_logger->error("Missing HTTPS certificate configuration for listener on {}:{}", m_host, m_port);
 #endif
+                setState(State::Failed);
                 return -1;
             }
             m_svr = std::make_unique<httplib::SSLServer>(servCrtFile.c_str(), servKeyFile.c_str());
@@ -128,6 +130,7 @@ int ListenerHttp::init()
         if(m_logger)
             m_logger->error("Failed to initialize {} listener: {}", m_isHttps ? "HTTPS" : "HTTP", ex.what());
 #endif
+        setState(State::Failed);
         return -1;
     }
 
@@ -138,6 +141,7 @@ int ListenerHttp::init()
             m_logger->error("Failed to bind {} listener on {}:{}", m_isHttps ? "HTTPS" : "HTTP", m_host, m_port);
 #endif
         m_svr.reset();
+        setState(State::Failed);
         return -1;
     }
 
@@ -151,6 +155,7 @@ int ListenerHttp::init()
     {
         m_threadExited.store(true);
         m_svr.reset();
+        setState(State::Failed);
         return -1;
     }
 
@@ -173,6 +178,7 @@ int ListenerHttp::init()
         if (m_httpServ->joinable())
             m_httpServ->join();
         m_svr.reset();
+        setState(State::Failed);
         return -1;
     }
 
@@ -181,15 +187,18 @@ int ListenerHttp::init()
         m_logger->info("{} listener started on {}:{}", m_isHttps ? "HTTPS" : "HTTP", m_host, m_port);
 #endif
 
+    setState(State::Running);
     return 1;
 }
 
 ListenerHttp::~ListenerHttp()
 {
+    setState(State::Stopping);
     if(m_svr)
         m_svr->stop();
     if(m_httpServ && m_httpServ->joinable())
         m_httpServ->join();
+    setState(State::Stopped);
 
 #ifdef BUILD_TEAMSERVER
     if(m_logger)
@@ -233,6 +242,8 @@ void ListenerHttp::launchHttpServ()
     }
     m_running.store(false);
     m_threadExited.store(true);
+    if (getState() != State::Stopping)
+        setState(State::Failed);
 }
 
 void ListenerHttp::runHttpServ()

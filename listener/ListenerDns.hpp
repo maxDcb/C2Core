@@ -15,7 +15,7 @@ class ListenerDns : public Listener
 public:
         ListenerDns(const std::string& domainToResolve, int port, const nlohmann::json& config = nlohmann::json::object());
     ~ListenerDns();
-    bool isRunning() const { return m_running.load(); }
+    int init();
 
 private:
     void launchDnsListener();
@@ -23,6 +23,5 @@ private:
     std::unique_ptr<dns::Server> m_serverDns;
 
     std::atomic<bool> m_stopThread{false};
-    std::atomic<bool> m_running{false};
     std::unique_ptr<std::thread> m_dnsListener;
 };

@@ -1,9 +1,13 @@
 #pragma once
 
 #include <atomic>
-#include <iostream>
 #include <chrono>
-#include <queue>
+#include <cmath>
+#include <deque>
+#include <mutex>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "ModuleCmd.hpp"
 
@@ -50,116 +54,57 @@ private:
 class Session
 {
 public:
+    static constexpr std::size_t MaxPendingMessages = 4096;
+    static constexpr std::size_t MaxChildListeners = 256;
+
     Session(const std::string& listenerHash, const std::string& beaconHash, const std::string& hostname, const std::string& username,
     const std::string& arch, const std::string& privilege, const std::string& os)
-    {
-        m_listenerHash=listenerHash;
-        m_beaconHash=beaconHash;
-        m_hostname=hostname;
-        m_username=username;
-        m_arch=arch;
-        m_privilege=privilege;
-        m_os=os;
-        m_killed=false;
+        : m_listenerHash(listenerHash), m_beaconHash(beaconHash), m_hostname(hostname),
+          m_username(username), m_arch(arch), m_privilege(privilege), m_os(os),
+          m_lastProofOfLife(std::chrono::steady_clock::now()), m_killed(false) {}
 
+    std::string getListenerHash() const { std::lock_guard<std::mutex> lock(m_mutex); return m_listenerHash; }
+    std::string getBeaconHash() const { std::lock_guard<std::mutex> lock(m_mutex); return m_beaconHash; }
+    std::string getUsername() const { std::lock_guard<std::mutex> lock(m_mutex); return m_username; }
+    std::string getHostname() const { std::lock_guard<std::mutex> lock(m_mutex); return m_hostname; }
+    std::string getArch() const { std::lock_guard<std::mutex> lock(m_mutex); return m_arch; }
+    std::string getPrivilege() const { std::lock_guard<std::mutex> lock(m_mutex); return m_privilege; }
+    std::string getOs() const { std::lock_guard<std::mutex> lock(m_mutex); return m_os; }
+    std::string getInternalIps() const { std::lock_guard<std::mutex> lock(m_mutex); return m_internalIps; }
+    std::string getProcessId() const { std::lock_guard<std::mutex> lock(m_mutex); return m_processId; }
+    std::string getAdditionalInformation() const { std::lock_guard<std::mutex> lock(m_mutex); return m_additionalInformation; }
 
-        auto current_time = std::chrono::system_clock::now();
-        auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
-        m_lastProofOfLifeSec = duration_in_seconds.count();
-    }
+    void setListenerHash(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_listenerHash = value; }
+    void setBeaconHash(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_beaconHash = value; }
+    void setUsername(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_username = value; }
+    void setHostname(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_hostname = value; }
+    void setArch(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_arch = value; }
+    void setPrivilege(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_privilege = value; }
+    void setOs(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_os = value; }
+    void setInternalIps(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_internalIps = value; }
+    void setProcessId(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_processId = value; }
+    void setAdditionalInformation(const std::string& value) { std::lock_guard<std::mutex> lock(m_mutex); m_additionalInformation = value; }
 
-    const std::string& getListenerHash() const 
+    bool updateProofOfLife(const std::string& value)
     {
-        return m_listenerHash;
-    }
-    const std::string& getBeaconHash() const 
-    {
-        return m_beaconHash;
-    }
-    const std::string& getUsername() const 
-    {
-        return m_username;
-    }
-    const std::string& getHostname() const 
-    {
-        return m_hostname;
-    }
-    const std::string& getArch() const 
-    {
-        return m_arch;
-    }
-    const std::string& getPrivilege() const 
-    {
-        return m_privilege;
-    }
-    const std::string& getOs() const 
-    {
-        return m_os;
-    }
-    const std::string& getInternalIps() const 
-    { 
-        return m_internalIps; 
-    }
-    const std::string& getProcessId() const 
-    { 
-        return m_processId; 
-    }
-    const std::string& getAdditionalInformation() const 
-    { 
-        return m_additionalInformation; 
+        try
+        {
+            std::size_t parsed = 0;
+            const double elapsed = std::stod(value, &parsed);
+            if (parsed != value.size() || !std::isfinite(elapsed) || elapsed < 0.0 || elapsed > 31536000.0)
+                return false;
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_lastProofOfLife = std::chrono::steady_clock::now() -
+                std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(elapsed));
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
     }
 
-    void setListenerHash(const std::string& listenerHash)
-    {
-        m_listenerHash = listenerHash;
-    }
-    void setBeaconHash(const std::string& beaconHash)
-    {
-        m_beaconHash = beaconHash;
-    }
-    void setUsername(const std::string& username)
-    {
-        m_username = username;
-    }
-    void setHostname(const std::string& hostname)
-    {
-        m_hostname = hostname;
-    }
-    void setArch(const std::string& arch)
-    {
-        m_arch = arch;
-    }
-    void setPrivilege(const std::string& privilege)
-    {
-        m_privilege = privilege;
-    }
-    void setOs(const std::string& os)
-    {
-        m_os = os;
-    }
-    void setInternalIps(const std::string& internalIps)
-    {
-        m_internalIps = internalIps;
-    }
-    void setProcessId(const std::string& processId)
-    {
-        m_processId = processId;
-    }
-    void setAdditionalInformation(const std::string& additionalInformation)
-    {
-        m_additionalInformation = additionalInformation;
-    }
-
-
-    void updatePoofOfLife(std::string& lastProofOfLife)
-    {
-        double lastProofOfLifeSec = std::stod(lastProofOfLife);
-
-        auto current_time = std::chrono::system_clock::now();
-        auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
-
-        m_lastProofOfLifeSec = duration_in_seconds.count()-lastProofOfLifeSec;
-    }
+    bool updatePoofOfLife(const std::string& value) { return updateProofOfLife(value); }
 
     bool isSessionKilled() const
     {
@@ -176,63 +121,97 @@ public:
         m_killed=true;
     }
 
-    std::string getLastProofOfLife()
+    std::string getLastProofOfLife() const
     {
-        auto current_time = std::chrono::system_clock::now();
-        auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
-
-        std::string output = std::to_string(duration_in_seconds.count()-m_lastProofOfLifeSec);
         if(m_killed.load())
-            output="-1";
-
-        return output;
+            return "-1";
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::to_string(std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - m_lastProofOfLife).count());
     }
 
     int addTask(const C2Message& task)
     {
-        m_messageToSend.push(task);    
-        return m_messageToSend.size();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_messageToSend.size() >= MaxPendingMessages)
+            return -1;
+        m_messageToSend.push_back(task);
+        return static_cast<int>(m_messageToSend.size());
     }
 
     void prependTask(const C2Message& task)
     {
-        std::queue<C2Message> reordered;
-        reordered.push(task);
-        while (!m_messageToSend.empty())
-        {
-            reordered.push(m_messageToSend.front());
-            m_messageToSend.pop();
-        }
-        m_messageToSend.swap(reordered);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_messageToSend.size() < MaxPendingMessages)
+            m_messageToSend.push_front(task);
     }
 
     C2Message getTask()
     {
-        C2Message output;
+        std::lock_guard<std::mutex> lock(m_mutex);
         if(!m_messageToSend.empty())
         {
-            output.CopyFrom(m_messageToSend.front());
-            m_messageToSend.pop();
+            C2Message output = std::move(m_messageToSend.front());
+            m_messageToSend.pop_front();
+            return output;
         }
-        return output;
+        return C2Message();
     }
 
     int addTaskResult(const C2Message& taskResult)
     {
-        m_messageToRead.push(taskResult);    
-        return m_messageToRead.size();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        std::string serialized;
+        if (!taskResult.SerializeToString(&serialized))
+            return -1;
+        const std::string fingerprint = taskResult.uuid() + "\n" + serialized;
+        if (m_resultFingerprints.find(fingerprint) != m_resultFingerprints.end())
+            return static_cast<int>(m_messageToRead.size());
+        if (m_messageToRead.size() >= MaxPendingMessages)
+            return -1;
+        m_messageToRead.push_back(taskResult);
+        m_resultFingerprints.insert(fingerprint);
+        m_resultFingerprintOrder.push_back(fingerprint);
+        if (m_resultFingerprintOrder.size() > MaxPendingMessages)
+        {
+            m_resultFingerprints.erase(m_resultFingerprintOrder.front());
+            m_resultFingerprintOrder.pop_front();
+        }
+        return static_cast<int>(m_messageToRead.size());
     }
 
 
     C2Message getTaskResult()
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (!m_messageToRead.empty())
         {
             C2Message output = std::move(m_messageToRead.front());
-            m_messageToRead.pop();
+            m_messageToRead.pop_front();
             return output;
         }
         return C2Message();
+    }
+
+    std::vector<C2Message> drainTaskResults()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        std::vector<C2Message> results;
+        results.reserve(m_messageToRead.size());
+        while (!m_messageToRead.empty())
+        {
+            results.push_back(std::move(m_messageToRead.front()));
+            m_messageToRead.pop_front();
+        }
+        return results;
+    }
+
+    void restoreTaskResults(const std::vector<C2Message>& results)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto it = results.rbegin(); it != results.rend(); ++it)
+            if (m_messageToRead.size() < MaxPendingMessages)
+                m_messageToRead.push_front(*it);
     }
 
 
@@ -241,32 +220,20 @@ public:
     bool addListener(const std::string& listenerHash, const std::string& type,
                     const std::string& param1, const std::string& param2)
     {
-        bool listenerAlreadyExists = false;
-
-        // Check if a listener with the same hash already exists in the session
-        for (int i = 0; i < m_sessionListener.size(); ++i)
-        {
-            if (m_sessionListener[i].getListenerHash() == listenerHash)
-            {
-                listenerAlreadyExists = true;
-                break;  // Exit early if found
-            }
-        }
-
-        // If the listener does not exist, create and add it
-        if (!listenerAlreadyExists)
-        {
-            SessionListener sessionListener(listenerHash, type, param1, param2);
-            m_sessionListener.push_back(sessionListener);
-            return true;  // Successfully added
-        }
-
-        return false;  // Listener already existed, not added
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const auto& listener : m_sessionListener)
+            if (listener.getListenerHash() == listenerHash)
+                return false;
+        if (m_sessionListener.size() >= MaxChildListeners)
+            return false;
+        m_sessionListener.emplace_back(listenerHash, type, param1, param2);
+        return true;
     }
 
 
     bool rmListener(const std::string& listenerHash)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionListener.begin();
         while(it != m_sessionListener.end()) 
         {
@@ -283,20 +250,27 @@ public:
         return false;
     }
 
-    const std::vector<SessionListener>& getListener()
+    std::vector<SessionListener> getListener() const
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_sessionListener;
+    }
+
+    bool hasPendingMessages() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return !m_messageToSend.empty() || !m_messageToRead.empty();
     }
 
 
 private:
-    std::queue<C2Message> m_messageToRead;
-    std::queue<C2Message> m_messageRead;
+    mutable std::mutex m_mutex;
+    std::deque<C2Message> m_messageToRead;
+    std::deque<C2Message> m_messageToSend;
+    std::unordered_set<std::string> m_resultFingerprints;
+    std::deque<std::string> m_resultFingerprintOrder;
 
-    std::queue<C2Message> m_messageToSend;
-    std::queue<C2Message> m_messageSent;
-
-    double m_lastProofOfLifeSec;
+    std::chrono::steady_clock::time_point m_lastProofOfLife;
 
     std::string m_listenerHash;
     std::string m_beaconHash;
@@ -321,63 +295,70 @@ private:
 class SocksSession
 {
 public:
+    static constexpr std::size_t MaxPendingMessages = 4096;
     SocksSession(const std::string& listenerHash, const std::string& beaconHash)
     {
         m_listenerHash=listenerHash;
         m_beaconHash=beaconHash;
     }
 
-    std::string getListenerHash()
+    std::string getListenerHash() const
     {
         return m_listenerHash;
     }
 
-    std::string getBeaconHash()
+    std::string getBeaconHash() const
     {
         return m_beaconHash;
     }
 
     int addTask(const C2Message& task)
     {
-        m_messageToSend.push(task);    
-        return m_messageToSend.size();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_messageToSend.size() >= MaxPendingMessages)
+            return -1;
+        m_messageToSend.push_back(task);
+        return static_cast<int>(m_messageToSend.size());
     }
 
     C2Message getTask()
     {
-        C2Message output;
+        std::lock_guard<std::mutex> lock(m_mutex);
         if(!m_messageToSend.empty())
         {
-            output.CopyFrom(m_messageToSend.front());
-            m_messageToSend.pop();
+            C2Message output = std::move(m_messageToSend.front());
+            m_messageToSend.pop_front();
+            return output;
         }
-        return output;
+        return C2Message();
     }
 
     int addTaskResult(const C2Message& taskResult)
     {
-        m_messageToRead.push(taskResult);    
-        return m_messageToRead.size();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_messageToRead.size() >= MaxPendingMessages)
+            return -1;
+        m_messageToRead.push_back(taskResult);
+        return static_cast<int>(m_messageToRead.size());
     }
 
     C2Message getTaskResult()
     {
-        C2Message output;
+        std::lock_guard<std::mutex> lock(m_mutex);
         if(!m_messageToRead.empty())
         {
-            output.CopyFrom(m_messageToRead.front());
-            m_messageToRead.pop();
+            C2Message output = std::move(m_messageToRead.front());
+            m_messageToRead.pop_front();
+            return output;
         }
-        return output;
+        return C2Message();
     }
 
 
 private:
-    std::queue<C2Message> m_messageToRead;
-    std::queue<C2Message> m_messageRead;
-
-    std::queue<C2Message> m_messageToSend;
-    std::queue<C2Message> m_messageSent;
+    mutable std::mutex m_mutex;
+    std::deque<C2Message> m_messageToRead;
+    std::deque<C2Message> m_messageToSend;
 
     std::string m_listenerHash;
     std::string m_beaconHash;

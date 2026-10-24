@@ -72,6 +72,25 @@ int main()
     }
     {
         ListenerTestProxy l;
+        l.addSession(makeSession("route-a", "shared-beacon"));
+        l.addSession(makeSession("route-b", "shared-beacon"));
+        C2Message first;
+        first.set_instruction("ROUTE-A");
+        C2Message second;
+        second.set_instruction("ROUTE-B");
+        ok &= expect(!l.queueTask("shared-beacon", first),
+            "beacon-only routing should reject an ambiguous session");
+        ok &= expect(l.queueTask("shared-beacon", "route-a", first),
+            "exact route A should accept its task");
+        ok &= expect(l.queueTask("shared-beacon", "route-b", second),
+            "exact route B should accept its task");
+        ok &= expect(l.getTask("shared-beacon", "route-a").instruction() == "ROUTE-A",
+            "route A should not consume route B task");
+        ok &= expect(l.getTask("shared-beacon", "route-b").instruction() == "ROUTE-B",
+            "route B should not consume route A task");
+    }
+    {
+        ListenerTestProxy l;
         auto session = makeSession();
         l.addSession(session);
         C2Message command;

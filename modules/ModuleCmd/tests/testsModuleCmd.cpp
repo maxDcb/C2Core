@@ -201,7 +201,8 @@ int unitTests()
 
     C2Message c2Message2;
     std::cout << "[+] c2Message ParseFromArray" << std::endl;
-    c2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size());
+    if (!c2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size()))
+        return 1;
 
     std::string stringSerialized2;
     c2Message2.SerializeToString(&stringSerialized2);
@@ -209,7 +210,7 @@ int unitTests()
     if(stringSerialized!=stringSerialized2)
     {
         std::cout << "[-] c2Message" << std::endl;
-        exit(0);
+        return 1;
     }
 
     //
@@ -221,14 +222,15 @@ int unitTests()
 
     std::cout << "[+] BundleC2Message ParseFromArray" << std::endl;
     BundleC2Message bundleC2Message2;
-    bundleC2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size());
+    if (!bundleC2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size()))
+        return 1;
 
     bundleC2Message2.SerializeToString(&stringSerialized2);
 
     if(stringSerialized!=stringSerialized2)
     {
         std::cout << "[-] BundleC2Message" << std::endl;
-        exit(0);
+        return 1;
     }
 
     //
@@ -240,14 +242,15 @@ int unitTests()
 
     std::cout << "[+] MultiBundleC2Message ParseFromArray" << std::endl;
     MultiBundleC2Message multiBundleC2Message2;
-    multiBundleC2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size());
+    if (!multiBundleC2Message2.ParseFromArray(stringSerialized.data(), stringSerialized.size()))
+        return 1;
 
     multiBundleC2Message2.SerializeToString(&stringSerialized2);
 
     if(stringSerialized!=stringSerialized2)
     {
         std::cout << "[-] MultiBundleC2Message" << std::endl;
-        exit(0);
+        return 1;
     }
 
     std::cout << "[+] Data" << std::endl;
@@ -261,7 +264,7 @@ int unitTests()
             if(c2Message.data()!=buffer)
             {
                 std::cout << "[-] Data" << std::endl;
-                exit(0);
+                return 1;
             }
         }
     }
@@ -524,66 +527,24 @@ int unitTestsMultiBundleC2Message()
 
 int malformedInputTests()
 {
-    std::cout << " - MultiBundleC2Message" << std::endl;
-    {
-        MultiBundleC2Message multiBundleC2Message;
+    MultiBundleC2Message multi;
+    const std::string wrongTopLevel = R"({"V":1})";
+    if (multi.ParseFromArray(wrongTopLevel.data(), static_cast<int>(wrongTopLevel.size())))
+        return 1;
 
-        std::string test = "[{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
-        multiBundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        MultiBundleC2Message multiBundleC2Message;
+    BundleC2Message bundle;
+    const std::string wrongSessionsType = R"({"V":1,"SS":{}})";
+    if (bundle.ParseFromArray(wrongSessionsType.data(), static_cast<int>(wrongSessionsType.size())))
+        return 1;
 
-        std::string test = "[{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"o\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
-        multiBundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        MultiBundleC2Message multiBundleC2Message;
+    C2Message message;
+    const std::string malformed = R"({"V":1,"INS":)";
+    if (message.ParseFromArray(malformed.data(), static_cast<int>(malformed.size())))
+        return 1;
 
-        std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}]";
-        multiBundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-
-    std::cout << " - BundleC2Message" << std::endl;
-    {
-        BundleC2Message bundleC2Message;
-
-        std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
-        bundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        BundleC2Message bundleC2Message;
-
-        std::string test = "{\"arch\":\"x64\",\"beaconHash\":\"CakWQnqmA3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessigs\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
-        bundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        BundleC2Message bundleC2Message;
-
-        std::string test = "{\"arch\":\"x64\",\"beaconHash\3b22u1tYCwhXBkTY828nINz\",\"hostname\":\"toto\",\"listenerHash\":\"\",\"os\":\"Linux\",\"privilege\":\"MEDIUM\",\"sessions\":[{\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}],\"username\":\"nim\"}";
-        bundleC2Message.ParseFromArray(test.data(), test.size());
-    }
-
-    std::cout << " - C2Message" << std::endl;
-    {
-        C2Message c2Message;
-
-        std::string test = "{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}";
-        c2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        C2Message c2Message;
-
-        std::string test = "{\"args\e\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue\":\"\"}";
-        c2Message.ParseFromArray(test.data(), test.size());
-    }
-    {
-        C2Message c2Message;
-
-        std::string test = "{\"args\":\"\",\"cmd\":\"\",\"data\":\"\",\"inputFile\":\"\",\"instruction\":\"\",\"outputFile\":\"\",\"pid\":-1,\"returnValue";
-        c2Message.ParseFromArray(test.data(), test.size());
-    }
-
+    const std::string unsupportedVersion = R"({"V":2})";
+    if (message.ParseFromArray(unsupportedVersion.data(), static_cast<int>(unsupportedVersion.size())))
+        return 1;
 
     return 0;
 }
@@ -591,20 +552,9 @@ int malformedInputTests()
 
 int main()
 {
-
-    std::cout << "unitTestsC2Message " << std::endl;
-    unitTestsC2Message(); 
-
-    std::cout << "unitTests " << std::endl;
-    unitTests();
-
-    std::cout << "unitTestsMultiBundleC2Message " << std::endl;
-    unitTestsMultiBundleC2Message();
-    
-    std::cout << "multiTests " << std::endl;
-    multiTests();
-
-    std::cout << "malformed input " << std::endl;
-    malformedInputTests();
-
+    if (unitTestsC2Message() != 0 || unitTests() != 0 ||
+        unitTestsMultiBundleC2Message() != 0 || multiTests() != 0 ||
+        malformedInputTests() != 0)
+        return 1;
+    return 0;
 }

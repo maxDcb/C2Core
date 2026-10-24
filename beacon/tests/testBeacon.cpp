@@ -28,6 +28,7 @@ public:
     size_t resultCount() const { return m_taskResult.size(); }
     size_t taskCount() const { return m_tasks.size(); }
     const std::string& arch() const { return m_arch; }
+    const std::string& beaconHash() const { return m_beaconHash; }
 };
 
 class FakeListener : public Listener {
@@ -67,6 +68,18 @@ namespace {
         return "unknown";
 #endif
     }
+
+    std::string encodeTasks(const std::string& beaconHash, const C2Message& task)
+    {
+        MultiBundleC2Message envelope;
+        auto* bundle = envelope.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->add_c2messages(task);
+        std::string wire;
+        envelope.SerializeToString(&wire);
+        XOR(wire, "key");
+        return base64_encode(wire);
+    }
 }
 
 int main()
@@ -86,8 +99,23 @@ int main()
     {
         BeaconTestProxy b;
         ok &= expect(b.initConfig(kConfig), "initConfig should accept base config");
-        ok &= expect(b.cmdToTasks("not_base64"), "cmdToTasks should tolerate malformed input");
+        ok &= expect(!b.cmdToTasks("not_base64"), "cmdToTasks should reject malformed input");
         ok &= expect(b.taskCount() == 0, "cmdToTasks should not enqueue malformed tasks");
+    }
+    {
+        BeaconTestProxy b;
+        ok &= expect(b.initConfig(kConfig), "initConfig should accept dedup config");
+        C2Message task;
+        task.set_instruction(SleepCmd);
+        task.set_cmd("0");
+        task.set_uuid("duplicate-command");
+        const std::string wire = encodeTasks(b.beaconHash(), task);
+        ok &= expect(b.cmdToTasks(wire), "first command delivery should be accepted");
+        ok &= expect(b.cmdToTasks(wire), "duplicate command delivery should be acknowledged");
+        ok &= expect(b.taskCount() == 1, "duplicate queued command should execute once");
+        b.runTasks();
+        ok &= expect(b.cmdToTasks(wire), "processed command replay should be acknowledged");
+        ok &= expect(b.taskCount() == 0, "processed command replay should not execute again");
     }
     {
         BeaconTestProxy b;

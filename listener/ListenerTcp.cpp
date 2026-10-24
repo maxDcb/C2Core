@@ -51,6 +51,7 @@ int ListenerTcp::init()
     {
         if (m_tcpServ && m_tcpServ->joinable())
             return 1;
+        setState(State::Starting);
 
         m_serverTcp->launch();
         if (!m_serverTcp->isServerLaunched())
@@ -59,6 +60,7 @@ int ListenerTcp::init()
             if(m_logger)
                 m_logger->error("Unable to start TCP listener on port {}", m_port);
 #endif
+            setState(State::Failed);
             return -1;
         }
 
@@ -69,6 +71,7 @@ int ListenerTcp::init()
 
         m_stopThread.store(false);
         m_tcpServ = std::make_unique<std::thread>(&ListenerTcp::launchTcpServ, this);
+        setState(State::Running);
     }
     catch(const std::exception& e)
     {
@@ -78,6 +81,7 @@ int ListenerTcp::init()
                         m_logger->error("TCP listener initialization failure: {}", e.what());
 #endif
         m_serverTcp->stop();
+        setState(State::Failed);
         return -1;
     }
     
@@ -87,12 +91,14 @@ int ListenerTcp::init()
 
 ListenerTcp::~ListenerTcp()
 {
+    setState(State::Stopping);
     m_stopThread.store(true);
     m_serverTcp->stop();
     if(m_tcpServ && m_tcpServ->joinable())
         m_tcpServ->join();
 
     delete m_serverTcp;
+    setState(State::Stopped);
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -179,9 +185,14 @@ void ListenerTcp::launchTcpServ()
     }
     catch (...)
     {
+        if (!m_stopThread.load())
+            setState(State::Failed);
         return;
     }
 
-    return;
+    if (m_stopThread.load())
+        setState(State::Stopped);
+    else
+        setState(State::Failed);
 }
 

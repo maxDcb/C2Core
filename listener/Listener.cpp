@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <optional>
+#include <stdexcept>
 
 #ifdef __linux__
 #include <unistd.h>
@@ -177,6 +178,34 @@ std::size_t Listener::getNumberOfSession() const
         return m_sessions.size();
 }
 
+std::vector<std::shared_ptr<Session>> Listener::getSessionsSnapshot() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_sessions;
+}
+
+std::size_t Listener::pruneStoppedSessions()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    const std::size_t before = m_sessions.size();
+    m_sessions.erase(std::remove_if(m_sessions.begin(), m_sessions.end(),
+        [](const std::shared_ptr<Session>& session)
+        {
+            return session->isSessionKilled() && !session->hasPendingMessages();
+        }), m_sessions.end());
+    m_socksSessions.erase(std::remove_if(m_socksSessions.begin(), m_socksSessions.end(),
+        [&](const std::shared_ptr<SocksSession>& socks)
+        {
+            return std::none_of(m_sessions.begin(), m_sessions.end(),
+                [&](const std::shared_ptr<Session>& session)
+                {
+                    return session->getBeaconHash() == socks->getBeaconHash() &&
+                           session->getListenerHash() == socks->getListenerHash();
+                });
+        }), m_socksSessions.end());
+    return before - m_sessions.size();
+}
+
 
 std::shared_ptr<Session> Listener::getSessionPtr(int idxSession)
 {
@@ -279,6 +308,14 @@ bool Listener::addSessionListener(const std::string& beaconHash, const std::stri
         return sessionExist && listenerAdded;
 }
 
+bool Listener::addSessionListener(const std::string& beaconHash, const std::string& parentListenerHash,
+                                  const std::string& listenerHash, const std::string& type,
+                                  const std::string& param1, const std::string& param2)
+{
+    auto session = getSessionPtr(beaconHash, parentListenerHash);
+    return session && session->addListener(listenerHash, type, param1, param2);
+}
+
 
 bool Listener::rmSessionListener(const std::string& beaconHash, const std::string& listenerHash)
 {
@@ -305,6 +342,13 @@ bool Listener::rmSessionListener(const std::string& beaconHash, const std::strin
         return sessionExist;
 }
 
+bool Listener::rmSessionListener(const std::string& beaconHash, const std::string& parentListenerHash,
+                                 const std::string& listenerHash)
+{
+    auto session = getSessionPtr(beaconHash, parentListenerHash);
+    return session && session->rmListener(listenerHash);
+}
+
 
 std::vector<SessionListener> Listener::getSessionListenerInfos()
 {
@@ -313,7 +357,10 @@ std::vector<SessionListener> Listener::getSessionListenerInfos()
     for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
     {
         if(!(*it)->isSessionKilled())
-            sessionListenerList.insert(sessionListenerList.end(), (*it)->getListener().begin(), (*it)->getListener().end());
+        {
+            const auto listeners = (*it)->getListener();
+            sessionListenerList.insert(sessionListenerList.end(), listeners.begin(), listeners.end());
+        }
     }
     return sessionListenerList;
 }
@@ -322,22 +369,35 @@ std::vector<SessionListener> Listener::getSessionListenerInfos()
 bool Listener::markSessionKilled(const std::string& beaconHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-        bool sessionExist = false;
-        for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
+    std::shared_ptr<Session> match;
+    for (const auto& session : m_sessions)
+    {
+        if (beaconHash == session->getBeaconHash())
         {
-                if (beaconHash == (*it)->getBeaconHash())
-                {
-                        sessionExist=true;
-                        (*it)->setSessionKilled();
-#ifdef BUILD_TEAMSERVER
-                        if(m_logger)
-                                m_logger->info("Marked session for beacon {} as terminated", beaconHash);
-#endif
-                        break;
-                }
+            if (match)
+                return false;
+            match = session;
         }
-        return sessionExist;
+    }
+    if (match)
+    {
+        match->setSessionKilled();
+#ifdef BUILD_TEAMSERVER
+        if(m_logger)
+            m_logger->info("Marked session for beacon {} as terminated", beaconHash);
+#endif
+        return true;
+    }
+    return false;
+}
+
+bool Listener::markSessionKilled(const std::string& beaconHash, const std::string& listenerHash)
+{
+    auto session = getSessionPtr(beaconHash, listenerHash);
+    if (!session)
+        return false;
+    session->setSessionKilled();
+    return true;
 }
 
 
@@ -346,30 +406,39 @@ bool Listener::queueTask(const std::string& beaconHash, const C2Message& c2Messa
     return addTask(c2Message, beaconHash);
 }
 
+bool Listener::queueTask(const std::string& beaconHash, const std::string& listenerHash, const C2Message& c2Message)
+{
+    auto session = getSessionPtr(beaconHash, listenerHash);
+    return session && session->addTask(c2Message) >= 0;
+}
+
 
 bool Listener::addTask(const C2Message& task, const std::string& beaconHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-        bool sessionExist = false;
-        for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
+    std::shared_ptr<Session> match;
+    for (const auto& session : m_sessions)
+    {
+        if (beaconHash == session->getBeaconHash())
         {
-                if (beaconHash == (*it)->getBeaconHash())
-                {
-                        sessionExist=true;
-                        (*it)->addTask(task);
-#ifdef BUILD_TEAMSERVER
-                        if(m_logger && m_logger->should_log(spdlog::level::debug))
-                                m_logger->debug("Queued task for beacon {}", beaconHash);
-#endif
-                        break;
-                }
+            if (match)
+                return false;
+            match = session;
         }
+    }
+    if (match && match->addTask(task) >= 0)
+    {
 #ifdef BUILD_TEAMSERVER
-        if(!sessionExist && m_logger)
+        if(m_logger && m_logger->should_log(spdlog::level::debug))
+            m_logger->debug("Queued task for beacon {}", beaconHash);
+#endif
+        return true;
+    }
+#ifdef BUILD_TEAMSERVER
+        if(m_logger)
                 m_logger->warn("Failed to queue task for beacon {} - session not found", beaconHash);
 #endif
-        return sessionExist;
+        return false;
 }
 
 bool Listener::queueTaskIfSessionAlive(const std::string& beaconHash, const std::string& listenerHash, const C2Message& task)
@@ -381,8 +450,7 @@ bool Listener::queueTaskIfSessionAlive(const std::string& beaconHash, const std:
         {
             if (session->isSessionKilled())
                 return false;
-            session->addTask(task);
-            return true;
+            return session->addTask(task) >= 0;
         }
     }
     return false;
@@ -397,7 +465,8 @@ bool Listener::queueStopTaskIfSessionAlive(const std::string& beaconHash, const 
         {
             if (session->isSessionKilled())
                 return false;
-            session->addTask(task);
+            if (session->addTask(task) < 0)
+                return false;
             session->setSessionKilled();
             return true;
         }
@@ -409,44 +478,59 @@ bool Listener::queueStopTaskIfSessionAlive(const std::string& beaconHash, const 
 C2Message Listener::getTask(const std::string& beaconHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-        C2Message output;
-        for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
+    std::shared_ptr<Session> match;
+    for (const auto& session : m_sessions)
+    {
+        if (beaconHash == session->getBeaconHash())
         {
-                if (beaconHash == (*it)->getBeaconHash())
-                {
-                        output = (*it)->getTask();
-                        break;
-                }
+            if (match)
+                return C2Message();
+            match = session;
         }
+    }
+    return match ? match->getTask() : C2Message();
+}
 
-        return output;
+C2Message Listener::getTask(const std::string& beaconHash, const std::string& listenerHash)
+{
+    auto session = getSessionPtr(beaconHash, listenerHash);
+    return session ? session->getTask() : C2Message();
 }
 
 
 bool Listener::addTaskResult(const C2Message& taskResult, const std::string& beaconHash)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-        bool sessionExist = false;
-        for(auto it = m_sessions.begin() ; it != m_sessions.end(); ++it )
+    std::shared_ptr<Session> match;
+    for (const auto& session : m_sessions)
+    {
+        if (beaconHash == session->getBeaconHash())
         {
-                if (beaconHash == (*it)->getBeaconHash())
-                {
-                        sessionExist=true;
-                        (*it)->addTaskResult(taskResult);
-#ifdef BUILD_TEAMSERVER
-                        if(m_logger)
-                                m_logger->info("Received task result for beacon {}", beaconHash);
-#endif
-                        break;
-                }
+            if (match)
+                return false;
+            match = session;
         }
+    }
+    if (match && match->addTaskResult(taskResult) >= 0)
+    {
 #ifdef BUILD_TEAMSERVER
-        if(!sessionExist && m_logger)
+        if(m_logger)
+            m_logger->info("Received task result for beacon {}", beaconHash);
+#endif
+        return true;
+    }
+#ifdef BUILD_TEAMSERVER
+        if(m_logger)
                 m_logger->warn("Failed to add task result for beacon {} - session not found", beaconHash);
 #endif
-        return sessionExist;
+        return false;
+}
+
+bool Listener::addTaskResult(const C2Message& taskResult, const std::string& beaconHash,
+                             const std::string& listenerHash)
+{
+    auto session = getSessionPtr(beaconHash, listenerHash);
+    return session && session->addTaskResult(taskResult) >= 0;
 }
 
 
@@ -465,6 +549,12 @@ C2Message Listener::getTaskResult(const std::string& beaconHash)
         }
 
         return output;
+}
+
+C2Message Listener::getTaskResult(const std::string& beaconHash, const std::string& listenerHash)
+{
+    auto session = getSessionPtr(beaconHash, listenerHash);
+    return session ? session->getTaskResult() : C2Message();
 }
 
 
@@ -550,12 +640,25 @@ void Listener::clearSocksSession(const std::string& beaconHash, const std::strin
 bool Listener::handleMessages(const std::string& input, std::string& output,
                               std::vector<PendingTask>* dequeuedTasks)
 {
-    std::string data = base64_decode(input);
-    XOR(data, m_key);
+    if (m_key.empty() || input.size() > MaxC2EnvelopeSize * 2U)
+        throw std::invalid_argument("invalid transport envelope");
+
+    std::string data;
+    try
+    {
+        data = base64_decode(input);
+    }
+    catch (...)
+    {
+        throw std::invalid_argument("invalid transport envelope");
+    }
+    if (!XOR(data, m_key))
+        throw std::invalid_argument("invalid transport key");
 
     // Mutli Sessions, Multi messages
     MultiBundleC2Message multiBundleC2Message;
-    multiBundleC2Message.ParseFromArray(data.data(), (int)data.size());
+    if (!multiBundleC2Message.ParseFromArray(data.data(), static_cast<int>(data.size())))
+        throw std::invalid_argument("invalid C2 envelope");
 
     //
     // 1) Handle messages comming from beacons
@@ -600,8 +703,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
             }
             else
             {
-                std::string lastProofOfLife = bundleC2Message->lastProofOfLife();
-                (*sessionIt)->updatePoofOfLife(lastProofOfLife);
+                if (!(*sessionIt)->updateProofOfLife(bundleC2Message->lastProofOfLife()))
+                    throw std::invalid_argument("invalid proof of life");
             }
         }
 
@@ -613,23 +716,24 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
 		if (c2Message.instruction() != ListenerPollCmd &&
 		    c2Message.instruction() != HttpExchangeCmd &&
 		    c2Message.instruction() != Socks5Cmd)
-                addTaskResult(c2Message, beaconHash);
+                if (!addTaskResult(c2Message, beaconHash, listenerhash))
+                    throw std::runtime_error("session result queue is full");
 
             // Handle instruction that have impact on this Listener
             // Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
             if(c2Message.instruction()==EndCmd)
             {
-                markSessionKilled(beaconHash);
+                markSessionKilled(beaconHash, listenerhash);
                 
                                 std::size_t nbSession = getNumberOfSession();
                                 for(std::size_t kk=0; kk<nbSession; kk++)
                                 {
                                         std::shared_ptr<Session> sessions = getSessionPtr(kk);
                                         std::vector<SessionListener> sessionListenerList;
-                                        sessionListenerList.insert(sessionListenerList.end(), sessions->getListener().begin(), sessions->getListener().end());
+                                        sessionListenerList = sessions->getListener();
                                         for (std::size_t j = 0; j < sessionListenerList.size(); j++)
                                         {
-                                                rmSessionListener(beaconHash, sessionListenerList[j].getListenerHash());
+                                                rmSessionListener(beaconHash, listenerhash, sessionListenerList[j].getListenerHash());
                                         }
                                 }
             }    
@@ -665,6 +769,9 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                 std::string delimiter = " ";
                 splitList(cmd, delimiter, splitedCmd);
 
+                if (splitedCmd.empty())
+                    continue;
+
                 if(splitedCmd[0]==StartCmd)
                 {
                     std::string listenerHash;
@@ -673,13 +780,13 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                     std::string param2;
 
                     if(extractListenerReport(c2Message, false, listenerHash, type, param1, param2))
-                        addSessionListener(beaconHash, listenerHash, type, param1, param2);
+                        addSessionListener(beaconHash, listenerhash, listenerHash, type, param1, param2);
                     else
                         continue;
                 }
                 else if(splitedCmd[0]==StopCmd)
                 {
-                    rmSessionListener(beaconHash, c2Message.returnvalue());
+                    rmSessionListener(beaconHash, listenerhash, c2Message.returnvalue());
                 }
             }
             // Handle proof of life of listeners
@@ -691,7 +798,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                 std::string param2;
 
                 if(extractListenerReport(c2Message, true, listenerHash, type, param1, param2))
-                    addSessionListener(beaconHash, listenerHash, type, param1, param2);
+                    addSessionListener(beaconHash, listenerhash, listenerHash, type, param1, param2);
                 else
                     continue;
             }
@@ -712,38 +819,40 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
         // Sessions are unique and created from the pair beaconHash / listenerHash
         // If listenerHash is already filled it means that the session was already handled by other listener befor this one
         std::string beaconHash = bundleC2Message->beaconhash();
+        std::string listenerHash = bundleC2Message->listenerhash();
+        if (listenerHash.empty())
+            listenerHash = getListenerHash();
         if(beaconHash.size()!=SizeBeaconHash)
             continue;
         
         // Look for tasks in the queue for the this beacon
-        C2Message c2Message = getTask(beaconHash);
+        C2Message c2Message = getTask(beaconHash, listenerHash);
         if(!c2Message.instruction().empty())
         {
             isTaskToSend=true;
             BundleC2Message *bundleC2Message = multiBundleC2MessageRet.add_bundlec2messages();
             bundleC2Message->set_beaconhash(beaconHash);
+            bundleC2Message->set_listenerhash(listenerHash);
 
 
             while(!c2Message.instruction().empty())
             {
                 if (dequeuedTasks)
-                    dequeuedTasks->emplace_back(beaconHash, c2Message);
+                    dequeuedTasks->push_back({{beaconHash, listenerHash}, c2Message});
                 C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
                 addedC2MessageRet->CopyFrom(c2Message);
-                c2Message = getTask(beaconHash);    
+                c2Message = getTask(beaconHash, listenerHash);
             }    
         }
         
     }
 
     data="";
-    if(isTaskToSend)
-        multiBundleC2MessageRet.SerializeToString(&data);
+    if (!multiBundleC2MessageRet.SerializeToString(&data))
+        throw std::runtime_error("unable to serialize C2 envelope");
 
-    if (data.empty())
-        data = "{}";
-
-    XOR(data, m_key);
+    if (!XOR(data, m_key))
+        throw std::runtime_error("invalid transport key");
     output = base64_encode(data);
 
     return isTaskToSend;
@@ -755,8 +864,11 @@ void Listener::restoreTasks(const std::vector<PendingTask>& tasks)
     for (auto task = tasks.rbegin(); task != tasks.rend(); ++task)
     {
         auto session = std::find_if(m_sessions.begin(), m_sessions.end(),
-            [&](const auto& candidate) { return candidate->getBeaconHash() == task->first; });
+            [&](const auto& candidate) {
+                return candidate->getBeaconHash() == task->route.beaconHash &&
+                       candidate->getListenerHash() == task->route.listenerHash;
+            });
         if (session != m_sessions.end())
-            (*session)->prependTask(task->second);
+            (*session)->prependTask(task->message);
     }
 }

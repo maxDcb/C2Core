@@ -51,8 +51,12 @@ int ListenerSmb::init()
 #ifdef _WIN32
     if (m_smbServ && m_smbServ->joinable())
         return 1;
+    setState(State::Starting);
     if (!m_serverSmb->openServer())
+    {
+        setState(State::Failed);
         return -1;
+    }
     m_stopThread.store(false);
     try
     {
@@ -62,10 +66,13 @@ int ListenerSmb::init()
     {
         m_stopThread.store(true);
         m_serverSmb->stop();
+        setState(State::Failed);
         return -1;
     }
+    setState(State::Running);
     return 1;
 #else
+    setState(State::Failed);
     return -1;
 #endif
 }
@@ -73,6 +80,7 @@ int ListenerSmb::init()
 
 ListenerSmb::~ListenerSmb()
 {
+    setState(State::Stopping);
     m_stopThread.store(true);
     m_serverSmb->stop();
 
@@ -80,6 +88,7 @@ ListenerSmb::~ListenerSmb()
         m_smbServ->join();
 
         delete m_serverSmb;
+        setState(State::Stopped);
 
 #ifdef BUILD_TEAMSERVER
         if(m_logger)
@@ -149,8 +158,13 @@ void ListenerSmb::launchSmbServ()
     }
     catch (...)
     {
+        if (!m_stopThread.load())
+            setState(State::Failed);
         return;
     }
 
-    return;
+    if (m_stopThread.load())
+        setState(State::Stopped);
+    else
+        setState(State::Failed);
 }
