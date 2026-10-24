@@ -13,12 +13,14 @@ public:
     BeaconTcp(std::string& config, std::string& ip, int port);
     ~BeaconTcp();
 
+protected:
+    void checkIn() override;
+
 private:
     std::string m_ip;
     int m_port;
 
-    void checkIn();
-
     SocketTunnelClient* m_client;
+    std::string m_pendingOutput;
     TcpFrameBuffer m_frames;
 };

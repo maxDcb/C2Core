@@ -194,6 +194,18 @@ public:
         return m_messageToSend.size();
     }
 
+    void prependTask(const C2Message& task)
+    {
+        std::queue<C2Message> reordered;
+        reordered.push(task);
+        while (!m_messageToSend.empty())
+        {
+            reordered.push(m_messageToSend.front());
+            m_messageToSend.pop();
+        }
+        m_messageToSend.swap(reordered);
+    }
+
     C2Message getTask()
     {
         C2Message output;

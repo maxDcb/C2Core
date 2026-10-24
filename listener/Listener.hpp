@@ -67,8 +67,11 @@ public:
     }
 
 protected:
+        using PendingTask = std::pair<std::string, C2Message>;
         bool execInstruction(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-        bool handleMessages(const std::string& input, std::string& output);
+        bool handleMessages(const std::string& input, std::string& output,
+                            std::vector<PendingTask>* dequeuedTasks = nullptr);
+        void restoreTasks(const std::vector<PendingTask>& tasks);
 
         std::string m_key;
     std::string m_param1;

@@ -36,8 +36,8 @@ if(C2CORE_BUILD_TESTS)
     add_test(NAME beacon_unit_tests COMMAND beacon_unit_tests)
 endif()
 
-# Manual smoke executables for transport variants. They are built with the test
-# suite but are not registered in CTest because they only validate construction.
+# Transport executables share the core beacon sources. The TCP variant exercises
+# a real listener/beacon exchange and is registered in the regular test suite.
 if(C2CORE_BUILD_TESTS OR C2CORE_BUILD_FUNCTIONAL_TESTS)
 add_executable(testBeaconDns
     testBeaconDns.cpp
@@ -126,6 +126,10 @@ target_link_libraries(testBeaconTcp
     MemoryModule
     SocksServer
     c2_base64)
+
+if(C2CORE_BUILD_TESTS)
+    add_test(NAME beacon_tcp_contract_tests COMMAND testBeaconTcp)
+endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_test(NAME testBeaconDnsFunctional COMMAND testBeaconDns)

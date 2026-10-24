@@ -21,6 +21,26 @@ public:
         XOR(data, m_key);
         return base64_encode(data);
     }
+
+    bool preservesTaskAfterFailedSend(const std::string& request, const std::string& beaconHash)
+    {
+        std::string response;
+        handleMessages(request, response); // Register the session.
+
+        C2Message task;
+        task.set_instruction("tcp-retry-task");
+        queueTask(beaconHash, task);
+
+        std::vector<PendingTask> firstAttempt;
+        handleMessages(request, response, &firstAttempt);
+        if (firstAttempt.size() != 1 || firstAttempt.front().second.instruction() != "tcp-retry-task")
+            return false;
+
+        restoreTasks(firstAttempt); // Simulate a failed socket send.
+        std::vector<PendingTask> retry;
+        handleMessages(request, response, &retry);
+        return retry.size() == 1 && retry.front().second.instruction() == "tcp-retry-task";
+    }
 };
 
 int main()
@@ -81,6 +101,12 @@ int main()
     bundle->set_beaconhash("TCPFRAMETEST1234TCPFRAMETEST1234");
     bundle->set_lastProofOfLife("0");
     const std::string wire = listener.encode(request) + TcpFrameBuffer::delimiter();
+    TestListenerTcp recovery("127.0.0.1", 0);
+    if (!recovery.preservesTaskAfterFailedSend(recovery.encode(request), bundle->beaconhash()))
+    {
+        std::cerr << "Failed TCP send did not preserve the queued task" << std::endl;
+        return 1;
+    }
     const std::size_t firstCut = wire.size() / 2;
     const std::size_t secondCut = wire.size() - 3;
     std::string reply;

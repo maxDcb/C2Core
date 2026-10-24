@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 
 ListenerTcp::ListenerTcp(const std::string& ip, int localPort, const nlohmann::json& config)
-        : Listener("0.0.0.0", std::to_string(localPort), ListenerTcpType)
+        : Listener(ip, std::to_string(localPort), ListenerTcpType)
         , m_stopThread(true)
 {
     m_listenerHash = random_string(SizeListenerHash);
@@ -22,7 +22,7 @@ ListenerTcp::ListenerTcp(const std::string& ip, int localPort, const nlohmann::j
 
     m_port = localPort;
 
-    m_serverTcp = new SocketServer(m_port);
+    m_serverTcp = new SocketServer(m_port, ip);
 
 #ifdef BUILD_TEAMSERVER
     // Logger
@@ -145,12 +145,22 @@ void ListenerTcp::launchTcpServ()
                         for(const auto& frame : frames)
                         {
                             std::string output;
-                            handleMessages(frame, output);
-                            output.append(TcpFrameBuffer::delimiter());
-                            if (tunnel->send(output) < 0)
+                            std::vector<PendingTask> dequeuedTasks;
+                            try
                             {
-                                frameBuffers.erase(tunnel.get());
-                                break;
+                                handleMessages(frame, output, &dequeuedTasks);
+                                output.append(TcpFrameBuffer::delimiter());
+                                if (tunnel->send(output) < 0)
+                                {
+                                    restoreTasks(dequeuedTasks);
+                                    frameBuffers.erase(tunnel.get());
+                                    break;
+                                }
+                            }
+                            catch (...)
+                            {
+                                restoreTasks(dequeuedTasks);
+                                throw;
                             }
                         }
                     }
