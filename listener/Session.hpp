@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -54,6 +55,7 @@ private:
 class Session
 {
 public:
+    enum class LifecycleState { Running, Stopping, StopFailed, Stopped };
     static constexpr std::size_t MaxPendingMessages = 4096;
     static constexpr std::size_t MaxChildListeners = 256;
 
@@ -113,12 +115,68 @@ public:
 
     void setSessionAlive()
     {
-        m_killed=false;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_killed = false;
+        m_stopRequested = false;
+        m_stoppedAt = {};
     }
 
     void setSessionKilled()
     {
-        m_killed=true;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_killed = true;
+        m_stopRequested = false;
+        m_stoppedAt = std::chrono::steady_clock::now();
+    }
+
+    LifecycleState getLifecycleState(
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now()) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_killed.load())
+            return LifecycleState::Stopped;
+        if (!m_stopRequested)
+            return LifecycleState::Running;
+        return now - m_stopRequestedAt >= std::chrono::seconds(30)
+            ? LifecycleState::StopFailed : LifecycleState::Stopping;
+    }
+
+    bool canPruneStopped(
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now()) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_killed.load() && m_messageToSend.empty() && m_messageToRead.empty()
+            && now - m_stoppedAt >= std::chrono::seconds(30);
+    }
+
+    bool queueCommandTask(const C2Message& task)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_killed.load() || m_stopRequested || m_messageToSend.size() >= MaxPendingMessages)
+            return false;
+        m_messageToSend.push_back(task);
+        return true;
+    }
+
+    bool queueStopTask(const C2Message& task,
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now())
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_killed.load())
+            return false;
+        if (m_stopRequested && now - m_stopRequestedAt < std::chrono::seconds(30))
+            return false;
+        const bool alreadyQueued = std::any_of(m_messageToSend.begin(), m_messageToSend.end(),
+            [&](const C2Message& pending) { return pending.instruction() == task.instruction(); });
+        if (!alreadyQueued)
+        {
+            if (m_messageToSend.size() >= MaxPendingMessages)
+                return false;
+            m_messageToSend.push_back(task);
+        }
+        m_stopRequested = true;
+        m_stopRequestedAt = now;
+        return true;
     }
 
     std::string getLastProofOfLife() const
@@ -286,6 +344,9 @@ private:
     std::vector<SessionListener> m_sessionListener;
 
     std::atomic<bool> m_killed;
+    bool m_stopRequested = false;
+    std::chrono::steady_clock::time_point m_stopRequestedAt{};
+    std::chrono::steady_clock::time_point m_stoppedAt{};
 };
 
 

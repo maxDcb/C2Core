@@ -43,7 +43,7 @@ int main()
     reservation.stop();
 
     TestListenerDns listener("contract.test", port);
-    if (!listener.isRunning())
+    if (listener.init() < 0 || !listener.isRunning())
     {
         std::cerr << "DNS listener did not start\n";
         return 2;

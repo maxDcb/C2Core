@@ -191,7 +191,7 @@ std::size_t Listener::pruneStoppedSessions()
     m_sessions.erase(std::remove_if(m_sessions.begin(), m_sessions.end(),
         [](const std::shared_ptr<Session>& session)
         {
-            return session->isSessionKilled() && !session->hasPendingMessages();
+            return session->canPruneStopped();
         }), m_sessions.end());
     m_socksSessions.erase(std::remove_if(m_socksSessions.begin(), m_socksSessions.end(),
         [&](const std::shared_ptr<SocksSession>& socks)
@@ -448,9 +448,7 @@ bool Listener::queueTaskIfSessionAlive(const std::string& beaconHash, const std:
     {
         if (session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerHash)
         {
-            if (session->isSessionKilled())
-                return false;
-            return session->addTask(task) >= 0;
+            return session->queueCommandTask(task);
         }
     }
     return false;
@@ -463,12 +461,7 @@ bool Listener::queueStopTaskIfSessionAlive(const std::string& beaconHash, const 
     {
         if (session->getBeaconHash() == beaconHash && session->getListenerHash() == listenerHash)
         {
-            if (session->isSessionKilled())
-                return false;
-            if (session->addTask(task) < 0)
-                return false;
-            session->setSessionKilled();
-            return true;
+            return session->queueStopTask(task);
         }
     }
     return false;
@@ -721,7 +714,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
 
             // Handle instruction that have impact on this Listener
             // Here if a beacon is terminated, we need to remove the list of sessions associeted with it.
-            if(c2Message.instruction()==EndCmd)
+            if(c2Message.instruction()==EndCmd && c2Message.errorCode()==0 &&
+               c2Message.returnvalue()==CmdStatusSuccess)
             {
                 markSessionKilled(beaconHash, listenerhash);
                 

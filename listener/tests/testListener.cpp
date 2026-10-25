@@ -90,6 +90,58 @@ int main()
             "route B should not consume route A task");
     }
     {
+        auto session = makeSession();
+        C2Message stop;
+        stop.set_instruction(EndCmd);
+        const auto requestedAt = std::chrono::steady_clock::now();
+        ok &= expect(session->queueStopTask(stop, requestedAt), "initial stop should queue");
+        ok &= expect(!session->queueStopTask(stop, requestedAt + std::chrono::seconds(1)),
+            "stop should reject an immediate duplicate");
+        ok &= expect(session->getLifecycleState(requestedAt + std::chrono::seconds(31))
+            == Session::LifecycleState::StopFailed, "stop should become unconfirmed after deadline");
+        ok &= expect(session->queueStopTask(stop, requestedAt + std::chrono::seconds(31)),
+            "unconfirmed stop should allow retry");
+        ok &= expect(session->getLifecycleState(requestedAt + std::chrono::seconds(31))
+            == Session::LifecycleState::Stopping, "retry should restore stopping state");
+        ok &= expect(session->getTask().instruction() == EndCmd
+            && session->getTask().instruction().empty(), "retry should not duplicate an undelivered task");
+    }
+    {
+        const std::string beaconHash = "ENDCONFIRM123456ENDCONFIRM123456";
+        ListenerTestProxy listener;
+        auto session = makeSession("route", beaconHash);
+        listener.addSession(session);
+        C2Message stop;
+        stop.set_instruction(EndCmd);
+        ok &= expect(listener.queueStopTaskIfSessionAlive(beaconHash, "route", stop),
+            "stop should queue before confirmation");
+        ok &= expect(listener.getTask(beaconHash, "route").instruction() == EndCmd,
+            "stop task should be delivered on the exact route");
+        ok &= expect(session->getLifecycleState() == Session::LifecycleState::Stopping,
+            "delivery alone must not confirm termination");
+
+        MultiBundleC2Message response;
+        auto* bundle = response.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("route");
+        bundle->set_lastProofOfLife("0");
+        auto* confirmed = bundle->add_c2messages();
+        confirmed->set_instruction(EndCmd);
+        confirmed->set_errorCode(1);
+        confirmed->set_returnvalue(CmdStatusFail);
+        std::string output;
+        listener.process(listener.encode(response), output);
+        ok &= expect(session->getLifecycleState() == Session::LifecycleState::Stopping,
+            "failed EndCmd result must not confirm termination");
+        confirmed->set_errorCode(0);
+        confirmed->set_returnvalue(CmdStatusSuccess);
+        listener.process(listener.encode(response), output);
+        ok &= expect(session->getLifecycleState() == Session::LifecycleState::Stopped,
+            "EndCmd result should confirm termination");
+        ok &= expect(listener.pruneStoppedSessions() == 0,
+            "confirmed session should remain visible briefly");
+    }
+    {
         ListenerTestProxy l;
         auto session = makeSession();
         l.addSession(session);
@@ -102,7 +154,11 @@ int main()
             "command should queue for a live session");
         ok &= expect(l.queueStopTaskIfSessionAlive("bhash", "lhash", stop),
             "stop task should queue for a live session");
-        ok &= expect(session->isSessionKilled(), "stop task should mark the session killed");
+        ok &= expect(!session->isSessionKilled(), "queued stop must await beacon confirmation");
+        ok &= expect(session->getLifecycleState() == Session::LifecycleState::Stopping,
+            "queued stop should expose stopping state");
+        ok &= expect(session->getLifecycleState(std::chrono::steady_clock::now() + std::chrono::seconds(31))
+            == Session::LifecycleState::StopFailed, "unconfirmed stop should time out");
         ok &= expect(l.isSessionExist("bhash", "lhash"),
             "stopped session should remain known for beacon check-ins");
         ok &= expect(!l.queueTaskIfSessionAlive("bhash", "lhash", command),
@@ -112,6 +168,13 @@ int main()
         ok &= expect(l.getTask("bhash").instruction() == "CMD", "accepted command should precede stop");
         ok &= expect(l.getTask("bhash").instruction() == EndCmd, "stop task should follow accepted commands");
         ok &= expect(l.getTask("bhash").instruction().empty(), "stopped session should have no later tasks");
+        session->setSessionKilled();
+        ok &= expect(session->getLifecycleState() == Session::LifecycleState::Stopped,
+            "beacon confirmation should expose stopped state");
+        ok &= expect(l.pruneStoppedSessions() == 0,
+            "confirmed stop should remain visible during the confirmation window");
+        ok &= expect(session->canPruneStopped(std::chrono::steady_clock::now() + std::chrono::seconds(31)),
+            "confirmed stop should eventually be prunable");
     }
     {
         ListenerTestProxy l;
