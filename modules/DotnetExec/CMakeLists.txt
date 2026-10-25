@@ -20,10 +20,16 @@ if(C2CORE_BUILD_TESTS OR C2CORE_BUILD_FUNCTIONAL_TESTS)
         find_program(C2_CSC_EXECUTABLE
             NAMES csc.exe
             HINTS
+                "${CMAKE_GENERATOR_INSTANCE}/MSBuild/Current/Bin/Roslyn"
+                "$ENV{VSINSTALLDIR}/MSBuild/Current/Bin/Roslyn"
                 "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin/Roslyn"
                 "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/Roslyn"
                 "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn"
                 "$ENV{ProgramFiles}/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/Roslyn")
+
+        if(C2CORE_BUILD_TESTS AND NOT C2_CSC_EXECUTABLE)
+            message(FATAL_ERROR "DotnetExec tests require csc.exe from the selected Visual Studio instance")
+        endif()
 
         if(C2_CSC_EXECUTABLE)
             set(C2_DOTNETEXEC_DUMMY_EXE "${CMAKE_CURRENT_BINARY_DIR}/DummyDotnetExec.exe")
