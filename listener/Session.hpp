@@ -16,12 +16,14 @@
 class SessionListener
 {
 public:
-        SessionListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2)
+        SessionListener(const std::string& listenerHash, const std::string& type, const std::string& param1, const std::string& param2,
+                        std::chrono::steady_clock::time_point seenAt = std::chrono::steady_clock::now())
         {
             m_listenerHash = listenerHash;
             m_type = type;
             m_param1 = param1;
             m_param2 = param2;
+            m_lastSeen = seenAt;
         }
 
         const std::string& getListenerHash() const
@@ -44,11 +46,27 @@ public:
             return m_param2;
         }
 
+        bool recentlySeen(std::chrono::steady_clock::time_point now,
+                          std::chrono::steady_clock::duration maxAge) const
+        {
+            return now - m_lastSeen <= maxAge;
+        }
+
+        void refresh(const std::string& type, const std::string& param1, const std::string& param2,
+                     std::chrono::steady_clock::time_point seenAt)
+        {
+            m_type = type;
+            m_param1 = param1;
+            m_param2 = param2;
+            m_lastSeen = seenAt;
+        }
+
 private:
     std::string m_listenerHash;
     std::string m_type;
     std::string m_param1;
     std::string m_param2;
+    std::chrono::steady_clock::time_point m_lastSeen;
 };
 
 
@@ -188,6 +206,13 @@ public:
             std::chrono::steady_clock::now() - m_lastProofOfLife).count());
     }
 
+    bool recentlySeen(std::chrono::steady_clock::time_point now,
+                      std::chrono::steady_clock::duration maxAge) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return !m_killed.load() && now - m_lastProofOfLife <= maxAge;
+    }
+
     int addTask(const C2Message& task)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -276,15 +301,19 @@ public:
     // Adds a new SessionListener to the current session if one with the same hash doesn't already exist.
     // Returns true if the listener was successfully added, false if it already exists.
     bool addListener(const std::string& listenerHash, const std::string& type,
-                    const std::string& param1, const std::string& param2)
+                    const std::string& param1, const std::string& param2,
+                    std::chrono::steady_clock::time_point seenAt = std::chrono::steady_clock::now())
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        for (const auto& listener : m_sessionListener)
+        for (auto& listener : m_sessionListener)
             if (listener.getListenerHash() == listenerHash)
+            {
+                listener.refresh(type, param1, param2, seenAt);
                 return false;
+            }
         if (m_sessionListener.size() >= MaxChildListeners)
             return false;
-        m_sessionListener.emplace_back(listenerHash, type, param1, param2);
+        m_sessionListener.emplace_back(listenerHash, type, param1, param2, seenAt);
         return true;
     }
 

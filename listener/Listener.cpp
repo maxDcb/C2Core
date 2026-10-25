@@ -1,6 +1,7 @@
 #include "Listener.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <optional>
 #include <stdexcept>
@@ -41,7 +42,16 @@ bool parseListenerMetadata(const std::string& listenerMetadata, std::string& typ
         type = typeIt->get<std::string>();
         param1 = param1It->get<std::string>();
         param2 = param2It->get<std::string>();
-        return !type.empty() && !param1.empty() && !param2.empty();
+        if (param1.empty() || param2.empty())
+                return false;
+        if (type == ListenerSmbType)
+                return true;
+        if (type != ListenerTcpType)
+                return false;
+        int port = 0;
+        const auto [end, error] = std::from_chars(param2.data(), param2.data() + param2.size(), port);
+        return error == std::errc{} && end == param2.data() + param2.size()
+                && port >= 1 && port <= 65535;
 }
 
 bool extractListenerReport(const C2Message& c2Message, bool allowLegacySwap, std::string& listenerHash, std::string& type, std::string& param1, std::string& param2)
@@ -409,7 +419,7 @@ bool Listener::queueTask(const std::string& beaconHash, const C2Message& c2Messa
 bool Listener::queueTask(const std::string& beaconHash, const std::string& listenerHash, const C2Message& c2Message)
 {
     auto session = getSessionPtr(beaconHash, listenerHash);
-    return session && session->addTask(c2Message) >= 0;
+    return session && session->queueCommandTask(c2Message);
 }
 
 
@@ -673,6 +683,19 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
         if(beaconHash.size()!=SizeBeaconHash)
             continue;
 
+        const bool routedFailureOnly = bundleC2Message->lastProofOfLife().empty() &&
+            bundleC2Message->c2messages_size() > 0 &&
+            [&]()
+            {
+                for (int j = 0; j < bundleC2Message->c2messages_size(); ++j)
+                {
+                    const auto& result = bundleC2Message->c2messages(j);
+                    if (result.data() != RouteFailureReportTag || result.errorCode() <= 0)
+                        return false;
+                }
+                return true;
+            }();
+
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             auto sessionIt = std::find_if(m_sessions.begin(), m_sessions.end(),
@@ -682,6 +705,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                 });
             if (sessionIt == m_sessions.end())
             {
+                if (routedFailureOnly)
+                    continue;
                 auto session = std::make_shared<Session>(listenerhash, beaconHash,
                     bundleC2Message->hostname(), bundleC2Message->username(),
                     bundleC2Message->arch(), bundleC2Message->privilege(), bundleC2Message->os());
@@ -689,6 +714,8 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
                 session->setProcessId(bundleC2Message->processId());
                 session->setAdditionalInformation(bundleC2Message->additionalInformation());
                 m_sessions.push_back(std::move(session));
+                if (bundleC2Message->lastProofOfLife() == "-1")
+                    m_sessions.back()->setSessionKilled();
 #ifdef BUILD_TEAMSERVER
                 if (m_logger)
                     m_logger->info("Registering new session for beacon {} handled by listener {}", beaconHash, listenerhash);
@@ -696,7 +723,10 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
             }
             else
             {
-                if (!(*sessionIt)->updateProofOfLife(bundleC2Message->lastProofOfLife()))
+                if (bundleC2Message->lastProofOfLife() == "-1")
+                    (*sessionIt)->setSessionKilled();
+                else if (!routedFailureOnly &&
+                         !(*sessionIt)->updateProofOfLife(bundleC2Message->lastProofOfLife()))
                     throw std::invalid_argument("invalid proof of life");
             }
         }

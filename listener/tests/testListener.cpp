@@ -142,6 +142,21 @@ int main()
             "confirmed session should remain visible briefly");
     }
     {
+        const std::string beaconHash = "RELAYEDSTOP12345RELAYEDSTOP12345";
+        ListenerTestProxy listener;
+        auto session = makeSession("child-route", beaconHash);
+        listener.addSession(session);
+        MultiBundleC2Message response;
+        auto* bundle = response.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("child-route");
+        bundle->set_lastProofOfLife("-1");
+        std::string output;
+        listener.process(listener.encode(response), output);
+        ok &= expect(session->isSessionKilled(),
+            "a stopped child relayed by its parent should remain a known stopped session");
+    }
+    {
         ListenerTestProxy l;
         auto session = makeSession();
         l.addSession(session);
@@ -212,6 +227,20 @@ int main()
 
         auto result = l.getTaskResult(beaconHash);
         ok &= expect(result.instruction().empty(), "listener poll should not be queued as a command result");
+
+        for (const std::string& invalidMetadata : {
+                 R"({"1":"tcp","2":"0.0.0.0","3":"not-a-port"})",
+                 R"({"1":"tcp","2":"0.0.0.0","3":"0"})",
+                 R"({"1":"tcp","2":"0.0.0.0","3":"65536"})",
+                 R"({"1":"tcp","2":"0.0.0.0","3":"999999999999999999999"})",
+                 R"({"1":"http","2":"0.0.0.0","3":"4444"})"})
+        {
+            poll->set_data(invalidMetadata);
+            poll->set_returnvalue("invalid-child-listener");
+            l.process(l.encode(incoming), output);
+            ok &= expect(l.getSessionListenerInfos().size() == 1,
+                "invalid child listener metadata must not enter the session list");
+        }
     }
     {
         const std::string beaconHash = "SOCKSRES12345678SOCKSRES12345678";

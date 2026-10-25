@@ -39,6 +39,30 @@ public:
         m_listenerHash = "child-listener";
         m_metadata = R"({"1":"tcp","2":"0.0.0.0","3":"4444"})";
     }
+
+    std::shared_ptr<Session> addChildSession(const std::string& beaconHash)
+    {
+        auto session = std::make_shared<Session>(m_listenerHash, beaconHash, "child", "user", "x64", "user", "Linux");
+        m_sessions.push_back(session);
+        return session;
+    }
+};
+
+class FakeUpstreamListener : public Listener {
+public:
+    FakeUpstreamListener() : Listener("127.0.0.1", "4444", ListenerTcpType)
+    {
+        m_listenerHash = "upstream-listener";
+    }
+    const std::string& key() const { return m_key; }
+    bool exchange(const std::string& input, std::string& output)
+    {
+        return handleMessages(input, output);
+    }
+    void addStaleChildSession(const std::string& beaconHash, const std::string& listenerHash)
+    {
+        m_sessions.push_back(std::make_shared<Session>(listenerHash, beaconHash, "child", "user", "x64", "user", "Linux"));
+    }
 };
 
 namespace {
@@ -78,6 +102,14 @@ namespace {
         std::string wire;
         envelope.SerializeToString(&wire);
         XOR(wire, "key");
+        return base64_encode(wire);
+    }
+
+    std::string encodeEnvelope(const MultiBundleC2Message& envelope, const std::string& key)
+    {
+        std::string wire;
+        envelope.SerializeToString(&wire);
+        XOR(wire, key);
         return base64_encode(wire);
     }
 }
@@ -143,6 +175,155 @@ int main()
         ok &= expect(poll.returnvalue() == "child-listener", "listener poll should carry listener hash in return value");
     }
 #endif
+    {
+        // Two-hop round trip: server -> parent beacon -> child listener -> child result -> server.
+        FakeUpstreamListener upstream;
+        BeaconTestProxy parent;
+        nlohmann::json config = {{"xorKey", upstream.key()}, {"ModulesConfig", nlohmann::json::object()}};
+        ok &= expect(parent.initConfig(config.dump()), "pivot parent should accept upstream key");
+        auto childListener = std::make_unique<FakeListener>();
+        const std::string childHash = "PIVOTCHILD123456PIVOTCHILD123456";
+        auto childSession = childListener->addChildSession(childHash);
+        parent.addTestListener(std::move(childListener));
+
+        std::string request;
+        std::string reply;
+        ok &= expect(parent.taskResultsToCmd(request), "pivot parent should serialize child session");
+        upstream.exchange(request, reply);
+        ok &= expect(upstream.isSessionExist(childHash, "child-listener"),
+            "upstream listener should register the routed child session");
+
+        C2Message command;
+        command.set_instruction("pivot-task");
+        command.set_uuid("pivot-command-id");
+        ok &= expect(upstream.queueTask(childHash, "child-listener", command),
+            "upstream should queue a child command");
+        ok &= expect(parent.taskResultsToCmd(request), "pivot parent should poll for child tasks");
+        ok &= expect(upstream.exchange(request, reply), "upstream should deliver the child command");
+        ok &= expect(parent.cmdToTasks(reply), "pivot parent should route the child command");
+        ok &= expect(childSession->getTask().uuid() == "pivot-command-id",
+            "child listener should receive the command on its exact route");
+
+        C2Message result;
+        result.set_instruction("pivot-task");
+        result.set_uuid("pivot-command-id");
+        result.set_returnvalue("child-complete");
+        ok &= expect(childSession->addTaskResult(result) >= 0, "child should queue a result");
+        ok &= expect(parent.taskResultsToCmd(request), "pivot parent should serialize child result");
+        upstream.exchange(request, reply);
+        ok &= expect(upstream.getTaskResult(childHash, "child-listener").returnvalue() == "child-complete",
+            "upstream should receive the child result on its exact route");
+
+        // A missing route in a multi-session response must not swallow a later valid command.
+        MultiBundleC2Message tasks;
+        auto* missing = tasks.add_bundlec2messages();
+        const std::string missingHash = "MISSINGCHILD1234MISSINGCHILD1234";
+        upstream.addStaleChildSession(missingHash, "retired-listener");
+        ok &= expect(upstream.getSessionPtr(missingHash, "retired-listener")->updateProofOfLife("31"),
+            "stale child proof should be configurable for the test");
+        missing->set_beaconhash(missingHash);
+        missing->set_listenerhash("retired-listener");
+        missing->add_c2messages()->CopyFrom(command);
+        auto* valid = tasks.add_bundlec2messages();
+        valid->set_beaconhash(childHash);
+        valid->set_listenerhash("child-listener");
+        command.set_uuid("later-valid-command");
+        valid->add_c2messages()->CopyFrom(command);
+        ok &= expect(parent.cmdToTasks(encodeEnvelope(tasks, upstream.key())),
+            "pivot parent should account for a missing route without aborting later bundles");
+        ok &= expect(childSession->getTask().uuid() == "later-valid-command",
+            "valid child command following a missing route should still be delivered");
+        ok &= expect(parent.taskResultsToCmd(request), "pivot parent should report the rejected route");
+        std::string decoded = base64_decode(request);
+        XOR(decoded, upstream.key());
+        MultiBundleC2Message failures;
+        ok &= expect(failures.ParseFromArray(decoded.data(), static_cast<int>(decoded.size())),
+            "pivot failure report should be a valid envelope");
+        bool foundFailure = false;
+        for (int index = 0; index < failures.bundlec2messages_size(); ++index)
+        {
+            const auto* bundle = failures.bundlec2messages(index);
+            if (bundle->beaconhash() == missingHash &&
+                bundle->listenerhash() == "retired-listener" && bundle->c2messages_size() == 1 &&
+                bundle->c2messages(0).uuid() == "pivot-command-id" &&
+                bundle->c2messages(0).errorCode() == ERROR_HASH_NOT_FOUND)
+                foundFailure = true;
+        }
+        ok &= expect(foundFailure, "missing child route should produce a correlated failure result");
+        upstream.exchange(request, reply);
+        auto routedFailure = upstream.getTaskResult(missingHash, "retired-listener");
+        ok &= expect(routedFailure.uuid() == "pivot-command-id" &&
+            routedFailure.errorCode() == ERROR_HASH_NOT_FOUND,
+            "upstream should receive the failure for its stale child session");
+        ok &= expect(std::stod(upstream.getSessionPtr(missingHash, "retired-listener")->getLastProofOfLife()) >= 30.0,
+            "a parent-generated route failure must not refresh a missing child's proof of life");
+
+        C2Message filler;
+        filler.set_instruction("queued-task");
+        for (std::size_t i = 0; i < Session::MaxPendingMessages; ++i)
+            ok &= expect(childSession->addTask(filler) >= 0, "child task queue should fill to its limit");
+        MultiBundleC2Message fullRoute;
+        auto* fullBundle = fullRoute.add_bundlec2messages();
+        fullBundle->set_beaconhash(childHash);
+        fullBundle->set_listenerhash("child-listener");
+        command.set_uuid("full-route-command");
+        fullBundle->add_c2messages()->CopyFrom(command);
+        ok &= expect(parent.cmdToTasks(encodeEnvelope(fullRoute, upstream.key())),
+            "a full child queue should be handled without aborting the parent");
+        ok &= expect(parent.taskResultsToCmd(request), "a full child queue should produce a result");
+        upstream.exchange(request, reply);
+        auto queueFailure = upstream.getTaskResult(childHash, "child-listener");
+        ok &= expect(queueFailure.uuid() == "full-route-command" && queueFailure.errorCode() == ERROR_GENERIC,
+            "full child queue should report a correlated failure upstream");
+
+        childSession->setSessionKilled();
+        command.set_uuid("stopped-route-command");
+        MultiBundleC2Message stoppedRoute;
+        auto* stoppedBundle = stoppedRoute.add_bundlec2messages();
+        stoppedBundle->set_beaconhash(childHash);
+        stoppedBundle->set_listenerhash("child-listener");
+        stoppedBundle->add_c2messages()->CopyFrom(command);
+        ok &= expect(parent.cmdToTasks(encodeEnvelope(stoppedRoute, upstream.key())),
+            "a stopped child route should produce a result without aborting the parent");
+        ok &= expect(parent.taskResultsToCmd(request), "stopped route result should serialize");
+        upstream.exchange(request, reply);
+        auto stoppedFailure = upstream.getTaskResult(childHash, "child-listener");
+        ok &= expect(stoppedFailure.uuid() == "stopped-route-command" &&
+            stoppedFailure.errorCode() == ERROR_HASH_NOT_FOUND,
+            "stopped child route should report unavailable rather than queueing a task");
+    }
+    {
+        BeaconTestProxy parent;
+        ok &= expect(parent.initConfig(kConfig), "batched route failures need a configured parent");
+        MultiBundleC2Message tasks;
+        auto* missing = tasks.add_bundlec2messages();
+        missing->set_beaconhash("MISSINGCHILD1234MISSINGCHILD1234");
+        missing->set_listenerhash("retired-listener");
+        for (int i = 0; i < 70; ++i)
+        {
+            auto* task = missing->add_c2messages();
+            task->set_instruction("pivot-task");
+            task->set_uuid("missing-" + std::to_string(i));
+        }
+        ok &= expect(parent.cmdToTasks(encodeEnvelope(tasks, "key")),
+            "all missing-route commands should be accounted for");
+        for (int batch = 0; batch < 2; ++batch)
+        {
+            std::string output;
+            ok &= expect(parent.taskResultsToCmd(output), "route failures should serialize in bounded batches");
+            std::string decoded = base64_decode(output);
+            XOR(decoded, "key");
+            MultiBundleC2Message reported;
+            ok &= expect(reported.ParseFromArray(decoded.data(), static_cast<int>(decoded.size())),
+                "bounded failure batch should be a valid envelope");
+            int count = 0;
+            for (int i = 0; i < reported.bundlec2messages_size(); ++i)
+                if (reported.bundlec2messages(i)->beaconhash() == "MISSINGCHILD1234MISSINGCHILD1234")
+                    count += reported.bundlec2messages(i)->c2messages_size();
+            ok &= expect(count == (batch == 0 ? 64 : 6),
+                "route failure batching should preserve every rejected command");
+        }
+    }
     {
         BeaconTestProxy b;
         C2Message sleepMsg;

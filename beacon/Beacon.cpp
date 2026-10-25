@@ -494,26 +494,46 @@ bool Beacon::cmdToTasks(const std::string& input)
         else
         {
             const std::string listenerHash = bundleC2Message->listenerhash();
-            if (listenerHash.empty())
-                return false;
             Listener* route = nullptr;
-            for (const auto& listener : m_listeners)
+            bool ambiguous = false;
+            if (!listenerHash.empty())
             {
-                if (!listener->isSessionExist(beaconhash, listenerHash))
-                    continue;
-                if (route != nullptr)
-                    return false;
-                route = listener.get();
+                for (const auto& listener : m_listeners)
+                {
+                    if (!listener->isSessionExist(beaconhash, listenerHash))
+                        continue;
+                    if (route != nullptr)
+                    {
+                        ambiguous = true;
+                        break;
+                    }
+                    route = listener.get();
+                }
             }
-            if (bundleC2Message->c2messages_size() > 0 && route == nullptr)
-                return false;
             for (int j = 0; j < bundleC2Message->c2messages_size(); j++)
-                if (!route->queueTask(beaconhash, listenerHash, bundleC2Message->c2messages(j)))
-                    return false;
+            {
+                const auto& command = bundleC2Message->c2messages(j);
+                if (route && !ambiguous && route->queueTask(beaconhash, listenerHash, command))
+                    continue;
+                const auto childSession = route && !ambiguous
+                    ? route->getSessionPtr(beaconhash, listenerHash) : nullptr;
+                const bool unavailable = !childSession ||
+                    childSession->getLifecycleState() != Session::LifecycleState::Running;
+                C2Message failure;
+                failure.set_instruction(command.instruction());
+                failure.set_cmd(command.cmd());
+                failure.set_uuid(command.uuid());
+                failure.set_data(RouteFailureReportTag);
+                failure.set_errorCode(unavailable ? ERROR_HASH_NOT_FOUND : ERROR_GENERIC);
+                failure.set_returnvalue(ambiguous ? "Child listener route is ambiguous."
+                    : childSession && !unavailable ? "Child listener task queue is full."
+                    : "Child listener route is unavailable.");
+                m_routedFailures.push_back({beaconhash, listenerHash, std::move(failure)});
+            }
         }
     }
 
-    // Return true if all tasks were distributed successfully
+    // Every rejected child task has a result to report on the next check-in.
     return true;
 }
 
@@ -578,6 +598,27 @@ bool Beacon::taskResultsToCmd(std::string& output)
         }
     }
 
+    std::unordered_map<std::string, BundleC2Message*> failureBundles;
+    std::size_t reportedFailures = 0;
+    for (const auto& failure : m_routedFailures)
+    {
+        if (reportedFailures >= 64)
+            break;
+        const std::string key = failure.beaconHash + '\0' + failure.listenerHash;
+        auto* failedBundle = failureBundles[key];
+        if (!failedBundle)
+        {
+            if (multiBundleC2Message.bundlec2messages_size() >= MaxC2BundlesPerEnvelope)
+                break;
+            failedBundle = multiBundleC2Message.add_bundlec2messages();
+            failedBundle->set_beaconhash(failure.beaconHash);
+            failedBundle->set_listenerhash(failure.listenerHash);
+            failureBundles[key] = failedBundle;
+        }
+        failedBundle->add_c2messages()->CopyFrom(failure.result);
+        ++reportedFailures;
+    }
+
     std::string data;
     if (!multiBundleC2Message.SerializeToString(&data) || !XOR(data, m_key))
     {
@@ -587,6 +628,8 @@ bool Beacon::taskResultsToCmd(std::string& output)
     }
 
     output = base64_encode(data);
+    for (std::size_t i = 0; i < reportedFailures; ++i)
+        m_routedFailures.pop_front();
 
     while (!m_taskResult.empty())
     {

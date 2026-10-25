@@ -19,6 +19,8 @@
 #define ERROR_MODULE_ALREADY_LOADED 10007
 #define ERROR_UNSUPPORTED_PLATFORM 10008
 
+const std::string RouteFailureReportTag = "child-route-delivery-failed";
+
 
 // TODO set an enum
 const std::string ListenerHttpType = "http";

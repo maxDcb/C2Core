@@ -68,6 +68,13 @@ private:
         std::unordered_set<std::string> m_processedTaskIds;
         std::deque<std::string> m_processedTaskOrder;
         std::unordered_set<std::string> m_pendingListenerPolls;
+        struct RoutedFailure
+        {
+                std::string beaconHash;
+                std::string listenerHash;
+                C2Message result;
+        };
+        std::deque<RoutedFailure> m_routedFailures;
 
         void rememberProcessedTask(const std::string& uuid);
 
