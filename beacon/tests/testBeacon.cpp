@@ -27,6 +27,13 @@ public:
     }
     size_t resultCount() const { return m_taskResult.size(); }
     size_t taskCount() const { return m_tasks.size(); }
+    void fillOwnTaskQueue()
+    {
+        C2Message filler;
+        filler.set_instruction("queued-task");
+        for (std::size_t i = 0; i < Session::MaxPendingMessages; ++i)
+            m_tasks.push(filler);
+    }
     const std::string& arch() const { return m_arch; }
     const std::string& beaconHash() const { return m_beaconHash; }
 };
@@ -323,6 +330,50 @@ int main()
             ok &= expect(count == (batch == 0 ? 64 : 6),
                 "route failure batching should preserve every rejected command");
         }
+    }
+    {
+        BeaconTestProxy parent;
+        ok &= expect(parent.initConfig(kConfig), "full parent queue needs a configured beacon");
+        auto childListener = std::make_unique<FakeListener>();
+        const std::string childHash = "PIVOTCHILD123456PIVOTCHILD123456";
+        auto childSession = childListener->addChildSession(childHash);
+        parent.addTestListener(std::move(childListener));
+        parent.fillOwnTaskQueue();
+
+        MultiBundleC2Message tasks;
+        auto* own = tasks.add_bundlec2messages();
+        own->set_beaconhash(parent.beaconHash());
+        own->set_listenerhash("upstream-listener");
+        auto* rejected = own->add_c2messages();
+        rejected->set_instruction("parent-task");
+        rejected->set_uuid("parent-full-command");
+        auto* child = tasks.add_bundlec2messages();
+        child->set_beaconhash(childHash);
+        child->set_listenerhash("child-listener");
+        auto* delivered = child->add_c2messages();
+        delivered->set_instruction("child-task");
+        delivered->set_uuid("child-after-parent-full");
+        ok &= expect(parent.cmdToTasks(encodeEnvelope(tasks, "key")),
+            "a full parent queue should not abort a later child command");
+        ok &= expect(childSession->getTask().uuid() == "child-after-parent-full",
+            "child command after a full parent queue should be delivered");
+        std::string output;
+        ok &= expect(parent.taskResultsToCmd(output), "full parent queue should produce a result");
+        std::string decoded = base64_decode(output);
+        XOR(decoded, "key");
+        MultiBundleC2Message result;
+        ok &= expect(result.ParseFromArray(decoded.data(), static_cast<int>(decoded.size())),
+            "full parent queue response should be valid");
+        bool found = false;
+        for (int i = 0; i < result.bundlec2messages_size(); ++i)
+        {
+            const auto* bundle = result.bundlec2messages(i);
+            if (bundle->beaconhash() == parent.beaconHash() && bundle->c2messages_size() == 1 &&
+                bundle->c2messages(0).uuid() == "parent-full-command" &&
+                bundle->c2messages(0).errorCode() == ERROR_GENERIC)
+                found = true;
+        }
+        ok &= expect(found, "full parent queue should report the rejected command by UUID");
     }
     {
         BeaconTestProxy b;

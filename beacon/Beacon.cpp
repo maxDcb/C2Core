@@ -484,7 +484,17 @@ bool Beacon::cmdToTasks(const std::string& input)
                      m_processedTaskIds.count(c2Message.uuid()) != 0))
                     continue;
                 if (m_tasks.size() >= MaxPendingMessages)
-                    return false;
+                {
+                    C2Message failure;
+                    failure.set_instruction(c2Message.instruction());
+                    failure.set_cmd(c2Message.cmd());
+                    failure.set_uuid(c2Message.uuid());
+                    failure.set_data(RouteFailureReportTag);
+                    failure.set_errorCode(ERROR_GENERIC);
+                    failure.set_returnvalue("Beacon task queue is full.");
+                    m_routedFailures.push_back({beaconhash, bundleC2Message->listenerhash(), std::move(failure)});
+                    continue;
+                }
                 m_tasks.push(c2Message);
                 if (deduplicate && !c2Message.uuid().empty())
                     m_queuedTaskIds.insert(c2Message.uuid());
