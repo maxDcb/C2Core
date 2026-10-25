@@ -44,6 +44,7 @@ public:
 #endif
 
 private:
+    void finalCheckIn() override;
     bool ensureWebSocketConnected();
     void resetWebSocketConnection();
     bool tryWebSocketCheckIn(const std::string& output, std::string& input);

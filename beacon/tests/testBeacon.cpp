@@ -184,6 +184,7 @@ int main()
         endMsg.set_instruction(EndCmd);
         C2Message endRet;
         ok &= expect(b.execInstruction(endMsg, endRet), "end command should stop beacon");
+        ok &= expect(endRet.errorCode() == 0, "end command should confirm success with error code zero");
         ok &= expect(endRet.returnvalue() == CmdStatusSuccess, "end command should return success");
 
         C2Message badListenerPort;

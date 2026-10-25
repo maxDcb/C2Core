@@ -386,7 +386,8 @@ void Beacon::run()
 
             exit = runTasks();
             
-            sleep();
+            if (!exit)
+                sleep();
         }
         catch(const std::exception& ex)
         {
@@ -400,11 +401,16 @@ void Beacon::run()
 
     try
     {
-        checkIn();
+        finalCheckIn();
     }
     catch (...)
     {
     }
+}
+
+void Beacon::finalCheckIn()
+{
+    checkIn();
 }
 
 
@@ -712,6 +718,7 @@ bool Beacon::execInstruction(C2Message& c2Message, C2Message& c2RetMessage)
 
 bool Beacon::handleEndInstruction(C2Message&, C2Message& c2RetMessage)
 {
+    c2RetMessage.set_errorCode(0);
     c2RetMessage.set_returnvalue(CmdStatusSuccess);
     return true;
 }

