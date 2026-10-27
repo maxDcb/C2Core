@@ -87,8 +87,36 @@ int main()
         ok &= expectContains(ret.returnvalue(), "err", "Windows output should capture stderr");
 #else
         ok &= test_helpers::expect(ret.errorCode() == -1, "Linux shell stderr should not become a module error");
+        ok &= expectContains(ret.returnvalue(), "err", "Linux shell should capture stderr");
 #endif
     }
+
+#ifndef _WIN32
+    {
+        C2Message message;
+        message.set_instruction("run");
+        message.set_cmd("python3 -c 'import sys; sys.stdout.write(\"BEGIN|\" + \"A\"*110000 + \"|END\")'");
+        C2Message ret;
+        ok &= test_helpers::expect(module.process(message, ret) == 0, "large command should execute");
+        ok &= test_helpers::expect(ret.errorCode() == -1, "large command should succeed");
+        ok &= test_helpers::expect(ret.returnvalue().size() == 110010, "large output should remain complete");
+        ok &= test_helpers::expect(ret.returnvalue().rfind("BEGIN|", 0) == 0
+            && ret.returnvalue().substr(ret.returnvalue().size() - 4) == "|END",
+            "large output boundaries should remain intact");
+    }
+
+    {
+        C2Message message;
+        message.set_instruction("run");
+        message.set_cmd("python3 -c 'raise SystemExit(7)'");
+        C2Message ret;
+        ok &= test_helpers::expect(module.process(message, ret) == 0, "failed command should return a result");
+        ok &= test_helpers::expect(ret.errorCode() == 3, "nonzero exit must mark command failed");
+        std::string error;
+        module.errorCodeToMsg(ret, error);
+        ok &= expectContains(error, "non-zero status", "exit failure should be reported");
+    }
+#endif
 
 #ifdef _WIN32
     {
