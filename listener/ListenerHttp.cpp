@@ -446,7 +446,19 @@ void ListenerHttp::runHttpServ()
                 }
 
                 httplib::Response res;
-                HandleCheckIn(input, res);
+                try
+                {
+                    HandleCheckIn(input, res);
+                }
+                catch (const std::exception& error)
+                {
+#ifdef BUILD_TEAMSERVER
+                    if (m_logger)
+                        m_logger->warn("Invalid WebSocket check-in on {}: {}", endpoint, error.what());
+#endif
+                    ws.close();
+                    break;
+                }
 
                 if (res.body.size() > m_wsMaxMessageSize)
                 {
