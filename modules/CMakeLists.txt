@@ -53,6 +53,7 @@ add_subdirectory(GetEnv)
 add_subdirectory(Whoami)
 add_subdirectory(Netstat)
 add_subdirectory(IpConfig)
+add_subdirectory(HostContext)
 add_subdirectory(EnumerateShares)
 add_subdirectory(EnumerateRdpSessions)
 

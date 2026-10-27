@@ -2,6 +2,7 @@
 #include "Common.hpp"
 
 #include <cstring>
+#include <array>
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -17,12 +18,147 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <filesystem>
+#include <algorithm>
 #endif
 
 using namespace std;
 
 constexpr std::string_view moduleName = "netstat";
 constexpr unsigned long long moduleHash = djb2(moduleName);
+
+#ifndef _WIN32
+namespace netstat_detail
+{
+namespace
+{
+int hexDigit(char digit)
+{
+    if (digit >= '0' && digit <= '9') return digit - '0';
+    if (digit >= 'a' && digit <= 'f') return digit - 'a' + 10;
+    if (digit >= 'A' && digit <= 'F') return digit - 'A' + 10;
+    return -1;
+}
+
+bool hexByte(const std::string& text, size_t offset, unsigned char& byte)
+{
+    if (offset + 1 >= text.size()) return false;
+    const int high = hexDigit(text[offset]);
+    const int low = hexDigit(text[offset + 1]);
+    if (high < 0 || low < 0) return false;
+    byte = static_cast<unsigned char>((high << 4) | low);
+    return true;
+}
+
+bool decodeAddress(const std::string& field, bool ipv6, std::string& address)
+{
+    const size_t separator = field.find(':');
+    if (separator == std::string::npos || field.find(':', separator + 1) != std::string::npos)
+        return false;
+    const std::string ipHex = field.substr(0, separator);
+    const std::string portHex = field.substr(separator + 1);
+    if (ipHex.size() != (ipv6 ? 32u : 8u) || portHex.empty() || portHex.size() > 4)
+        return false;
+    unsigned port = 0;
+    for (char digit : portHex)
+    {
+        const int value = hexDigit(digit);
+        if (value < 0) return false;
+        port = (port << 4) | static_cast<unsigned>(value);
+    }
+
+    std::array<unsigned char, 16> bytes{};
+    const size_t count = ipv6 ? 16 : 4;
+    for (size_t i = 0; i < count; ++i)
+    {
+        unsigned char byte = 0;
+        if (!hexByte(ipHex, i * 2, byte)) return false;
+        // /proc/net stores each 32-bit address word in host byte order.
+        bytes[(i / 4) * 4 + (3 - i % 4)] = byte;
+    }
+    char rendered[INET6_ADDRSTRLEN]{};
+    if (inet_ntop(ipv6 ? AF_INET6 : AF_INET, bytes.data(), rendered, sizeof(rendered)) == nullptr)
+        return false;
+    address = ipv6 ? '[' + std::string(rendered) + "]:" + std::to_string(port)
+                   : std::string(rendered) + ':' + std::to_string(port);
+    return true;
+}
+
+std::string stateName(const std::string& state, const char* protocol)
+{
+    if (state == "01") return "ESTABLISHED";
+    if (state == "02") return "SYN_SENT";
+    if (state == "03") return "SYN_RECV";
+    if (state == "04") return "FIN_WAIT1";
+    if (state == "05") return "FIN_WAIT2";
+    if (state == "06") return "TIME_WAIT";
+    if (state == "07") return std::strncmp(protocol, "UDP", 3) == 0 ? "UNCONN" : "CLOSE";
+    if (state == "08") return "CLOSE_WAIT";
+    if (state == "09") return "LAST_ACK";
+    if (state == "0A") return "LISTEN";
+    if (state == "0B") return "CLOSING";
+    if (state == "0C") return "NEW_SYN_RECV";
+    return "UNKNOWN";
+}
+
+SocketOwners socketOwners()
+{
+    namespace fs = std::filesystem;
+    SocketOwners owners;
+    std::error_code error;
+    fs::directory_iterator processes("/proc", fs::directory_options::skip_permission_denied, error);
+    size_t visitedDescriptors = 0;
+    const fs::directory_iterator end;
+    for (; !error && processes != end; processes.increment(error))
+    {
+        const auto& process = *processes;
+        const std::string pid = process.path().filename().string();
+        if (pid.empty() || !std::all_of(pid.begin(), pid.end(), [](unsigned char ch) { return ch >= '0' && ch <= '9'; }))
+            continue;
+        const fs::path descriptors = process.path() / "fd";
+        fs::directory_iterator files(descriptors, fs::directory_options::skip_permission_denied, error);
+        if (error) { error.clear(); continue; }
+        std::string processName;
+        std::ifstream nameFile(process.path() / "comm");
+        std::getline(nameFile, processName);
+        processName = processName.substr(0, 64);
+        for (; !error && files != end; files.increment(error))
+        {
+            if (++visitedDescriptors > 50000) return owners;
+            const fs::path target = fs::read_symlink(files->path(), error);
+            if (error) { error.clear(); continue; }
+            const std::string link = target.string();
+            if (link.rfind("socket:[", 0) != 0 || link.back() != ']') continue;
+            const std::string inode = link.substr(8, link.size() - 9);
+            owners.emplace(inode, pid + '/' + processName);
+        }
+        error.clear(); // a process may exit while its fd directory is being read
+    }
+    return owners;
+}
+} // namespace
+
+std::string formatProcSocketLine(const std::string& line, const char* protocol, bool ipv6,
+    const SocketOwners& owners)
+{
+    std::istringstream fields(line);
+    std::string slot, local, remote, state;
+    if (!(fields >> slot >> local >> remote >> state)) return {};
+    std::string localAddress, remoteAddress;
+    if (!decodeAddress(local, ipv6, localAddress) || !decodeAddress(remote, ipv6, remoteAddress))
+        return {};
+    std::string formatted = std::string(protocol) + ' ' + localAddress + " -> " + remoteAddress
+        + " State:" + stateName(state, protocol) + '(' + state + ')';
+    std::string queue, timer, retransmits, uid, timeout, inode;
+    if (fields >> queue >> timer >> retransmits >> uid >> timeout >> inode)
+    {
+        const auto owner = owners.find(inode);
+        formatted += " Owner:" + (owner == owners.end() ? std::string("unknown") : owner->second);
+    }
+    return formatted + '\n';
+}
+} // namespace netstat_detail
+#endif
 
 #ifdef _WIN32
 __declspec(dllexport) Netstat* NetstatConstructor()
@@ -104,6 +240,7 @@ std::string Netstat::runNetstat()
     return result;
 #else
     std::string result;
+    const netstat_detail::SocketOwners owners = netstat_detail::socketOwners();
     auto parse = [&](const std::string& path, const char* proto, bool ipv6)
     {
         std::ifstream f(path);
@@ -112,35 +249,7 @@ std::string Netstat::runNetstat()
         std::getline(f, line); // skip header
         while(std::getline(f, line))
         {
-            std::istringstream iss(line);
-            std::string sl, local, remote, st;
-            iss >> sl >> local >> remote >> st;
-            auto decodeAddr = [&](const std::string& in)->std::string
-            {
-                size_t pos = in.find(':');
-                std::string iphex = in.substr(0,pos);
-                std::string porthex = in.substr(pos+1);
-                unsigned port = std::stoul(porthex, nullptr, 16);
-                char buf[INET6_ADDRSTRLEN];
-                if(ipv6)
-                {
-                    struct in6_addr a{};
-                    for(int i=0;i<16;i++)
-                        a.s6_addr[15-i] = std::stoi(iphex.substr(i*2,2),nullptr,16);
-                    inet_ntop(AF_INET6, &a, buf, sizeof(buf));
-                }
-                else
-                {
-                    struct in_addr a{};
-                    a.s_addr = htonl(std::stoul(iphex, nullptr, 16));
-                    inet_ntop(AF_INET, &a, buf, sizeof(buf));
-                }
-                return std::string(buf)+":"+std::to_string(port);
-            };
-            result += proto; result += " ";
-            result += decodeAddr(local); result += " -> ";
-            result += decodeAddr(remote); result += " State:"; result += st;
-            result += "\n";
+            result += netstat_detail::formatProcSocketLine(line, proto, ipv6, owners);
         }
     };
     parse("/proc/net/tcp", "TCP", false);

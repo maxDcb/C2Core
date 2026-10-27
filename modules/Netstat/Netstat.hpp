@@ -2,6 +2,16 @@
 
 #include "ModuleCmd.hpp"
 
+#ifndef _WIN32
+#include <unordered_map>
+namespace netstat_detail
+{
+using SocketOwners = std::unordered_map<std::string, std::string>;
+std::string formatProcSocketLine(const std::string& line, const char* protocol, bool ipv6,
+    const SocketOwners& owners = {});
+}
+#endif
+
 class Netstat : public ModuleCmd
 {
 public:
