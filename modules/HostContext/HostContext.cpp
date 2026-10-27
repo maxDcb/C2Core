@@ -1,9 +1,15 @@
 #include "HostContext.hpp"
 #include "Common.hpp"
 
+#include <algorithm>
 #include <string_view>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <iphlpapi.h>
+#include <memory>
+#else
 #include <fstream>
 #include <sstream>
 #include <sys/utsname.h>
@@ -14,8 +20,108 @@ namespace
 {
 constexpr std::string_view moduleName = "hostContext";
 constexpr unsigned long long moduleHash = djb2(moduleName);
+constexpr int ERROR_HOST_IDENTITY = 1;
 
-#ifndef _WIN32
+#ifdef _WIN32
+std::string ipv4FromNetworkOrder(DWORD address)
+{
+    const auto* octets = reinterpret_cast<const unsigned char*>(&address);
+    return std::to_string(octets[0]) + '.' + std::to_string(octets[1]) + '.'
+        + std::to_string(octets[2]) + '.' + std::to_string(octets[3]);
+}
+
+bool appendWindowsVersion(std::string& output)
+{
+    using RtlGetVersionFn = LONG (WINAPI*)(OSVERSIONINFOW*);
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    auto rtlGetVersion = ntdll ? reinterpret_cast<RtlGetVersionFn>(GetProcAddress(ntdll, "RtlGetVersion")) : nullptr;
+    output += "OS: Windows NT";
+    if (!rtlGetVersion)
+    {
+        output += " (version unavailable)\nKernel: Windows NT (version unavailable)\n";
+        return false;
+    }
+    OSVERSIONINFOW version{};
+    version.dwOSVersionInfoSize = sizeof(version);
+    if (rtlGetVersion(&version) != 0)
+    {
+        output += " (version unavailable)\nKernel: Windows NT (version unavailable)\n";
+        return false;
+    }
+    const std::string release = std::to_string(version.dwMajorVersion) + '.'
+        + std::to_string(version.dwMinorVersion) + " build " + std::to_string(version.dwBuildNumber);
+    SYSTEM_INFO system{};
+    GetNativeSystemInfo(&system);
+    std::string architecture = "unknown architecture";
+    switch (system.wProcessorArchitecture)
+    {
+    case PROCESSOR_ARCHITECTURE_AMD64: architecture = "x64"; break;
+    case PROCESSOR_ARCHITECTURE_INTEL: architecture = "x86"; break;
+    case PROCESSOR_ARCHITECTURE_ARM64: architecture = "arm64"; break;
+    }
+    output += ' ' + release + "\nKernel: Windows NT " + release + ' ' + architecture + '\n';
+    return true;
+}
+
+void appendWindowsResolver(std::string& output)
+{
+    output += "Resolver configuration:\n";
+    ULONG size = 0;
+    DWORD status = GetNetworkParams(nullptr, &size);
+    if (status != ERROR_BUFFER_OVERFLOW || size == 0 || size > 4 * 1024 * 1024)
+    {
+        output += "unavailable\n";
+        return;
+    }
+    auto buffer = std::make_unique<BYTE[]>(size);
+    auto* info = reinterpret_cast<FIXED_INFO*>(buffer.get());
+    if (GetNetworkParams(info, &size) != NO_ERROR)
+    {
+        output += "unavailable\n";
+        return;
+    }
+    unsigned count = 0;
+    for (const IP_ADDR_STRING* dns = &info->DnsServerList; dns && count < 16; dns = dns->Next)
+    {
+        if (dns->IpAddress.String[0] == '\0') continue;
+        output += "nameserver ";
+        output += dns->IpAddress.String;
+        output += '\n';
+        ++count;
+    }
+    if (count == 0) output += "no nameserver entries\n";
+}
+
+void appendWindowsRoutes(std::string& output)
+{
+    output += "IPv4 routes:\n";
+    ULONG size = 0;
+    DWORD status = GetIpForwardTable(nullptr, &size, TRUE);
+    if (status != ERROR_INSUFFICIENT_BUFFER || size == 0 || size > 4 * 1024 * 1024)
+    {
+        output += "unavailable\n";
+        return;
+    }
+    auto buffer = std::make_unique<BYTE[]>(size);
+    auto* table = reinterpret_cast<MIB_IPFORWARDTABLE*>(buffer.get());
+    if (GetIpForwardTable(table, &size, TRUE) != NO_ERROR)
+    {
+        output += "unavailable\n";
+        return;
+    }
+    const DWORD count = (std::min)(table->dwNumEntries, 64UL);
+    for (DWORD index = 0; index < count; ++index)
+    {
+        const auto& route = table->table[index];
+        output += "interface=" + std::to_string(route.dwForwardIfIndex)
+            + " destination=" + ipv4FromNetworkOrder(route.dwForwardDest)
+            + " mask=" + ipv4FromNetworkOrder(route.dwForwardMask)
+            + " gateway=" + ipv4FromNetworkOrder(route.dwForwardNextHop)
+            + " metric=" + std::to_string(route.dwForwardMetric1) + '\n';
+    }
+    if (count == 0) output += "no IPv4 routes\n";
+}
+#else
 std::string trim(std::string value)
 {
     const auto first = value.find_first_not_of(" \t\r\n");
@@ -114,10 +220,13 @@ HostContext::HostContext()
 {
 }
 
+HostContext::~HostContext() = default;
+
 std::string HostContext::getInfo()
 {
 #ifdef BUILD_TEAMSERVER
-    return "hostContext:\nRead Linux host identity, OS, resolver and IPv4 routes.\n";
+    return "hostContext:\nRead Windows or Linux hostname, OS, kernel, resolver and IPv4 routes.\n"
+        "Usage: hostContext\n";
 #else
     return {};
 #endif
@@ -126,6 +235,11 @@ std::string HostContext::getInfo()
 int HostContext::init(std::vector<std::string>& splitCommand, C2Message& message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitCommand.size() != 1 || splitCommand[0] != std::string(moduleName))
+    {
+        message.set_returnvalue("Usage: hostContext");
+        return -1;
+    }
     message.set_instruction(splitCommand[0]);
 #else
     (void)splitCommand;
@@ -137,28 +251,55 @@ int HostContext::init(std::vector<std::string>& splitCommand, C2Message& message
 int HostContext::process(C2Message& message, C2Message& response)
 {
     response.set_instruction(message.instruction());
-    response.set_returnvalue(collect());
+    int errorCode = 0;
+    response.set_returnvalue(collect(errorCode));
+    response.set_errorCode(errorCode);
     return 0;
 }
 
-std::string HostContext::collect() const
+int HostContext::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (response.errorCode() == ERROR_HOST_IDENTITY)
+        errorMsg = "Failed to collect host identity and OS information.";
+#else
+    (void)response;
+    (void)errorMsg;
+#endif
+    return 0;
+}
+
+std::string HostContext::collect(int& errorCode) const
 {
 #ifdef _WIN32
-    return "Unsupported platform.\n";
+    std::string output = "Hostname: ";
+    char hostname[256]{};
+    DWORD hostnameSize = sizeof(hostname);
+    const bool gotHostname = GetComputerNameExA(ComputerNameDnsHostname, hostname, &hostnameSize) != 0;
+    output += gotHostname ? hostname : "unavailable";
+    output += '\n';
+    const bool gotVersion = appendWindowsVersion(output);
+    appendWindowsResolver(output);
+    appendWindowsRoutes(output);
+    if (!gotHostname && !gotVersion) errorCode = ERROR_HOST_IDENTITY;
+    return output;
 #else
     std::string output;
     char hostname[256]{};
+    const bool gotHostname = gethostname(hostname, sizeof(hostname) - 1) == 0;
     output += "Hostname: ";
-    output += gethostname(hostname, sizeof(hostname) - 1) == 0 ? hostname : "unavailable";
+    output += gotHostname ? hostname : "unavailable";
     output += '\n';
     struct utsname system{};
+    const bool gotKernel = uname(&system) == 0;
     output += "Kernel: ";
-    output += uname(&system) == 0
+    output += gotKernel
         ? std::string(system.sysname) + ' ' + system.release + ' ' + system.machine
         : "unavailable";
     output += "\nOS: " + osName() + '\n';
     appendResolver(output);
     appendRoutes(output);
+    if (!gotHostname && !gotKernel) errorCode = ERROR_HOST_IDENTITY;
     return output;
 #endif
 }
