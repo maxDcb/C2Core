@@ -73,12 +73,22 @@ int main()
         std::string errorMsg = "unchanged";
         ok &= test_helpers::expect(shell.followUp(ret) == 0, "followUp should be a no-op");
         ok &= test_helpers::expect(shell.errorCodeToMsg(ret, errorMsg) == 0, "errorCodeToMsg should be a no-op");
-        ok &= test_helpers::expect(errorMsg == "unchanged", "errorCodeToMsg should leave the supplied message unchanged");
+        ok &= test_helpers::expect(errorMsg.empty(), "success should clear an earlier error message");
+    }
+
+    {
+        Shell shell;
+        C2Message first = runShellCommand(shell, {"shell", "echo", "c2core-first-command"}, ok);
+        ok &= test_helpers::expect(first.errorCode() == 0
+            && first.returnvalue().find("c2core-first-command") != std::string::npos,
+            "a first nonempty command should execute in the default shell");
+        runShellCommand(shell, {"shell", "exit"}, ok);
     }
 
     {
         Shell shell;
         C2Message ret = runShellCommand(shell, {"shell"}, ok);
+        ok &= test_helpers::expect(ret.errorCode() == 0, "shell start should set code zero");
         ok &= test_helpers::expect(ret.returnvalue() == "shell started", "empty command should start the persistent shell");
 
         ret = runShellCommand(shell, stateSetCommand(), ok);
@@ -100,20 +110,16 @@ int main()
         ok &= test_helpers::expect(ret.returnvalue() == "shell terminated", "second exit command should stop the restarted shell");
     }
 
-#ifdef _WIN32
     {
-        Shell shell;
-        bool branchOk = true;
-        C2Message message = initShell(shell, {"shell", "definitely_missing_c2_shell_program.exe"}, branchOk);
-        C2Message ret;
-        branchOk &= test_helpers::expect(shell.process(message, ret) == 0, "missing shell process should return through C2Message");
-        branchOk &= test_helpers::expect(ret.errorCode() == 1, "missing shell program should set error code 1");
+        Shell receiver;
+        C2Message codeOnly;
+        codeOnly.set_errorCode(1);
         std::string errorMsg;
-        branchOk &= test_helpers::expect(shell.errorCodeToMsg(ret, errorMsg) == 0, "missing shell program should map error text");
-        branchOk &= test_helpers::expect(errorMsg.find("Failed to start shell") != std::string::npos, "missing shell program should expose process error text");
-        ok &= branchOk;
+        ok &= test_helpers::expect(receiver.errorCodeToMsg(codeOnly, errorMsg) == 0,
+            "shell startup code should be translated");
+        ok &= test_helpers::expect(errorMsg == "Failed to start shell.",
+            "shell startup code should produce a stable message");
     }
-#endif
 
     std::cout << (ok ? "[+]" : "[-]") << " shell tests" << std::endl;
     return ok ? 0 : 1;

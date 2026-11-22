@@ -71,6 +71,11 @@ std::string Shell::getInfo()
 int Shell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.empty() || splitedCmd[0] != moduleName)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     std::string arg;
     if(splitedCmd.size() > 1)
     {
@@ -94,12 +99,9 @@ int Shell::followUp(const C2Message &c2RetMessage)
 
 int Shell::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
-    if(c2RetMessage.errorCode() > 0)
-    {
-        errorMsg = c2RetMessage.returnvalue().empty()
-            ? "Failed to start shell."
-            : c2RetMessage.returnvalue();
-    }
+    errorMsg.clear();
+    if (c2RetMessage.errorCode() == 1)
+        errorMsg = "Failed to start shell.";
     return 0;
 }
 
@@ -208,16 +210,17 @@ void Shell::stopShell()
 int Shell::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue({});
+    c2RetMessage.set_errorCode(0);
 
 #ifdef __linux__
     if(!m_started)
     {
-        if(!cmd.empty())
-            m_program = cmd;
         if(startShell() != 0)
         {
             c2RetMessage.set_errorCode(1);
-            c2RetMessage.set_returnvalue("Failed to start shell.");
             return 0;
         }
         if(cmd.empty())
@@ -281,12 +284,9 @@ int Shell::process(C2Message &c2Message, C2Message &c2RetMessage)
 #elif _WIN32
     if(!m_started)
     {
-        if(!cmd.empty())
-            m_program = cmd;
         if(startShell() != 0)
         {
             c2RetMessage.set_errorCode(1);
-            c2RetMessage.set_returnvalue("Failed to start shell.");
             return 0;
         }
         if(cmd.empty())

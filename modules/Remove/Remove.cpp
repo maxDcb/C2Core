@@ -51,7 +51,7 @@ std::string Remove::getInfo()
 int Remove::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if (splitedCmd.size() >= 2)
+    if (splitedCmd.size() >= 2 && splitedCmd[0] == moduleName)
     {
         std::string path;
         for (size_t i = 1; i < splitedCmd.size(); ++i)
@@ -76,13 +76,16 @@ int Remove::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int Remove::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     std::string path = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(path);
+    c2RetMessage.set_returnvalue({});
 
     std::error_code ec;
-    fs::remove_all(path, ec);
-    if (!ec)
+    if (!path.empty())
+        fs::remove_all(path, ec);
+    if (!path.empty() && !ec)
     {
+        c2RetMessage.set_errorCode(0);
         c2RetMessage.set_returnvalue("Removed.");
     }
     else
@@ -94,7 +97,8 @@ int Remove::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Remove::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     if (c2RetMessage.errorCode() == ERROR_REMOVE)
         errorMsg = "Failed: Could not remove path";
 #endif

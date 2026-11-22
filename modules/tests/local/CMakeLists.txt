@@ -144,3 +144,34 @@ target_compile_definitions(testsLocalTransferModuleContract PRIVATE BUILD_TEAMSE
 target_link_libraries(testsLocalTransferModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
 add_dependencies(testsLocalTransferModuleContract Download Upload)
 add_test(NAME testsLocalTransferModuleContract COMMAND testsLocalTransferModuleContract)
+
+foreach(module IN ITEMS Remove Run Shell)
+    add_subdirectory("${module_dir}/${module}" "${module}")
+    target_link_libraries(${module} c2_base64 nlohmann_json::nlohmann_json)
+    target_link_libraries(tests${module} c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
+endforeach()
+if(UNIX AND NOT APPLE)
+    find_library(C2_UTIL_LIBRARY util)
+    if(C2_UTIL_LIBRARY)
+        target_link_libraries(Shell ${C2_UTIL_LIBRARY})
+        target_link_libraries(testsShell ${C2_UTIL_LIBRARY})
+    endif()
+endif()
+
+add_executable(testsLocalCommandModuleContract
+    testsLocalCommandModuleContract.cpp
+    "${module_dir}/Remove/Remove.cpp"
+    "${module_dir}/Run/Run.cpp"
+    "${module_dir}/Shell/Shell.cpp"
+)
+target_compile_definitions(testsLocalCommandModuleContract PRIVATE BUILD_TEAMSERVER
+    REMOVE_MODULE_PATH="$<TARGET_FILE:Remove>"
+    RUN_MODULE_PATH="$<TARGET_FILE:Run>"
+    SHELL_MODULE_PATH="$<TARGET_FILE:Shell>")
+target_link_libraries(testsLocalCommandModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalCommandModuleContract Remove Run Shell)
+if(UNIX AND NOT APPLE AND C2_UTIL_LIBRARY)
+    target_link_libraries(testsLocalCommandModuleContract PRIVATE ${C2_UTIL_LIBRARY})
+endif()
+add_test(NAME testsLocalCommandModuleContract COMMAND testsLocalCommandModuleContract)

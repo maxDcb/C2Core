@@ -65,7 +65,7 @@ int main()
         ok &= test_helpers::expect(module.process(message, ret) == 0, "success command process should succeed");
         ok &= test_helpers::expect(ret.instruction() == "run", "success command should keep the module instruction");
         ok &= test_helpers::expect(ret.cmd() == message.cmd(), "success command should echo the executed command");
-        ok &= test_helpers::expect(ret.errorCode() == -1, "success command should not set an error code");
+        ok &= test_helpers::expect(ret.errorCode() == 0, "success command should set code zero");
         ok &= expectContains(ret.returnvalue(), "hello", "success command should capture stdout");
         ok &= expectContains(ret.returnvalue(), "world", "success command should preserve multi-token output");
     }
@@ -86,7 +86,7 @@ int main()
         ok &= expectContains(ret.returnvalue(), "Stderr:", "Windows output should label stderr separately");
         ok &= expectContains(ret.returnvalue(), "err", "Windows output should capture stderr");
 #else
-        ok &= test_helpers::expect(ret.errorCode() == -1, "Linux shell stderr should not become a module error");
+        ok &= test_helpers::expect(ret.errorCode() == 0, "Linux shell stderr should not become a module error");
         ok &= expectContains(ret.returnvalue(), "err", "Linux shell should capture stderr");
 #endif
     }
@@ -98,7 +98,7 @@ int main()
         message.set_cmd("python3 -c 'import sys; sys.stdout.write(\"BEGIN|\" + \"A\"*110000 + \"|END\")'");
         C2Message ret;
         ok &= test_helpers::expect(module.process(message, ret) == 0, "large command should execute");
-        ok &= test_helpers::expect(ret.errorCode() == -1, "large command should succeed");
+        ok &= test_helpers::expect(ret.errorCode() == 0, "large command should succeed");
         ok &= test_helpers::expect(ret.returnvalue().size() == 110010, "large output should remain complete");
         ok &= test_helpers::expect(ret.returnvalue().rfind("BEGIN|", 0) == 0
             && ret.returnvalue().substr(ret.returnvalue().size() - 4) == "|END",
@@ -112,6 +112,7 @@ int main()
         C2Message ret;
         ok &= test_helpers::expect(module.process(message, ret) == 0, "failed command should return a result");
         ok &= test_helpers::expect(ret.errorCode() == 3, "nonzero exit must mark command failed");
+        ok &= test_helpers::expect(ret.returnvalue().empty(), "failed command output should not be returned as a result");
         std::string error;
         module.errorCodeToMsg(ret, error);
         ok &= expectContains(error, "non-zero status", "exit failure should be reported");
@@ -143,7 +144,7 @@ int main()
         message.set_errorCode(0);
         std::string error = "unchanged";
         ok &= test_helpers::expect(module.errorCodeToMsg(message, error) == 0, "zero error code should return 0");
-        ok &= test_helpers::expect(error == "unchanged", "zero error code should leave the error message unchanged");
+        ok &= test_helpers::expect(error.empty(), "zero error code should clear an earlier error message");
     }
 
     std::cout << (ok ? "[+]" : "[-]") << " run tests" << std::endl;

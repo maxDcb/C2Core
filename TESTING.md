@@ -61,6 +61,8 @@ These modules report status `1` for enumeration failure. The code-only translati
 
 The `Download` manifest calls the artifact name optional, while `Download::init()` currently requires a resolved destination path as its third token. The harness supplies that path explicitly. Aligning the optional command form with the parent TeamServer's artifact path convention remains an integration task.
 
+`testsLocalCommandModuleContract` adds `Remove`, `Run` and `Shell`. It checks their original constructor exports, serialized messages across separate preparation, execution and receiving instances, explicit status codes and code-only error translation. `Remove` deletes only temporary test files and directories and rejects an empty transported path. `Run` captures a successful command and reports a nonzero child exit with code `3` and an empty result. `Shell` tests a first command on a fresh executor, session state across later requests, termination and restart. Platform-specific subprocess commands are used on Windows and Linux. The existing module tests and shared libraries remain in the harness; operating system failures to start the default shell are not injected.
+
 From the C2Core root, use a C++17 toolchain, CMake 3.20 or newer, an installed `nlohmann_json` CMake package, and the `cpp-base64` sources from the parent project's `thirdParty/base64` directory.
 
 ```sh

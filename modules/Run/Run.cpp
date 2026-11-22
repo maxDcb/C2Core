@@ -76,7 +76,7 @@ std::string Run::getInfo()
 int Run::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if(splitedCmd.size()<2)
+    if(splitedCmd.size()<2 || splitedCmd[0] != moduleName)
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
@@ -105,9 +105,8 @@ int Run::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(shellCmd);
-    if(error!=0)
-        c2RetMessage.set_errorCode(error);
-    c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_errorCode(error);
+    c2RetMessage.set_returnvalue(error == 0 ? outCmd : std::string{});
 
     return 0;
 }
@@ -204,8 +203,9 @@ int Run::execBash(const std::string& cmd, std::string& result)
 
     // Create the child process. 
     // PROCESS_INFORMATION piProcInfo = CreateChildProcess();
-    bSuccess = CreateProcess(NULL, 
-        const_cast<LPSTR>(cmd.c_str()),     // command line 
+    std::string mutableCommand = cmd;
+    bSuccess = CreateProcess(NULL,
+        mutableCommand.data(),             // command line
         NULL,          // process security attributes 
         NULL,          // primary thread security attributes 
         TRUE,          // handles are inherited 
@@ -264,8 +264,13 @@ int Run::execBash(const std::string& cmd, std::string& result)
         result += "\n";
     }
 
+    DWORD exitCode = 0;
+    const bool exitedNormally = GetExitCodeProcess(piProcInfo.hProcess, &exitCode) != 0
+        && exitCode == 0;
     CloseHandle(piProcInfo.hProcess);
     CloseHandle(piProcInfo.hThread);
+    if (!exitedNormally)
+        return ERROR_PROCESS_EXIT_FAIL;
 
     #endif
 
@@ -301,6 +306,7 @@ int Run::killProcess()
 int Run::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     int errorCode = c2RetMessage.errorCode();
     if (errorCode > 0)
     {
@@ -312,8 +318,10 @@ int Run::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 
             case ERROR_PROCESS_EXIT_FAIL:
                 errorMsg = "Process exited with a non-zero status.";
-                if (!c2RetMessage.returnvalue().empty())
-                    errorMsg += "\n" + c2RetMessage.returnvalue();
+                break;
+
+            case ERROR_WINDOWS:
+                errorMsg = "Could not prepare process output capture.";
                 break;
 
             default:
