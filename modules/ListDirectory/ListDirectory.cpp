@@ -66,6 +66,11 @@ std::string ListDirectory::getInfo()
 int ListDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.empty())
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     string path;
     for (int idx = 1; idx < splitedCmd.size(); idx++) 
     {
@@ -92,6 +97,8 @@ int ListDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
     {
         c2RetMessage.set_errorCode(ERROR_LIST_DIRECTORY);
     }
+    else
+        c2RetMessage.set_errorCode(0);
     c2RetMessage.set_returnvalue(outCmd);
 
     return 0;
@@ -100,9 +107,11 @@ int ListDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 int ListDirectory::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
+    if (c2RetMessage.errorCode() == ERROR_LIST_DIRECTORY)
     {
-        errorMsg = c2RetMessage.returnvalue();
+        errorMsg = "Failed: Could not list directory";
+        if (!c2RetMessage.returnvalue().empty())
+            errorMsg += "\n" + c2RetMessage.returnvalue();
     }
 #endif
     return 0;
@@ -148,10 +157,19 @@ std::string ListDirectory::listDirectory(const std::string& path)
             actualPath=std::filesystem::current_path().string();
 
         std::error_code e;
-        if (!std::filesystem::exists(actualPath, e))
+        if (!std::filesystem::is_directory(actualPath, e))
         {
             result += "Error: ";
-            result += e ? e.message() : "path does not exist";
+            result += e ? e.message() : "path is not a directory";
+            result += "\n";
+            return result;
+        }
+
+        const filesystem::directory_iterator entries(actualPath, e);
+        if (e)
+        {
+            result += "Error: ";
+            result += e.message();
             result += "\n";
             return result;
         }
@@ -159,7 +177,7 @@ std::string ListDirectory::listDirectory(const std::string& path)
         result += actualPath;
         result += ":\n";
 
-        for (const filesystem::directory_entry& file : filesystem::directory_iterator(actualPath, e))
+        for (const filesystem::directory_entry& file : entries)
         {
             try
             {

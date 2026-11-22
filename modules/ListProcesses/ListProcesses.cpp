@@ -64,7 +64,7 @@ std::string get_username(uid_t uid)
 
 ProcessInfo get_process_info(const std::string& pid_dir) 
 {
-    ProcessInfo proc_info;
+    ProcessInfo proc_info{};
     proc_info.pid = std::stoi(pid_dir);
 
     // Read /proc/[PID]/status for user and state
@@ -92,7 +92,7 @@ ProcessInfo get_process_info(const std::string& pid_dir)
     if (stat_file) 
     {
         std::string temp;
-        long rss;
+        long rss = 0;
         for (int i = 0; i < 23; ++i) 
         {
             stat_file >> temp; // Skip to the 24th field (RSS)
@@ -135,7 +135,7 @@ ProcessInfo get_process_info(const std::string& pid_dir)
 }
 
 
-std::string GetProcess()
+bool GetProcess(std::string& result)
 {   
     std::vector<ProcessInfo> processes;
 
@@ -160,7 +160,6 @@ std::string GetProcess()
     }
 
     // Print header
-    std::string result;
     result += "USER" + std::string(16-4, ' ') + "PID" + std::string(12-3, ' ') + "STATE" + std::string(6-5, ' ') + "MEM(KB)" + std::string(12-7, ' ') + "COMMAND\n";
 
     // Print processes
@@ -173,7 +172,7 @@ std::string GetProcess()
                 + proc.command + "\n";
     }
 
-    return result;
+    return true;
 }
 
 #elif _WIN32
@@ -289,25 +288,32 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
 }
 
 
-std::string GetProcess()
+bool GetProcess(std::string& result)
 {
-    std::string result;
-
-    int pid = 0;
     PVOID buffer = NULL;
     DWORD bufSize = 0;
     
-    NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
+    HMODULE ntdll = GetModuleHandle("ntdll.dll");
+    if (!ntdll)
+        return false;
+    NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(ntdll, "NtQuerySystemInformation");
+    if (!pNtQuerySystemInformation)
+        return false;
     pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, 0, 0, &bufSize);
     
     if (bufSize == 0)
-        return "GetProcess Failed";
+        return false;
     
     buffer = VirtualAlloc(0, bufSize, MEM_COMMIT, PAGE_READWRITE);
+    if (!buffer)
+        return false;
         
     SYSTEM_PROCESS_INFORMATION * sysproc_info = (SYSTEM_PROCESS_INFORMATION *) buffer;
-    if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize)) 
-        return "pNtQuerySystemInformation Failed";
+    if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize))
+    {
+        VirtualFree(buffer, 0, MEM_RELEASE);
+        return false;
+    }
 
 
     while (TRUE) 
@@ -320,7 +326,7 @@ std::string GetProcess()
             processName.push_back((char)sysproc_info->ImageName.Buffer[i]);
         }
         
-        result += getProcessInfos((DWORD)sysproc_info->UniqueProcessId, processName);
+        result += getProcessInfos(static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(sysproc_info->UniqueProcessId)), processName);
                 
         if (!sysproc_info->NextEntryOffset)
             break;
@@ -328,9 +334,9 @@ std::string GetProcess()
         sysproc_info = (SYSTEM_PROCESS_INFORMATION *)((ULONG_PTR) sysproc_info + sysproc_info->NextEntryOffset);
     }
     
-    VirtualFree(buffer, bufSize, MEM_RELEASE);
+    VirtualFree(buffer, 0, MEM_RELEASE);
 
-    return result;
+    return true;
 }
 
 
@@ -386,6 +392,11 @@ std::string ListProcesses::getInfo()
 int ListProcesses::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1 || splitedCmd[0] != std::string(moduleName))
+    {
+        c2Message.set_returnvalue("Usage: ps");
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("");
 #endif
@@ -395,29 +406,51 @@ int ListProcesses::init(std::vector<std::string> &splitedCmd, C2Message &c2Messa
 
 int ListProcesses::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    std::string outCmd = listProcesses();
+    std::string outCmd;
+    int errorCode = 0;
+    try
+    {
+        if (!listProcesses(outCmd) || outCmd.empty())
+            errorCode = 1;
+    }
+    catch (...)
+    {
+        errorCode = 1;
+    }
+    if (errorCode != 0)
+        outCmd.clear();
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd("");
     c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_errorCode(errorCode);
 
     return 0;
 }
 
-
-std::string ListProcesses::listProcesses()
+int ListProcesses::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
 {
-    std::string result;
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (response.errorCode() == 1)
+        errorMsg = "Failed to enumerate processes.";
+#else
+    (void)response;
+    (void)errorMsg;
+#endif
+    return 0;
+}
 
+
+bool ListProcesses::listProcesses(std::string& result)
+{
 #ifdef __linux__
-
-    result = GetProcess();
+    return GetProcess(result);
 
 #elif _WIN32
+    return GetProcess(result);
 
-    result = GetProcess();
-
+#else
+    (void)result;
+    return false;
 #endif
-
-    return result;
 }

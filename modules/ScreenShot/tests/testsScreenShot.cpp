@@ -72,6 +72,7 @@ int main()
         C2Message ret;
 
         ok &= expect(module.followUp(ret) == 0, "followUp should accept an empty response");
+        ret.set_errorCode(0);
         ret.set_outputfile("generated-screenshot.png");
         ret.set_data("not-a-png");
         ok &= expect(module.followUp(ret) == 0, "followUp should accept response data");
@@ -82,36 +83,33 @@ int main()
         std::vector<std::string> cmd = {"screenShot"};
         C2Message message;
         C2Message ret;
+        const std::string sample = std::string("\x89PNG\r\n\x1a\n", 8) + "synthetic";
 
         ok &= expect(module.init(cmd, message) == 0, "process setup should initialize");
         message.set_outputfile("generated-screenshot.png");
-        ok &= expect(module.process(message, ret) == 0, "process should return success");
-#ifdef _WIN32
+        message.set_data(sample);
+        module.process(message, ret);
+        ok &= expect(ret.errorCode() == 0, "synthetic process should put success status in the response");
         ok &= expect(!ret.instruction().empty(), "process should return a screenshot instruction");
-#else
-        ok &= expect(ret.instruction() == "screenShot", "process should preserve instruction");
-#endif
         ok &= expect(ret.outputfile() == "generated-screenshot.png", "process should preserve generated artifact output path");
         ok &= expect(ret.args() == "0", "process should mark screenshot as the first artifact chunk");
-
-#ifdef _WIN32
-        if (ret.errorCode() > 0)
-        {
-            ok &= expect(ret.data().empty(), "failed Windows capture should not return payload data");
-        }
-        else if (!ret.data().empty())
-        {
-            ok &= expect(ret.returnvalue() == "Success" || ret.returnvalue().find("/") != std::string::npos,
-                         "Windows process should report success or chunk progress");
-            ok &= expect(hasPngHeader(ret.data()), "Windows screenshot data should have a PNG header when data is captured");
-        }
-#else
-        ok &= expect(ret.returnvalue().empty(), "non-Windows process should not report screenshot output");
-        ok &= expect(ret.data().empty(), "non-Windows process should not capture data");
-#endif
+        ok &= expect(ret.returnvalue() == "Success", "synthetic process should complete a single chunk");
+        ok &= expect(hasPngHeader(ret.data()), "synthetic screenshot data should retain its PNG header");
     }
 
-#if defined(C2CORE_BUILD_TESTS) && !defined(_WIN32)
+#ifndef _WIN32
+    {
+        ScreenShot module;
+        C2Message message;
+        C2Message ret;
+        message.set_instruction("screenShot");
+        module.process(message, ret);
+        ok &= expect(ret.errorCode() == 3 && ret.returnvalue().empty() && ret.data().empty(),
+            "Linux reports unsupported capture through a code-only response");
+    }
+#endif
+
+#if defined(C2CORE_BUILD_TESTS)
     {
         ScreenShot module;
         C2Message message;
@@ -129,6 +127,7 @@ int main()
         ok &= expect(firstChunk.outputfile() == "generated-screenshot.png", "first chunk should preserve output file");
         ok &= expect(firstChunk.args() == "0", "first chunk should be marked as initial artifact data");
         ok &= expect(firstChunk.data().size() == ChunkSize, "first chunk should use the screenshot chunk size");
+        ok &= expect(firstChunk.errorCode() == 0, "first chunk should carry success status");
         ok &= expect(firstChunk.returnvalue().find("/") != std::string::npos, "first chunk should report transfer progress");
 
         ok &= expect(module.recurringExec(finalChunk) == 1, "recurringExec should emit the remaining screenshot chunk");
@@ -136,6 +135,7 @@ int main()
         ok &= expect(finalChunk.outputfile() == "generated-screenshot.png", "final chunk should preserve output file");
         ok &= expect(finalChunk.args() == "1", "final chunk should be marked as a continuation artifact chunk");
         ok &= expect(finalChunk.data().size() == 3, "final chunk should contain the remaining screenshot bytes");
+        ok &= expect(finalChunk.errorCode() == 0, "final chunk should carry success status");
         ok &= expect(finalChunk.returnvalue() == "Success", "final chunk should complete the screenshot transfer");
 
         C2Message done;
@@ -150,11 +150,15 @@ int main()
         std::string error = "unchanged";
 
         ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-#ifdef BUILD_TEAMSERVER
         ok &= expect(error == "Failed: Couldn't open file", "errorCodeToMsg should expose open-file error in teamserver builds");
-#else
-        ok &= expect(error == "unchanged", "errorCodeToMsg should leave text unchanged outside teamserver builds");
-#endif
+        ret.set_errorCode(2);
+        error.clear();
+        module.errorCodeToMsg(ret, error);
+        ok &= expect(error == "Failed: screen capture returned no data", "capture failure has a stable message");
+        ret.set_errorCode(3);
+        error.clear();
+        module.errorCodeToMsg(ret, error);
+        ok &= expect(error == "Failed: screen capture is unavailable on this platform", "unsupported capture has a stable message");
     }
 
     return ok ? 0 : 1;

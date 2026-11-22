@@ -112,8 +112,8 @@ public:
     }
 #endif
 
-    // if an error ocurre:
-    // set_returnvalue(errorMsg) && return -1
+    // init() can report local command usage in returnvalue() and return -1.
+    // This is preparation feedback, not a process() response.
     virtual int init(std::vector<std::string>& splitedCmd, C2Message& c2Message) = 0;
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     virtual int initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Message& c2Message)
@@ -124,6 +124,10 @@ public:
     };
 #endif
     virtual int initConfig(const nlohmann::json &config) {return 0;};
+    // process() transports status through c2RetMessage.errorCode(): 0 on
+    // success, a defined nonzero code on failure. Failure leaves returnvalue()
+    // empty; errorCodeToMsg() renders the message on the receiving side.
+    // Callers must not use the integer return as the transported status.
     virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
     virtual int followUp(const C2Message &c2RetMessage) {return 0;};
     virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};

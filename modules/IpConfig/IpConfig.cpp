@@ -58,6 +58,11 @@ std::string IpConfig::getInfo()
 int IpConfig::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1 || splitedCmd[0] != std::string(moduleName))
+    {
+        c2Message.set_returnvalue("Usage: ipConfig");
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
 #endif
 
@@ -66,9 +71,23 @@ int IpConfig::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int IpConfig::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-    std::string out = runIpconfig();
+    int errorCode = 0;
+    std::string out = runIpconfig(errorCode);
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_errorCode(errorCode);
+    return 0;
+}
+
+int IpConfig::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (response.errorCode() == 1)
+        errorMsg = "Failed to enumerate network interfaces.";
+#else
+    (void)response;
+    (void)errorMsg;
+#endif
     return 0;
 }
 
@@ -80,20 +99,27 @@ std::string WideToUTF8(const PWCHAR wideStr) {
     int len = WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, nullptr, 0, nullptr, nullptr);
     if (len == 0) return "";
 
-    std::string result(len - 1, 0); // exclude null terminator
-    WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, &result[0], len, nullptr, nullptr);
+    std::string result(len, 0);
+    if (WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, &result[0], len, nullptr, nullptr) == 0)
+        return "";
+    result.resize(len - 1); // exclude null terminator
 
     return result;
 }
 #endif
 
 
-std::string IpConfig::runIpconfig()
+std::string IpConfig::runIpconfig(int& errorCode)
 {
 #ifdef _WIN32
     std::string result;
     ULONG size = 0;
-    GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &size);
+    const ULONG probe = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &size);
+    if (probe != ERROR_BUFFER_OVERFLOW || size == 0)
+    {
+        errorCode = 1;
+        return result;
+    }
     std::vector<IP_ADAPTER_ADDRESSES> buf(size / sizeof(IP_ADAPTER_ADDRESSES) + 1);
     PIP_ADAPTER_ADDRESSES addr = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buf.data());
     if(GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addr, &size) == NO_ERROR)
@@ -123,6 +149,8 @@ std::string IpConfig::runIpconfig()
             }
         }
     }
+    else
+        errorCode = 1;
     return result;
 #else
     std::string result;
@@ -148,6 +176,8 @@ std::string IpConfig::runIpconfig()
         }
         freeifaddrs(ifa);
     }
+    else
+        errorCode = 1;
     return result;
 #endif
 }

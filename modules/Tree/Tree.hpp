@@ -21,7 +21,7 @@ public:
     }
 
 private:
-    std::string iterProcess(const std::string& path, int depth);
+    bool iterProcess(const std::string& path, int depth, std::string& result);
 
 };
 

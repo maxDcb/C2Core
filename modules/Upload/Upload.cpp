@@ -63,7 +63,7 @@ int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> quoteRegroupedCmd = regroupStrings(splitedCmd);
 
-    if (quoteRegroupedCmd.size() == 3)
+    if (quoteRegroupedCmd.size() == 3 && quoteRegroupedCmd[0] == moduleName)
     {
         string inputFile = quoteRegroupedCmd[1];
         string outputFile = quoteRegroupedCmd[2];
@@ -72,11 +72,16 @@ int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         if( input ) 
         {
             std::string buffer(std::istreambuf_iterator<char>(input), {});
+            if (input.bad() || buffer.size() > MaxC2BinaryFieldSize)
+            {
+                c2Message.set_returnvalue("Failed: Couldn't read file.");
+                return -1;
+            }
 
             c2Message.set_instruction(quoteRegroupedCmd[0]);
             c2Message.set_inputfile(inputFile);
             c2Message.set_outputfile(outputFile);
-            c2Message.set_data(buffer.data(), buffer.size());
+            c2Message.set_data(std::move(buffer));
         }
         else
         {
@@ -96,21 +101,30 @@ int Upload::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 #define ERROR_OPEN_FILE 1 
+#define ERROR_WRITE_FILE 2
 
 int Upload::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     std::string outputFile = c2Message.outputfile();
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd("");
+    c2RetMessage.set_uuid(c2Message.uuid());
+    c2RetMessage.set_data(std::string{});
+    c2RetMessage.set_returnvalue({});
 
-    std::ofstream output(outputFile, std::ios::binary);
+    std::ofstream output(outputFile, std::ios::binary | std::ios::trunc);
     if( output ) 
     {
-        const std::string buffer = c2Message.data();
-        output << buffer;
+        const std::string& buffer = c2Message.data();
+        output.write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         output.close();
-
-        c2RetMessage.set_returnvalue("Success.");
+        if (output)
+        {
+            c2RetMessage.set_errorCode(0);
+            c2RetMessage.set_returnvalue("Success.");
+        }
+        else
+            c2RetMessage.set_errorCode(ERROR_WRITE_FILE);
     }
     else
     {
@@ -122,12 +136,15 @@ int Upload::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Upload::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)
     {
         if(errorCode==ERROR_OPEN_FILE)
             errorMsg = "Failed: Couldn't open file";
+        else if(errorCode==ERROR_WRITE_FILE)
+            errorMsg = "Failed: Couldn't write file";
     }
 #endif
     return 0;

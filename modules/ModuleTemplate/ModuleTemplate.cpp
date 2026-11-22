@@ -1,134 +1,155 @@
 #include "ModuleTemplate.hpp"
 
-#include "Common.hpp"
+#include <cstdint>
 
-#include <cstring>
-
-using namespace std;
-
-
-// Compute hash of moduleName at compile time, so the moduleName string don't show in the binary
-constexpr std::string_view moduleName = "moduleTemplate";
-constexpr unsigned long long moduleHash = djb2(moduleName);
-
+namespace
+{
+    constexpr char moduleName[] = "moduleTemplate";
+    constexpr std::size_t maxConfigurableBytes = 1024;
+}
 
 #ifdef _WIN32
 
-__declspec(dllexport) ModuleTemplate* ModuleTemplateConstructor() 
+__declspec(dllexport) ModuleTemplate* ModuleTemplateConstructor()
 {
     return new ModuleTemplate();
 }
 
 #else
 
-__attribute__((visibility("default"))) ModuleTemplate* ModuleTemplateConstructor() 
+__attribute__((visibility("default"))) ModuleTemplate* ModuleTemplateConstructor()
 {
     return new ModuleTemplate();
 }
 
 #endif
 
-
-ModuleTemplate::ModuleTemplate()
-#ifdef BUILD_TEAMSERVER
-    : ModuleCmd(std::string(moduleName), moduleHash)
-#else
-    : ModuleCmd("", moduleHash)
-#endif
+ModuleTemplate::ModuleTemplate() : ModuleCmd(moduleName)
 {
 }
-
-
-ModuleTemplate::~ModuleTemplate()
-{
-}
-
 
 std::string ModuleTemplate::getInfo()
 {
-    std::string info;
 #ifdef BUILD_TEAMSERVER
-    info += "moduleTemplate:\n";
-    info += "ModuleTemplate for easy developement of new modules\n";
-    info += "This is the help that will be display when you do 'ModuleTemplate help' or when their is an error during the init methode\n";
-    info += "exemple:\n";
-    info += "- moduleTemplate args\n";
+    return "Usage: moduleTemplate <text>\nCounts the bytes in the supplied text.";
+#else
+    return {};
 #endif
-    return info;
 }
 
-
-// Method that will be trigged server side to construct the message that will be send to the beacon and interpreted by the process method
-int ModuleTemplate::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
+int ModuleTemplate::osCompatibility()
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
-    if (splitedCmd.size() >= 2 )
-    {
-        string args = "args from the splited command line";
-        args = splitedCmd[1];
+    return OS_LINUX | OS_WINDOWS;
+}
 
-        c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_data(args);
-    }
-    else
+int ModuleTemplate::initConfig(const nlohmann::json& config)
+{
+    if (!config.is_object())
+        return -1;
+
+    const auto limit = config.find("max_bytes");
+    if (limit == config.end())
     {
-        // error message deiplay if something is wrong
-        c2Message.set_returnvalue(getInfo());
+        maxBytes = defaultMaxBytes;
+        return 0;
+    }
+    if (!limit->is_number_integer())
+        return -1;
+
+    const auto bytes = limit->get<std::uint64_t>();
+    if (bytes == 0 || bytes > maxConfigurableBytes)
+        return -1;
+
+    maxBytes = static_cast<std::size_t>(bytes);
+    return 0;
+}
+
+int ModuleTemplate::init(std::vector<std::string>& args, C2Message& request)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (args.size() != 2 || args.front() != moduleName || args[1].empty())
+    {
+        request.set_returnvalue(getInfo());
         return -1;
     }
+
+    request.set_instruction(moduleName);
+    request.set_data(args[1]);
+#else
+    (void)args;
+    (void)request;
 #endif
     return 0;
 }
 
-
-// Method that will be trigged server side after the retrun message is received
-// For exemple a file to write on the disk
-int ModuleTemplate::followUp(const C2Message &c2RetMessage)
+int ModuleTemplate::process(C2Message& request, C2Message& response)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
-    // check if there is an error
-    if(c2RetMessage.errorCode()==-1)
+    response.set_returnvalue({});
+    if (request.instruction() != moduleName || request.data().empty())
     {
-        std::string args = c2RetMessage.args();
+        response.set_errorCode(static_cast<int>(Status::InvalidRequest));
     }
-#endif
-    return 0;
-}
-
-
-#define ERROR_CODE_1 1 
-
-
-// Method that will be trigged beacon side, the main processing method
-int ModuleTemplate::process(C2Message &c2Message, C2Message &c2RetMessage)
-{
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
-
-    std::string data = c2Message.data();
-    if( data == "arg1" ) 
+    else if (request.data().size() > maxBytes)
     {
-        std::string buffer = "return value that will be shown in the client";
-        c2RetMessage.set_returnvalue(buffer);
+        response.set_errorCode(static_cast<int>(Status::LimitExceeded));
     }
     else
     {
-        c2RetMessage.set_errorCode(ERROR_CODE_1);
+        response.set_returnvalue(std::to_string(request.data().size()));
+        response.set_errorCode(static_cast<int>(Status::Success));
     }
-
     return 0;
 }
 
-
-// Method that will be trigged server side after the retrun message is received, in case of error
-int ModuleTemplate::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
+int ModuleTemplate::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
 {
 #ifdef BUILD_TEAMSERVER
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
+    switch (static_cast<Status>(response.errorCode()))
     {
-        if(errorCode==ERROR_CODE_1)
-            errorMsg = "Failed: An error occured and that is the error message that will be display to the user";
+        case Status::InvalidRequest:
+            errorMsg = "Expected a moduleTemplate request with a nonempty sample.";
+            break;
+        case Status::LimitExceeded:
+            errorMsg = "The sample exceeds the configured byte limit.";
+            break;
+        default:
+            break;
     }
+#else
+    (void)response;
+    (void)errorMsg;
 #endif
     return 0;
+}
+
+int ModuleTemplate::followUp(const C2Message& response)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (response.errorCode() == static_cast<int>(Status::Success) && !response.returnvalue().empty())
+        lastResult = response.returnvalue();
+#else
+    (void)response;
+#endif
+    return 0;
+}
+
+int ModuleTemplate::recurringExec(C2Message& response)
+{
+    if (!pendingSample)
+        return 0;
+
+    response.set_returnvalue(std::to_string(*pendingSample));
+    response.set_errorCode(static_cast<int>(Status::Success));
+    pendingSample.reset();
+    return 1;
+}
+
+const std::string& ModuleTemplate::lastResultForTest() const
+{
+    return lastResult;
+}
+
+void ModuleTemplate::recordSampleForTest(std::size_t byteCount)
+{
+    pendingSample = byteCount;
 }

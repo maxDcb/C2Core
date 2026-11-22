@@ -23,7 +23,5 @@ bool testGetEnv()
     mod->init(cmd, msg);
     mod->process(msg, ret);
 
-    std::cout << "[+] getEnv output: " << ret.returnvalue() << std::endl;
-
     return !ret.returnvalue().empty();
 }

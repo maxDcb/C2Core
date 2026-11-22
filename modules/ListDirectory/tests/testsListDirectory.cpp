@@ -76,7 +76,7 @@ bool testListDirectory()
         listDirectory->errorCodeToMsg(c2RetMessage, errorMsg);
         if (c2RetMessage.errorCode() <= 0
             || c2RetMessage.returnvalue().find("Error:") != 0
-            || errorMsg != c2RetMessage.returnvalue()) {
+            || errorMsg != "Failed: Could not list directory\n" + c2RetMessage.returnvalue()) {
             ok = false;
         }
     }

@@ -7,9 +7,9 @@ $<TARGET_FILE:Cat> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Cat>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsCat tests/testsCat.cpp Cat.cpp)
-    target_link_libraries(testsCat )
+    target_link_libraries(testsCat c2_base64 nlohmann_json::nlohmann_json)
     add_custom_command(TARGET testsCat POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsCat> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCat>")
 
-    add_test(NAME testsCat COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsCat>")
+    add_test(NAME testsCat COMMAND testsCat)
 endif()

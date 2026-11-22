@@ -56,30 +56,30 @@ std::string Cat::getInfo()
 int Cat::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
-    if (splitedCmd.size() >= 2 )
+    string inputFile;
+    for (std::size_t idx = 1; idx < splitedCmd.size(); ++idx)
     {
-        string inputFile;
-        for (int idx = 1; idx < splitedCmd.size(); idx++) 
-        {
-            if(!inputFile.empty())
-                inputFile+=" ";
-            inputFile+=splitedCmd[idx];
-        }
-
-        c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_inputfile(inputFile);
+        if (!inputFile.empty())
+            inputFile += " ";
+        inputFile += splitedCmd[idx];
     }
-    else
+    if (inputFile.empty())
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
     }
+
+    c2Message.set_instruction(splitedCmd[0]);
+    c2Message.set_inputfile(inputFile);
 #endif
     return 0;
 }
 
 
-#define ERROR_OPEN_FILE 1 
+namespace
+{
+    constexpr int ERROR_OPEN_FILE = 1;
+}
 
 int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
@@ -88,30 +88,33 @@ int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
     c2RetMessage.set_inputfile(c2Message.inputfile());
 
     std::string inputFile = c2Message.inputfile();
-    std::ifstream input(inputFile, std::ios::binary);
-    if( !input.fail() ) 
+    try
     {
-        std::string buffer(std::istreambuf_iterator<char>(input), {});
-        c2RetMessage.set_returnvalue(buffer);
+        std::ifstream input(inputFile, std::ios::binary);
+        if (input)
+        {
+            std::string buffer(std::istreambuf_iterator<char>(input), {});
+            c2RetMessage.set_returnvalue(buffer);
+            c2RetMessage.set_errorCode(0);
+            return 0;
+        }
     }
-    else
+    catch (const std::ios_base::failure&)
     {
-        c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
+        // Report a file read failure through the response, like a failed open.
     }
 
+    c2RetMessage.set_returnvalue({});
+    c2RetMessage.set_errorCode(ERROR_OPEN_FILE);
     return 0;
 }
 
 
 int Cat::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
-    {
-        if(errorCode==ERROR_OPEN_FILE)
-            errorMsg = "Failed: Couldn't open file";
-    }
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (c2RetMessage.errorCode() == ERROR_OPEN_FILE)
+        errorMsg = "Failed: Couldn't open file";
 #endif
     return 0;
 }

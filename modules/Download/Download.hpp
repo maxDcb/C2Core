@@ -23,13 +23,14 @@ public:
     }
 
 private:
+    int emitNextChunk(C2Message& response);
+    void resetTransfer();
     std::string m_inputfile;
     std::string m_outputfile;
     std::string m_taskUuid;
-    std::ofstream m_output;
     std::ifstream m_input;
-    std::streamsize m_fileSize;
-    std::streamsize m_bytesRead;
+    std::streamsize m_fileSize = 0;
+    std::streamsize m_bytesRead = 0;
 };
 
 

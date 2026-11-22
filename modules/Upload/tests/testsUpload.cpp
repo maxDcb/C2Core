@@ -51,7 +51,7 @@ bool testUpload() {
         up.init(cmd, msg);
         up.process(msg, ret);
         std::cout << "success ret=" << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
-        bool sub = ret.errorCode() == -1 && ret.returnvalue() == "Success." && fileContentEqual(dst, content);
+        bool sub = ret.errorCode() == 0 && ret.returnvalue() == "Success." && fileContentEqual(dst, content);
         std::cout << "success ok=" << sub << std::endl;
         ok &= sub;
     }
@@ -69,7 +69,7 @@ bool testUpload() {
         up.init(cmd, msg);
         up.process(msg, ret);
         std::cout << "bad dest ret=" << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
-        bool sub = ret.errorCode() != -1 && !fs::exists(dst);
+        bool sub = ret.errorCode() == 1 && ret.returnvalue().empty() && !fs::exists(dst);
         std::cout << "bad dest ok=" << sub << std::endl;
         ok &= sub;
     }

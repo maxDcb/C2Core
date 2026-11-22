@@ -22,7 +22,6 @@ bool testIpConfig()
     mod->init(cmd, msg);
     mod->process(msg, ret);
 
-    std::cout << "[+] ipConfig output: " << ret.returnvalue() << std::endl;
-
-    return !ret.returnvalue().empty();
+    return ret.instruction() == "ipConfig" && ret.errorCode() == 0
+        && !ret.returnvalue().empty();
 }

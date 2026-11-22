@@ -10,6 +10,7 @@ $<TARGET_FILE:ScreenShot> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Sc
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsScreenShot tests/testsScreenShot.cpp ScreenShot.cpp ScreenShooter.cpp)
+    target_compile_definitions(testsScreenShot PRIVATE C2CORE_SCREENSHOT_TEST_PAYLOAD)
     target_link_libraries(testsScreenShot )
     if(WIN32)
         target_link_libraries(testsScreenShot gdiplus ole32)

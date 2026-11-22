@@ -18,6 +18,8 @@ int main()
     ok &= expect(module.init(cmd, message) == 0, "init should accept process listing command");
     ok &= expect(message.instruction() == "ps", "instruction should be set");
     module.process(message, ret);
+    ok &= expect(ret.instruction() == "ps" && ret.errorCode() == 0,
+        "response carries process listing instruction and success status");
     ok &= expect(!ret.returnvalue().empty(), "process listing should produce output");
 
     return ok ? 0 : 1;

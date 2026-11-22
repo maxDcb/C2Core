@@ -2,29 +2,42 @@
 
 #include "ModuleCmd.hpp"
 
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <vector>
 
-class ModuleTemplate : public ModuleCmd
+// In-memory example built into the local test executable.
+class ModuleTemplate final : public ModuleCmd
 {
-
 public:
     ModuleTemplate();
-    ~ModuleTemplate();
 
-    std::string getInfo();
+    std::string getInfo() override;
+    int osCompatibility() override;
+    int initConfig(const nlohmann::json& config) override;
+    int init(std::vector<std::string>& args, C2Message& request) override;
+    int process(C2Message& request, C2Message& response) override;
+    int errorCodeToMsg(const C2Message& response, std::string& errorMsg) override;
+    int followUp(const C2Message& response) override;
+    int recurringExec(C2Message& response) override;
 
-    int init(std::vector<std::string>& splitedCmd, C2Message& c2Message);
-    int process(C2Message& c2Message, C2Message& c2RetMessage);
-    int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg);
-    int followUp(const C2Message &c2RetMessage);
-    int osCompatibility() 
-    {
-        return OS_LINUX | OS_WINDOWS;
-    }
+    const std::string& lastResultForTest() const;
+    void recordSampleForTest(std::size_t byteCount);
 
 private:
+    enum class Status : int
+    {
+        Success = 0,
+        InvalidRequest = 1,
+        LimitExceeded = 2
+    };
 
+    static constexpr std::size_t defaultMaxBytes = 64;
+    std::size_t maxBytes = defaultMaxBytes;
+    std::string lastResult;
+    std::optional<std::size_t> pendingSample;
 };
-
 
 #ifdef _WIN32
 

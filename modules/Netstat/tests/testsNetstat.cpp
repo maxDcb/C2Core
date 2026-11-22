@@ -42,7 +42,5 @@ bool testNetstat()
     mod->init(cmd, msg);
     mod->process(msg, ret);
 
-    std::cout << "[+] netstat output: " << ret.returnvalue() << std::endl;
-
-    return !ret.returnvalue().empty();
+    return ret.instruction() == "netstat" && ret.errorCode() == 0;
 }

@@ -57,6 +57,11 @@ std::string Whoami::getInfo()
 int Whoami::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
 #endif
     return 0;
@@ -67,6 +72,16 @@ int Whoami::process(C2Message& c2Message, C2Message& c2RetMessage)
     std::string out = getInfoString();
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_errorCode(out == "No information" ? 1 : 0);
+    return 0;
+}
+
+int Whoami::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (c2RetMessage.errorCode() == 1)
+        errorMsg = "Failed: Could not retrieve user information";
+#endif
     return 0;
 }
 

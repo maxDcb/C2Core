@@ -198,6 +198,11 @@ std::string Netstat::getInfo()
 int Netstat::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1 || splitedCmd[0] != std::string(moduleName))
+    {
+        c2Message.set_returnvalue("Usage: netstat");
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
 #endif
 
@@ -206,18 +211,37 @@ int Netstat::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int Netstat::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-    std::string out = runNetstat();
+    int errorCode = 0;
+    std::string out = runNetstat(errorCode);
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_errorCode(errorCode);
     return 0;
 }
 
-std::string Netstat::runNetstat()
+int Netstat::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (response.errorCode() == 1)
+        errorMsg = "Failed to enumerate network connections.";
+#else
+    (void)response;
+    (void)errorMsg;
+#endif
+    return 0;
+}
+
+std::string Netstat::runNetstat(int& errorCode)
 {
 #ifdef _WIN32
     std::string result;
     DWORD size = 0;
-    GetExtendedTcpTable(nullptr, &size, TRUE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
+    const DWORD probe = GetExtendedTcpTable(nullptr, &size, TRUE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
+    if (probe != ERROR_INSUFFICIENT_BUFFER || size == 0)
+    {
+        errorCode = 1;
+        return result;
+    }
     std::vector<char> buf(size);
     if(GetExtendedTcpTable(buf.data(), &size, TRUE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0) == NO_ERROR)
     {
@@ -237,14 +261,18 @@ std::string Netstat::runNetstat()
             result += "\n";
         }
     }
+    else
+        errorCode = 1;
     return result;
 #else
     std::string result;
     const netstat_detail::SocketOwners owners = netstat_detail::socketOwners();
+    bool openedTable = false;
     auto parse = [&](const std::string& path, const char* proto, bool ipv6)
     {
         std::ifstream f(path);
         if(!f) return;
+        openedTable = true;
         std::string line;
         std::getline(f, line); // skip header
         while(std::getline(f, line))
@@ -256,6 +284,8 @@ std::string Netstat::runNetstat()
     parse("/proc/net/udp", "UDP", false);
     parse("/proc/net/tcp6", "TCP6", true);
     parse("/proc/net/udp6", "UDP6", true);
+    if (!openedTable)
+        errorCode = 1;
     return result;
 #endif
 }

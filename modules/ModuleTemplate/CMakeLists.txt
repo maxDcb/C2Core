@@ -1,15 +1,16 @@
-include_directories(../)
-add_library(ModuleTemplate SHARED ModuleTemplate.cpp)
-set_property(TARGET ModuleTemplate PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-target_link_libraries(ModuleTemplate )
-add_custom_command(TARGET ModuleTemplate POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-$<TARGET_FILE:ModuleTemplate> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:ModuleTemplate>")
-
 if(C2CORE_BUILD_TESTS)
-    add_executable(testsModuleTemplate tests/testsModuleTemplate.cpp ModuleTemplate.cpp)
-    target_link_libraries(testsModuleTemplate )
-    add_custom_command(TARGET testsModuleTemplate POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
-    $<TARGET_FILE:testsModuleTemplate> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleTemplate>")
+    foreach(test IN ITEMS testsModuleTemplate testsModuleTemplateExecution)
+        add_executable(${test} tests/${test}.cpp ModuleTemplate.cpp)
+        target_include_directories(${test} PRIVATE ../ModuleCmd)
+        target_link_libraries(${test} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+        add_test(NAME ${test} COMMAND ${test})
+    endforeach()
 
-    add_test(NAME testsModuleTemplate COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsModuleTemplate>")
+    target_compile_definitions(testsModuleTemplate PRIVATE BUILD_TEAMSERVER)
+    # Keep the execution variant separate even when the parent sets role flags globally.
+    if(MSVC)
+        target_compile_options(testsModuleTemplateExecution PRIVATE /UBUILD_TEAMSERVER /UC2CORE_BUILD_TESTS)
+    else()
+        target_compile_options(testsModuleTemplateExecution PRIVATE -UBUILD_TEAMSERVER -UC2CORE_BUILD_TESTS)
+    endif()
 endif()

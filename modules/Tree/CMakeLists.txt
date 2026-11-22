@@ -7,9 +7,9 @@ $<TARGET_FILE:Tree> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Tree>")
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsTree tests/testsTree.cpp Tree.cpp)
-    target_link_libraries(testsTree )
+    target_link_libraries(testsTree c2_base64 nlohmann_json::nlohmann_json)
     add_custom_command(TARGET testsTree POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsTree> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTree>")
 
-    add_test(NAME testsTree COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsTree>")
+    add_test(NAME testsTree COMMAND testsTree)
 endif()

@@ -60,6 +60,11 @@ int MkDir::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
                 path += " ";
             path += splitedCmd[i];
         }
+        if (path.empty())
+        {
+            c2Message.set_returnvalue(getInfo());
+            return -1;
+        }
         c2Message.set_instruction(splitedCmd[0]);
         c2Message.set_cmd(path);
     }
@@ -83,11 +88,13 @@ int MkDir::process(C2Message &c2Message, C2Message &c2RetMessage)
     bool created = fs::create_directories(path, ec);
     if (!ec)
     {
+        c2RetMessage.set_errorCode(0);
         c2RetMessage.set_returnvalue(created ? "Directory created." : "Already exists.");
     }
     else
     {
         c2RetMessage.set_errorCode(ERROR_CREATE_DIRECTORY);
+        c2RetMessage.set_returnvalue({});
     }
     return 0;
 }

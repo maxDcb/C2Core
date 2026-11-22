@@ -53,7 +53,7 @@ bool testDownload() {
         dl.process(msg, ret);
         dl.followUp(ret);
         std::cout << "small ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
-        bool sub = ret.errorCode() == -1 && ret.returnvalue() == "Success" && filesEqual(src, dst);
+        bool sub = ret.errorCode() == 0 && ret.returnvalue() == "Success" && filesEqual(src, dst);
         std::cout << "small ok=" << sub << std::endl;
         ok &= sub;
     }
@@ -77,6 +77,7 @@ bool testDownload() {
         while(ret.returnvalue() != "Success") {
             C2Message next;
             dl.recurringExec(next);
+            ok &= next.errorCode() == 0;
             ok &= next.uuid() == "download-uuid";
             ok &= next.inputfile() == src.string();
             dl.followUp(next);
@@ -98,7 +99,7 @@ bool testDownload() {
         dl.process(msg, ret);
         dl.followUp(ret);
         std::cout << "missing ret: " << ret.returnvalue() << " ec=" << ret.errorCode() << std::endl;
-        bool sub = ret.errorCode() != -1 && !fs::exists(dst);
+        bool sub = ret.errorCode() == 1 && ret.returnvalue().empty() && !fs::exists(dst);
         std::cout << "missing ok=" << sub << std::endl;
         ok &= sub;
     }

