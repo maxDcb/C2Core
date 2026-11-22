@@ -53,6 +53,11 @@ std::string EnumerateShares::getInfo()
 int EnumerateShares::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.empty() || splitedCmd.size() > 2 || splitedCmd[0] != moduleName)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     std::string host;
     if(splitedCmd.size() > 1)
         host = splitedCmd[1];
@@ -66,17 +71,28 @@ int EnumerateShares::init(std::vector<std::string>& splitedCmd, C2Message& c2Mes
 int EnumerateShares::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
     std::string host = c2Message.cmd();
-    std::string out = runEnum(host);
+    std::string out;
+    const bool succeeded = runEnum(host, out);
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(host);
-    c2RetMessage.set_returnvalue(out);
+    c2RetMessage.set_errorCode(succeeded ? 0 : 1);
+    c2RetMessage.set_returnvalue(succeeded ? out : std::string{});
     return 0;
 }
 
-std::string EnumerateShares::runEnum(const std::string& host)
+int EnumerateShares::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
+    if (c2RetMessage.errorCode() == 1)
+        errorMsg = "Failed to enumerate shares.";
+#endif
+    return 0;
+}
+
+bool EnumerateShares::runEnum(const std::string& host, std::string& result)
 {
 #ifdef _WIN32
-    std::string result;
     std::wstring wserver;
     if(!host.empty())
         wserver = L"\\\\" + std::wstring(host.begin(), host.end());
@@ -100,27 +116,26 @@ std::string EnumerateShares::runEnum(const std::string& host)
             }
             result += "\n";
         }
-        NetApiBufferFree(buf);
     }
-    if(result.empty())
-        result = "Enumeration failed or no shares";
-    return result;
+    if (buf)
+        NetApiBufferFree(buf);
+    return status == NERR_Success || status == ERROR_MORE_DATA;
 #else
-    std::string result;
     auto auth_fn = [](SMBCCTX*, const char*, const char*, char*, int, char* u, int ulen, char* p, int plen){ if(ulen>0) u[0]='\0'; if(plen>0) p[0]='\0'; };
     SMBCCTX* ctx = smbc_new_context();
-    if(!ctx) return result;
+    if(!ctx) return false;
     smbc_setOptionUseKerberos(ctx, 0);
     smbc_setOptionFallbackAfterKerberos(ctx, 1);
     smbc_setFunctionAuthDataWithContext(ctx, auth_fn);
     if(!smbc_init_context(ctx))
     {
         smbc_free_context(ctx, 1);
-        return result;
+        return false;
     }
     smbc_set_context(ctx);
     std::string url = "smb://" + (host.empty()? std::string("") : host);
     int dir = smbc_opendir(url.c_str());
+    bool succeeded = dir >= 0;
     if(dir >= 0)
     {
         struct smbc_dirent* ent;
@@ -132,12 +147,10 @@ std::string EnumerateShares::runEnum(const std::string& host)
                 result += '\n';
             }
         }
-        smbc_closedir(dir);
+        succeeded = smbc_closedir(dir) == 0;
     }
     smbc_free_context(ctx, 1);
-    if(result.empty())
-        result = "Enumeration failed or no shares";
-    return result;
+    return succeeded;
 #endif
 }
 

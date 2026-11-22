@@ -86,7 +86,7 @@ int EnumerateRdpSessions::init(std::vector<std::string>& splitedCmd, C2Message& 
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
-    if (args.empty())
+    if (args.empty() || args[0] != moduleNameEnumerateRdpSessions)
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
@@ -127,6 +127,8 @@ int EnumerateRdpSessions::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.cmd());
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue({});
 
 #ifdef _WIN32
     Parameters params = unpackParameters(c2Message.cmd());
@@ -138,11 +140,7 @@ int EnumerateRdpSessions::process(C2Message& c2Message, C2Message& c2RetMessage)
         serverHandle = WTSOpenServerA(const_cast<LPSTR>(params.server.c_str()));
         if (serverHandle == nullptr)
         {
-            DWORD lastError = GetLastError();
-            std::ostringstream err;
-            err << "Failed to open server '" << params.server << "' (error " << lastError << ").";
             c2RetMessage.set_errorCode(ERROR_OPEN_SERVER);
-            c2RetMessage.set_returnvalue(err.str());
             return 0;
         }
         shouldClose = true;
@@ -152,15 +150,11 @@ int EnumerateRdpSessions::process(C2Message& c2Message, C2Message& c2RetMessage)
     DWORD sessionCount = 0;
     if (!WTSEnumerateSessionsA(serverHandle, 0, 1, &sessionInfo, &sessionCount))
     {
-        DWORD lastError = GetLastError();
         if (shouldClose)
         {
             WTSCloseServer(serverHandle);
         }
-        std::ostringstream err;
-        err << "Failed to enumerate sessions (error " << lastError << ").";
         c2RetMessage.set_errorCode(ERROR_ENUMERATE_SESSIONS);
-        c2RetMessage.set_returnvalue(err.str());
         return 0;
     }
 
@@ -309,7 +303,6 @@ int EnumerateRdpSessions::process(C2Message& c2Message, C2Message& c2RetMessage)
 #else
     (void)c2Message;
     c2RetMessage.set_errorCode(ERROR_WINDOWS_ONLY);
-    c2RetMessage.set_returnvalue("Only available on Windows.");
 #endif
     return 0;
 }
@@ -322,9 +315,20 @@ int EnumerateRdpSessions::followUp(const C2Message& /*c2RetMessage*/)
 int EnumerateRdpSessions::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
+    errorMsg.clear();
+    switch (c2RetMessage.errorCode())
     {
-        errorMsg = c2RetMessage.returnvalue();
+    case ERROR_WINDOWS_ONLY:
+        errorMsg = "Only available on Windows.";
+        break;
+    case ERROR_OPEN_SERVER:
+        errorMsg = "Failed to open RDP server.";
+        break;
+    case ERROR_ENUMERATE_SESSIONS:
+        errorMsg = "Failed to enumerate RDP sessions.";
+        break;
+    default:
+        break;
     }
 #endif
     return 0;

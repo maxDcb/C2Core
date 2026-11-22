@@ -175,3 +175,96 @@ if(UNIX AND NOT APPLE AND C2_UTIL_LIBRARY)
     target_link_libraries(testsLocalCommandModuleContract PRIVATE ${C2_UTIL_LIBRARY})
 endif()
 add_test(NAME testsLocalCommandModuleContract COMMAND testsLocalCommandModuleContract)
+
+foreach(module IN ITEMS KillProcess Script)
+    add_subdirectory("${module_dir}/${module}" "${module}")
+    target_link_libraries(${module} c2_base64 nlohmann_json::nlohmann_json)
+    target_link_libraries(tests${module} c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
+endforeach()
+
+add_executable(testsLocalProcessModuleContract
+    testsLocalProcessModuleContract.cpp
+    "${module_dir}/KillProcess/KillProcess.cpp"
+    "${module_dir}/Script/Script.cpp"
+)
+target_compile_definitions(testsLocalProcessModuleContract PRIVATE BUILD_TEAMSERVER
+    KILLPROCESS_MODULE_PATH="$<TARGET_FILE:KillProcess>"
+    SCRIPT_MODULE_PATH="$<TARGET_FILE:Script>")
+target_link_libraries(testsLocalProcessModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalProcessModuleContract KillProcess Script)
+add_test(NAME testsLocalProcessModuleContract COMMAND testsLocalProcessModuleContract)
+
+add_subdirectory("${module_dir}/EnumerateShares" EnumerateShares)
+target_link_libraries(EnumerateShares c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsEnumerateShares c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsEnumerateShares PRIVATE C2CORE_BUILD_TESTS)
+
+add_executable(testsLocalShareModuleContract
+    testsLocalShareModuleContract.cpp
+    "${module_dir}/EnumerateShares/EnumerateShares.cpp"
+)
+target_compile_definitions(testsLocalShareModuleContract PRIVATE BUILD_TEAMSERVER
+    ENUMERATESHARES_MODULE_PATH="$<TARGET_FILE:EnumerateShares>")
+target_link_libraries(testsLocalShareModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalShareModuleContract EnumerateShares)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(testsLocalShareModuleContract PRIVATE smbclient)
+endif()
+add_test(NAME testsLocalShareModuleContract COMMAND testsLocalShareModuleContract)
+
+add_subdirectory("${module_dir}/ReversePortForward" ReversePortForward)
+target_link_libraries(ReversePortForward c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsReversePortForward c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsReversePortForward PRIVATE C2CORE_BUILD_TESTS)
+
+add_executable(testsLocalForwardModuleContract
+    testsLocalForwardModuleContract.cpp
+    "${module_dir}/ReversePortForward/ReversePortForward.cpp"
+)
+target_compile_definitions(testsLocalForwardModuleContract PRIVATE BUILD_TEAMSERVER
+    REVERSEPORTFORWARD_MODULE_PATH="$<TARGET_FILE:ReversePortForward>")
+target_link_libraries(testsLocalForwardModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalForwardModuleContract ReversePortForward)
+if(WIN32)
+    target_link_libraries(testsLocalForwardModuleContract PRIVATE ws2_32)
+endif()
+add_test(NAME testsLocalForwardModuleContract COMMAND testsLocalForwardModuleContract)
+
+add_subdirectory("${module_dir}/EnumerateRdpSessions" EnumerateRdpSessions)
+target_link_libraries(EnumerateRdpSessions PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsEnumerateRdpSessions PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsEnumerateRdpSessions PRIVATE C2CORE_BUILD_TESTS)
+
+add_executable(testsLocalRdpModuleContract
+    testsLocalRdpModuleContract.cpp
+    "${module_dir}/EnumerateRdpSessions/EnumerateRdpSessions.cpp"
+)
+target_compile_definitions(testsLocalRdpModuleContract PRIVATE BUILD_TEAMSERVER
+    ENUMERATERDPSESSIONS_MODULE_PATH="$<TARGET_FILE:EnumerateRdpSessions>")
+target_link_libraries(testsLocalRdpModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalRdpModuleContract EnumerateRdpSessions)
+if(WIN32)
+    target_compile_definitions(testsLocalRdpModuleContract PRIVATE _WIN32_WINNT=0x0601)
+    target_link_libraries(testsLocalRdpModuleContract PRIVATE Wtsapi32)
+endif()
+add_test(NAME testsLocalRdpModuleContract COMMAND testsLocalRdpModuleContract)
+
+add_subdirectory("${module_dir}/Registry" Registry)
+target_link_libraries(Registry PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsRegistry PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsRegistry PRIVATE C2CORE_BUILD_TESTS)
+
+add_executable(testsLocalRegistryModuleContract
+    testsLocalRegistryModuleContract.cpp
+    "${module_dir}/Registry/Registry.cpp"
+)
+target_compile_definitions(testsLocalRegistryModuleContract PRIVATE BUILD_TEAMSERVER
+    REGISTRY_MODULE_PATH="$<TARGET_FILE:Registry>")
+target_link_libraries(testsLocalRegistryModuleContract PRIVATE c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalRegistryModuleContract Registry)
+if(WIN32)
+    target_compile_definitions(testsLocalRegistryModuleContract PRIVATE _WIN32_WINNT=0x0601)
+    target_link_libraries(testsLocalRegistryModuleContract PRIVATE Advapi32)
+endif()
+add_test(NAME testsLocalRegistryModuleContract COMMAND testsLocalRegistryModuleContract)

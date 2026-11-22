@@ -53,11 +53,11 @@ int main()
         EnumerateRdpSessions module;
         C2Message ret;
         ret.set_errorCode(EnumerateRdpSessions::ERROR_OPEN_SERVER);
-        ret.set_returnvalue("open failed");
         std::string error;
 
         ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-        ok &= expect(error == "open failed", "errorCodeToMsg should expose process error text");
+        ok &= expect(error == "Failed to open RDP server.",
+            "errorCodeToMsg should translate the received code alone");
     }
 
     return ok ? 0 : 1;

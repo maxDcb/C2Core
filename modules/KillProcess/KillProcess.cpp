@@ -3,6 +3,7 @@
 #include "Common.hpp"
 
 #include <cstring>
+#include <charconv>
 #ifdef __linux__
 #include <signal.h>
 #include <unistd.h>
@@ -55,10 +56,18 @@ std::string KillProcess::getInfo()
 int KillProcess::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if (splitedCmd.size() >= 2)
+    if (splitedCmd.size() == 2 && splitedCmd[0] == moduleName)
     {
+        int pid = 0;
+        const std::string& value = splitedCmd[1];
+        const auto parsed = std::from_chars(value.data(), value.data() + value.size(), pid);
+        if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() || pid <= 0)
+        {
+            c2Message.set_returnvalue(getInfo());
+            return -1;
+        }
         c2Message.set_instruction(splitedCmd[0]);
-        c2Message.set_pid(std::stoi(splitedCmd[1]));
+        c2Message.set_pid(pid);
     }
     else
     {
@@ -73,11 +82,18 @@ int KillProcess::init(std::vector<std::string> &splitedCmd, C2Message &c2Message
 int KillProcess::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     int pid = c2Message.pid();
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_pid(pid);
+    c2RetMessage.set_returnvalue({});
+    if (pid <= 0)
+    {
+        c2RetMessage.set_errorCode(ERROR_KILL_PROCESS);
+        return 0;
+    }
 #ifdef __linux__
     if (kill(pid, SIGKILL) == 0)
     {
+        c2RetMessage.set_errorCode(0);
         c2RetMessage.set_returnvalue("Killed.");
     }
     else
@@ -91,7 +107,10 @@ int KillProcess::process(C2Message &c2Message, C2Message &c2RetMessage)
         BOOL ok = TerminateProcess(hProcess, 1);
         CloseHandle(hProcess);
         if (ok)
+        {
+            c2RetMessage.set_errorCode(0);
             c2RetMessage.set_returnvalue("Killed.");
+        }
         else
             c2RetMessage.set_errorCode(ERROR_KILL_PROCESS);
     }
@@ -105,7 +124,8 @@ int KillProcess::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int KillProcess::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#ifdef BUILD_TEAMSERVER
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     if (c2RetMessage.errorCode() == ERROR_KILL_PROCESS)
         errorMsg = "Failed: Could not kill process";
 #endif

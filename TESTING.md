@@ -63,6 +63,18 @@ The `Download` manifest calls the artifact name optional, while `Download::init(
 
 `testsLocalCommandModuleContract` adds `Remove`, `Run` and `Shell`. It checks their original constructor exports, serialized messages across separate preparation, execution and receiving instances, explicit status codes and code-only error translation. `Remove` deletes only temporary test files and directories and rejects an empty transported path. `Run` captures a successful command and reports a nonzero child exit with code `3` and an empty result. `Shell` tests a first command on a fresh executor, session state across later requests, termination and restart. Platform-specific subprocess commands are used on Windows and Linux. The existing module tests and shared libraries remain in the harness; operating system failures to start the default shell are not injected.
 
+`ListProcesses` retries the Windows process snapshot when the list grows between allocation and query. The Windows reader closes process and token handles once, checks account lookup before using its output, and converts image names using their actual UTF-16 length. Its local test performs ten enumerations per invocation; the x64 and x86 tests were each repeated thirty times after the fix.
+
+`testsLocalProcessModuleContract` adds `KillProcess` and `Script`. It starts and terminates only a test-owned child process and rejects malformed or nonpositive PIDs before execution. The script test removes its local source after `init()` to prove that the executor uses the serialized bytes. Both platforms cover successful execution and a nonzero script exit with an empty failed result. Original module tests and shared libraries remain in the harness.
+
+`testsLocalShareModuleContract` adds `EnumerateShares` with a controlled enumeration implementation. This distinguishes an empty successful listing from an operating system failure without depending on an SMB server. The real Windows and Linux implementations are compiled into their shared libraries; live SMB behavior still needs an environment-dependent test.
+
+`testsLocalForwardModuleContract` adds `ReversePortForward`. The original loopback test now serializes requests and events and uses a receiving instance that did not call `init()`. Listener events carry the local destination in `C2Message`, and `followUp()` ignores failed events. Emitted events and successful process responses carry code `0`.
+
+`testsLocalRdpModuleContract` and `testsLocalRegistryModuleContract` add the Windows-only `EnumerateRdpSessions` and `Registry` modules. Both compile and export their constructors on Linux, where processing returns a defined unsupported code. On Windows, the tests use local read-only queries. Their errors are translated from code-only responses. Tests that modify remote sessions or registry keys remain outside the local harness.
+
+The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CimExec`, `CoffLoader`, `DcomExec`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MakeToken`, `MiniDump`, `Powershell`, `PsExec`, `PwSh`, `Rev2self`, `SpawnAs`, `StealToken`, `TaskScheduler`, `WinRM`, and `WmiExec`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
+
 From the C2Core root, use a C++17 toolchain, CMake 3.20 or newer, an installed `nlohmann_json` CMake package, and the `cpp-base64` sources from the parent project's `thirdParty/base64` directory.
 
 ```sh

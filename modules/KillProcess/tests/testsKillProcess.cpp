@@ -1,64 +1,39 @@
 #include "../KillProcess.hpp"
-#include "../../ModuleCmd/Tools.hpp"
-#include <chrono>
-#include <thread>
-#ifdef __linux__
-#include <signal.h>
-#include <sys/wait.h>
-#elif _WIN32
-#include <windows.h>
-#endif
+#include "../../tests/SleepingChild.hpp"
+#include "../../tests/TestHelpers.hpp"
 
-bool testKillProcess();
+#include <string>
+#include <vector>
 
-int main()
+int main(int argc, char** argv)
 {
-    bool res;
-    std::cout << "[+] testKillProcess" << std::endl;
-    res = testKillProcess();
-    if (res)
-        std::cout << "[+] Sucess" << std::endl;
-    else
-        std::cout << "[-] Failed" << std::endl;
+    if (test_helpers::isSleepingChild(argc, argv))
+        return 0;
 
-    return !res;
-}
-
-bool testKillProcess()
-{
     bool ok = true;
+    KillProcess module;
+    C2Message request;
+    std::vector<std::string> invalid = {"killProcess", "0"};
+    ok &= test_helpers::expect(module.init(invalid, request) == -1,
+        "init rejects a PID that could target a process group");
+    invalid = {"killProcess", "not-a-pid"};
+    ok &= test_helpers::expect(module.init(invalid, request) == -1,
+        "init rejects a malformed PID");
 
-    int pid;
-#ifdef __linux__
-    pid = launchProcess("sleep 1");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-#elif _WIN32
-    pid = launchProcess("C:\\Windows\\System32\\notepad.exe");
-    Sleep(1000);
-#endif
-
-    KillProcess kp;
-    std::vector<std::string> cmd = {"killProcess", std::to_string(pid)};
-    C2Message msg, ret;
-    kp.init(cmd, msg);
-    msg.set_pid(pid);
-    kp.process(msg, ret);
-
-#ifdef __linux__
-    ok &= ret.errorCode() == -1;
-#elif _WIN32
-    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (h)
+    test_helpers::SleepingChild child(argv[0]);
+    ok &= test_helpers::expect(child.pid > 0, "a test-only child process starts");
+    if (child.pid > 0)
     {
-        DWORD code = 0;
-        bool alive = GetExitCodeProcess(h, &code) && code == STILL_ACTIVE;
-        CloseHandle(h);
-        ok &= !alive;
+        std::vector<std::string> command = {"killProcess", std::to_string(child.pid)};
+        C2Message response;
+        ok &= test_helpers::expect(module.init(command, request) == 0,
+            "init prepares the child PID");
+        module.process(request, response);
+        ok &= test_helpers::expect(response.instruction() == "killProcess"
+            && response.errorCode() == 0 && response.returnvalue() == "Killed.",
+            "process reports a successful termination in C2Message");
+        ok &= test_helpers::expect(child.waitForTermination(),
+            "the test-only child actually terminates");
     }
-    else
-    {
-        ok &= true;
-    }
-#endif
-    return ok;
+    return ok ? 0 : 1;
 }

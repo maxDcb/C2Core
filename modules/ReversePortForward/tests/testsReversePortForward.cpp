@@ -1,6 +1,7 @@
 #include "../ReversePortForward.hpp"
 
 #include "../../tests/TestHelpers.hpp"
+#include "../../tests/local/MessageTestHelpers.hpp"
 
 #include <chrono>
 #include <functional>
@@ -317,7 +318,7 @@ namespace
         C2Message response;
         response.set_errorCode(0);
         ok &= expect(module.errorCodeToMsg(response, unchanged) == 0, "zero error code should return success");
-        ok &= expect(unchanged == "unchanged", "zero error code should not change existing message");
+        ok &= expect(unchanged.empty(), "zero error code should clear an earlier message");
         return ok;
     }
 
@@ -338,7 +339,7 @@ namespace
         start.set_args(std::to_string(remotePort) + " 127.0.0.1 1");
         ret = C2Message();
         ok &= expect(module.process(start, ret) == 0, "first start should succeed");
-        ok &= expect(ret.errorCode() <= 0, "first start should not set an error");
+        ok &= expect(ret.errorCode() == 0, "first start should set code zero");
 
         ret = C2Message();
         ok &= expect(module.process(start, ret) == 0, "duplicate start should return through C2Message");
@@ -359,6 +360,7 @@ namespace
         if (remotePort <= 0)
             return false;
 
+        ReversePortForward preparer;
         ReversePortForward teamserver;
         ReversePortForward implant;
         C2Message start;
@@ -368,11 +370,13 @@ namespace
             "127.0.0.1",
             std::to_string(echo.port())};
 
-        ok &= expect(teamserver.init(cmd, start) == 0, "teamserver init should pack start message");
+        ok &= expect(preparer.init(cmd, start) == 0, "teamserver init should pack start message");
+        C2Message transportedStart = roundTripMessage(start);
 
-        C2Message startRet;
-        ok &= expect(implant.process(start, startRet) == 0, "implant start should return through C2Message");
-        ok &= expect(startRet.errorCode() <= 0, "implant start should not set an error");
+        C2Message startRetRaw;
+        ok &= expect(implant.process(transportedStart, startRetRaw) == 0, "implant start should return through C2Message");
+        const C2Message startRet = roundTripMessage(startRetRaw);
+        ok &= expect(startRet.errorCode() == 0, "implant start should set code zero");
         ok &= expect(startRet.returnvalue().find(std::to_string(remotePort)) != std::string::npos, "implant start should report remote port");
         if (!ok)
             return false;
@@ -398,7 +402,10 @@ namespace
                      "implant recurringExec should emit remote data");
 
         const std::string dataArgs = toTeamserver.args();
-        ok &= expect(teamserver.followUp(toTeamserver) == 0, "teamserver followUp should forward data to local service");
+        toTeamserver = roundTripMessage(toTeamserver);
+        ok &= expect(toTeamserver.errorCode() == 0
+            && teamserver.followUp(toTeamserver) == 0,
+            "a separate teamserver receiver forwards serialized data to its local service");
 
         C2Message toImplant;
         ok &= expect(waitForRecurring(
@@ -413,9 +420,11 @@ namespace
                          std::chrono::seconds(2)),
                      "teamserver recurringExec should emit local service response");
 
+        toImplant = roundTripMessage(toImplant);
+        ok &= expect(toImplant.errorCode() == 0, "recurring local response should carry code zero");
         C2Message sendRet;
         ok &= expect(implant.process(toImplant, sendRet) == 0, "implant should send response to remote client");
-        ok &= expect(sendRet.errorCode() <= 0, "implant response send should not set an error");
+        ok &= expect(sendRet.errorCode() == 0, "implant response send should set code zero");
         ok &= expect(recvWithTimeout(remoteClient, std::chrono::seconds(2)) == "echo:ping", "remote client should receive local service response");
 
 #ifdef _WIN32
@@ -437,7 +446,8 @@ namespace
                          std::chrono::seconds(2)),
                      "implant should emit close event after remote disconnect");
         if (closeMessage.cmd() == "close")
-            ok &= expect(teamserver.followUp(closeMessage) == 0, "teamserver should close local connection");
+            ok &= expect(teamserver.followUp(roundTripMessage(closeMessage)) == 0,
+                "teamserver should close local connection from a serialized event");
 
         return ok;
     }

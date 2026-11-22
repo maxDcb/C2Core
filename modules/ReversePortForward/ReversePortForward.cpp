@@ -76,8 +76,6 @@ ReversePortForward::ReversePortForward()
 #else
     : ModuleCmd("", moduleHash)
 #endif
-    , m_localPort(0)
-    , m_remotePort(0)
     , m_socketLayerReady(false)
     , m_running(false)
     , m_listenerActive(false)
@@ -155,7 +153,7 @@ std::string ReversePortForward::getInfo()
 int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if (splitedCmd.size() != 4)
+    if (splitedCmd.size() != 4 || splitedCmd[0] != moduleName)
     {
         c2Message.set_returnvalue(formatHelp());
         return -1;
@@ -171,10 +169,12 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
         return -1;
     }
 
+    int remotePort = 0;
+    int localPort = 0;
     try
     {
-        m_remotePort = std::stoi(remotePortStr);
-        m_localPort = std::stoi(localPortStr);
+        remotePort = std::stoi(remotePortStr);
+        localPort = std::stoi(localPortStr);
     }
     catch (const std::exception&)
     {
@@ -182,13 +182,11 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
         return -1;
     }
 
-    if (m_remotePort <= 0 || m_remotePort > 65535 || m_localPort <= 0 || m_localPort > 65535)
+    if (remotePort <= 0 || remotePort > 65535 || localPort <= 0 || localPort > 65535 || localHost.empty())
     {
         c2Message.set_returnvalue("Ports must be between 1 and 65535.\n" + formatHelp());
         return -1;
     }
-
-    m_localHost = localHost;
 
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("start");
@@ -203,6 +201,7 @@ int ReversePortForward::init(std::vector<std::string>& splitedCmd, C2Message& c2
 int ReversePortForward::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     switch (c2RetMessage.errorCode())
     {
     case 1:
@@ -539,6 +538,8 @@ void ReversePortForward::runListener()
 
 int ReversePortForward::followUp(const C2Message& c2RetMessage)
 {
+    if (c2RetMessage.errorCode() != 0)
+        return 0;
     if (!ensureSocketLayer())
         return -1;
 
@@ -590,7 +591,10 @@ int ReversePortForward::followUp(const C2Message& c2RetMessage)
 
     if (socket == InvalidSocket)
     {
-        std::string portStr = std::to_string(m_localPort);
+        const std::string& localHost = c2RetMessage.inputfile();
+        const std::string& portStr = c2RetMessage.outputfile();
+        if (localHost.empty() || portStr.empty())
+            return -1;
         struct addrinfo hints;
         std::memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_UNSPEC;
@@ -598,7 +602,7 @@ int ReversePortForward::followUp(const C2Message& c2RetMessage)
         hints.ai_protocol = IPPROTO_TCP;
 
         struct addrinfo* result = nullptr;
-        if (::getaddrinfo(m_localHost.c_str(), portStr.c_str(), &hints, &result) != 0)
+        if (::getaddrinfo(localHost.c_str(), portStr.c_str(), &hints, &result) != 0)
         {
             enqueueChunk(connectionId, std::string(), true);
             return -1;
@@ -669,6 +673,8 @@ int ReversePortForward::followUp(const C2Message& c2RetMessage)
 int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
     c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_returnvalue({});
+    c2RetMessage.set_errorCode(0);
 
     std::string cmd = c2Message.cmd();
     if (cmd == "start")
@@ -690,16 +696,13 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
         std::string localHost;
         int localPort = 0;
         iss >> remotePort >> localHost >> localPort;
-        (void)localHost;
-        (void)localPort;
-
-        if (remotePort <= 0 || remotePort > 65535)
+        if (remotePort <= 0 || remotePort > 65535 || localHost.empty()
+            || localPort <= 0 || localPort > 65535)
         {
             c2RetMessage.set_errorCode(3);
             return 0;
         }
 
-        m_remotePort = remotePort;
         m_listenerSocket = createListener(remotePort);
         if (m_listenerSocket == InvalidSocket)
         {
@@ -709,6 +712,10 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
 
         m_running = true;
         m_listenerActive = true;
+        m_forwardHost = localHost;
+        m_forwardPort = localPort;
+        c2RetMessage.set_inputfile(localHost);
+        c2RetMessage.set_outputfile(std::to_string(localPort));
         m_listenerThread = std::thread(&ReversePortForward::runListener, this);
         c2RetMessage.set_returnvalue("Reverse port forward started on port " + std::to_string(remotePort));
         return 0;
@@ -759,6 +766,7 @@ int ReversePortForward::process(C2Message& c2Message, C2Message& c2RetMessage)
         {
             if (!sendAll(connection->socket, payload))
             {
+                c2RetMessage.set_errorCode(4);
                 connection->active = false;
                 closeSocket(connection->socket);
                 connection->socket = InvalidSocket;
@@ -837,6 +845,15 @@ int ReversePortForward::recurringExec(C2Message& c2RetMessage)
     lock.unlock();
 
     c2RetMessage.set_instruction(std::to_string(getHash()));
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue({});
+    if (listenerSide)
+    {
+        // The listener's start request carries the receiver's local destination.
+        // Each event must remain self-contained across module instances.
+        c2RetMessage.set_inputfile(m_forwardHost);
+        c2RetMessage.set_outputfile(std::to_string(m_forwardPort));
+    }
     if (chunk.closeEvent)
     {
         c2RetMessage.set_cmd("close");

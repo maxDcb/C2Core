@@ -240,9 +240,10 @@ int main()
         ok &= expect(ret.instruction() == "registry", "malformed packed command should preserve instruction");
 #ifdef _WIN32
         ok &= expect(ret.errorCode() == 1, "malformed packed command should fail with invalid root on Windows");
-        ok &= expectContains(ret.returnvalue(), "Unknown root hive", "malformed packed command should explain invalid root");
+        ok &= expect(ret.returnvalue().empty(), "malformed packed command should not carry error text");
 #else
-        ok &= expectContains(ret.returnvalue(), "Only supported on Windows", "malformed packed command should explain OS support");
+        ok &= expect(ret.errorCode() == 9 && ret.returnvalue().empty(),
+            "Linux should return a code-only unsupported response");
 #endif
     }
 
@@ -255,7 +256,7 @@ int main()
 
         ok &= expect(module.init(cmd, message) == 0, "read-only registry query should initialize");
         ok &= expect(module.process(message, ret) == 0, "read-only registry query should process");
-        ok &= expect(ret.errorCode() == -1, "read-only registry query should not set an error code");
+        ok &= expect(ret.errorCode() == 0, "read-only registry query should set code zero");
         ok &= expectContains(ret.returnvalue(), "Type:", "read-only registry query should return a type");
         ok &= expectContains(ret.returnvalue(), "Data:", "read-only registry query should return data");
     }
@@ -270,8 +271,10 @@ int main()
         ok &= expect(module.init(cmd, message) == 0, "missing key query should initialize");
         ok &= expect(module.process(message, ret) == 0, "missing key query should process");
         ok &= expect(ret.errorCode() == 3, "missing key query should report open-key error");
+        ok &= expect(ret.returnvalue().empty(), "missing key query should not carry error text");
         ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-        ok &= expect(error == ret.returnvalue(), "errorCodeToMsg should expose process error text");
+        ok &= expect(error == "Could not open registry key.",
+            "errorCodeToMsg should translate the received code");
     }
 #endif
 
@@ -279,11 +282,11 @@ int main()
         Registry module;
         C2Message ret;
         ret.set_errorCode(3);
-        ret.set_returnvalue("open failed");
         std::string error;
 
         ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-        ok &= expect(error == "open failed", "errorCodeToMsg should expose process error text");
+        ok &= expect(error == "Could not open registry key.",
+            "errorCodeToMsg should work with only the code");
     }
 
     return ok ? 0 : 1;

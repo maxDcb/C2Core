@@ -19,6 +19,7 @@ using namespace std;
 
 constexpr std::string_view moduleNameRegistry = "registry";
 constexpr unsigned long long moduleHashRegistry = djb2(moduleNameRegistry);
+constexpr int ErrorWindowsOnly = 9;
 
 #ifdef _WIN32
 extern "C" __declspec(dllexport) Registry* RegistryConstructor()
@@ -170,7 +171,7 @@ int Registry::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
     std::vector<std::string> args = regroupStrings(splitedCmd);
-    if (args.size() < 2)
+    if (args.size() < 2 || args[0] != moduleNameRegistry)
     {
         c2Message.set_returnvalue(getInfo());
         return -1;
@@ -251,15 +252,11 @@ int Registry::process(C2Message& c2Message, C2Message& c2RetMessage)
 #ifdef _WIN32
     error = execute(params, result);
 #else
-    result = "Only supported on Windows.\n";
+    error = ErrorWindowsOnly;
 #endif
 
-    if (error)
-    {
-        c2RetMessage.set_errorCode(error);
-    }
-
-    c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_errorCode(error);
+    c2RetMessage.set_returnvalue(error == 0 ? result : std::string{});
     return 0;
 }
 
@@ -275,9 +272,38 @@ int Registry::process(C2Message& c2Message, C2Message& c2RetMessage)
 int Registry::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    if (c2RetMessage.errorCode() > 0)
+    errorMsg.clear();
+    switch (c2RetMessage.errorCode())
     {
-        errorMsg = c2RetMessage.returnvalue();
+    case ERROR_INVALID_ROOT:
+        errorMsg = "Invalid registry root hive.";
+        break;
+    case ERROR_CONNECT:
+        errorMsg = "Could not connect to registry server.";
+        break;
+    case ERROR_OPEN_KEY:
+        errorMsg = "Could not open registry key.";
+        break;
+    case ERROR_SET_VALUE:
+        errorMsg = "Could not set registry value.";
+        break;
+    case ERROR_DELETE_VALUE:
+        errorMsg = "Could not delete registry value.";
+        break;
+    case ERROR_QUERY_VALUE:
+        errorMsg = "Could not query registry value.";
+        break;
+    case ERROR_CREATE_KEY:
+        errorMsg = "Could not create registry key.";
+        break;
+    case ERROR_DELETE_KEY:
+        errorMsg = "Could not delete registry key.";
+        break;
+    case ErrorWindowsOnly:
+        errorMsg = "Only supported on Windows.";
+        break;
+    default:
+        break;
     }
 #endif
     return 0;

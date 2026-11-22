@@ -71,10 +71,10 @@ private:
     std::string receiveAvailable(SocketHandle socket, bool& closed) const;
     void pollLocalConnections();
 
-    std::string m_localHost;
-    int m_localPort;
     std::mutex m_localMutex;
     std::unordered_map<int, SocketHandle> m_localConnections;
+    std::string m_forwardHost;
+    int m_forwardPort = 0;
 
     struct RemoteConnection
     {
@@ -99,7 +99,6 @@ private:
     std::unordered_map<int, std::shared_ptr<RemoteConnection>> m_connections;
     std::condition_variable m_queueCv;
 
-    int m_remotePort;
     bool m_socketLayerReady;
     std::mutex m_queueMutex;
     std::queue<PendingChunk> m_pendingChunks;

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <string>
 #include <array>
+#include <vector>
 
 #ifdef __linux__
 
@@ -190,7 +191,7 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
 {
     std::string result;
     
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, processID );
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processID);
     if (hProcess)
     {
         std::string arch = "x64";
@@ -211,36 +212,33 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
 
         std::string acctName;
         std::string domainName;
-        DWORD dwAcctName = 1;
-        DWORD dwDomainName = 1;
-        HANDLE tokenHandle;
+        HANDLE tokenHandle = nullptr;
 
         if (OpenProcessToken(hProcess, TOKEN_READ, &tokenHandle))
         {
-            TOKEN_USER tokenUser;
-            ZeroMemory(&tokenUser, sizeof(TOKEN_USER));
             DWORD tokenUserLength = 0;
-
-            PTOKEN_USER pTokenUser;
             GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, NULL, 0, &tokenUserLength);
-            pTokenUser = (PTOKEN_USER) new BYTE[tokenUserLength];
-
-            if (GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, pTokenUser, tokenUserLength, &tokenUserLength))
+            if (tokenUserLength > 0)
             {
-                TCHAR szUserName[_MAX_PATH];
-                DWORD dwUserNameLength = _MAX_PATH;
-                TCHAR szDomainName[_MAX_PATH];
-                DWORD dwDomainNameLength = _MAX_PATH;
-                SID_NAME_USE sidNameUse;
-                LookupAccountSid(NULL, pTokenUser->User.Sid, szUserName, &dwUserNameLength, szDomainName, &dwDomainNameLength, &sidNameUse);
-                acctName=szUserName;
-                domainName=szDomainName;
-                delete pTokenUser;
-
-                CloseHandle( tokenHandle );
+                std::vector<BYTE> tokenData(tokenUserLength);
+                if (GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser,
+                        tokenData.data(), tokenUserLength, &tokenUserLength))
+                {
+                    const auto* tokenUser = reinterpret_cast<const TOKEN_USER*>(tokenData.data());
+                    char userName[_MAX_PATH] = {};
+                    char domain[_MAX_PATH] = {};
+                    DWORD userLength = _MAX_PATH;
+                    DWORD domainLength = _MAX_PATH;
+                    SID_NAME_USE sidNameUse;
+                    if (LookupAccountSidA(nullptr, tokenUser->User.Sid,
+                            userName, &userLength, domain, &domainLength, &sidNameUse))
+                    {
+                        acctName = userName;
+                        domainName = domain;
+                    }
+                }
             }
-
-            CloseHandle( hProcess );
+            CloseHandle(tokenHandle);
         }
 
         std::string account;
@@ -282,7 +280,8 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
         result += "\n";
     }
 
-    CloseHandle( hProcess );
+    if (hProcess)
+        CloseHandle(hProcess);
 
     return result;
 }
@@ -290,52 +289,70 @@ std::string getProcessInfos(DWORD processID, std::string& processName)
 
 bool GetProcess(std::string& result)
 {
-    PVOID buffer = NULL;
-    DWORD bufSize = 0;
-    
     HMODULE ntdll = GetModuleHandle("ntdll.dll");
     if (!ntdll)
         return false;
     NtQuerySystemInformation_t pNtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(ntdll, "NtQuerySystemInformation");
     if (!pNtQuerySystemInformation)
         return false;
-    pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, 0, 0, &bufSize);
-    
-    if (bufSize == 0)
-        return false;
-    
-    buffer = VirtualAlloc(0, bufSize, MEM_COMMIT, PAGE_READWRITE);
-    if (!buffer)
-        return false;
-        
-    SYSTEM_PROCESS_INFORMATION * sysproc_info = (SYSTEM_PROCESS_INFORMATION *) buffer;
-    if (pNtQuerySystemInformation((SYSTEM_INFORMATION_CLASS) SystemProcessInformation, buffer, bufSize, &bufSize))
+
+    constexpr NTSTATUS infoLengthMismatch = static_cast<NTSTATUS>(0xC0000004L);
+    constexpr NTSTATUS bufferTooSmall = static_cast<NTSTATUS>(0xC0000023L);
+    constexpr size_t maxBufferSize = 64 * 1024 * 1024;
+    std::vector<BYTE> buffer(64 * 1024);
+    bool queried = false;
+    size_t usedLength = 0;
+    for (int attempt = 0; attempt < 10; ++attempt)
     {
-        VirtualFree(buffer, 0, MEM_RELEASE);
-        return false;
-    }
-
-
-    while (TRUE) 
-    {        
-        std::string processName;
-        for(int i=0; i<sysproc_info->ImageName.Length; i++)
+        ULONG requiredLength = 0;
+        const NTSTATUS status = pNtQuerySystemInformation(
+            (SYSTEM_INFORMATION_CLASS) SystemProcessInformation,
+            buffer.data(), static_cast<ULONG>(buffer.size()), &requiredLength);
+        if (status >= 0)
         {
-            if((char)sysproc_info->ImageName.Buffer[i]=='\0')
-                break;
-            processName.push_back((char)sysproc_info->ImageName.Buffer[i]);
+            queried = true;
+            usedLength = requiredLength > 0 && requiredLength <= buffer.size()
+                ? requiredLength : buffer.size();
+            break;
+        }
+        if (status != infoLengthMismatch && status != bufferTooSmall)
+            return false;
+        const size_t nextSize = (std::max)(buffer.size() * 2,
+            static_cast<size_t>(requiredLength) + 64 * 1024);
+        if (nextSize > maxBufferSize)
+            return false;
+        buffer.resize(nextSize);
+    }
+    if (!queried)
+        return false;
+
+    size_t offset = 0;
+    while (offset + sizeof(SYSTEM_PROCESS_INFORMATION) <= usedLength)
+    {        
+        auto* sysproc_info = reinterpret_cast<SYSTEM_PROCESS_INFORMATION *>(buffer.data() + offset);
+        std::string processName;
+        if (sysproc_info->ImageName.Buffer && sysproc_info->ImageName.Length)
+        {
+            const int characters = sysproc_info->ImageName.Length / sizeof(WCHAR);
+            const int bytes = WideCharToMultiByte(CP_UTF8, 0,
+                sysproc_info->ImageName.Buffer, characters, nullptr, 0, nullptr, nullptr);
+            if (bytes > 0)
+            {
+                processName.resize(bytes);
+                WideCharToMultiByte(CP_UTF8, 0, sysproc_info->ImageName.Buffer,
+                    characters, processName.data(), bytes, nullptr, nullptr);
+            }
         }
         
         result += getProcessInfos(static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(sysproc_info->UniqueProcessId)), processName);
                 
         if (!sysproc_info->NextEntryOffset)
             break;
-        
-        sysproc_info = (SYSTEM_PROCESS_INFORMATION *)((ULONG_PTR) sysproc_info + sysproc_info->NextEntryOffset);
+        if (sysproc_info->NextEntryOffset > usedLength - offset)
+            return false;
+        offset += sysproc_info->NextEntryOffset;
     }
     
-    VirtualFree(buffer, 0, MEM_RELEASE);
-
     return true;
 }
 
@@ -431,6 +448,7 @@ int ListProcesses::process(C2Message &c2Message, C2Message &c2RetMessage)
 int ListProcesses::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    errorMsg.clear();
     if (response.errorCode() == 1)
         errorMsg = "Failed to enumerate processes.";
 #else
