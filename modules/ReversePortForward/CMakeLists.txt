@@ -10,7 +10,7 @@ add_custom_command(TARGET ReversePortForward POST_BUILD COMMAND ${CMAKE_COMMAND}
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsReversePortForward tests/testsReversePortForward.cpp ReversePortForward.cpp)
-    target_link_libraries(testsReversePortForward)
+    target_link_libraries(testsReversePortForward c2_base64)
     if(WIN32)
         target_link_libraries(testsReversePortForward ws2_32)
     endif()
