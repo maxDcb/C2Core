@@ -63,12 +63,12 @@ int main()
         message.set_cmd("alice");
         C2Message ret;
 
-        ok &= expect(module.process(message, ret) == -1, "invalid packed parameters should be rejected");
+        ok &= expect(module.process(message, ret) == 0, "process should return the response status in C2Message");
         ok &= expect(ret.errorCode() > 0, "invalid packed parameters should set an error code");
-        ok &= expect(ret.returnvalue().find("Invalid command parameters") != std::string::npos, "invalid packed parameters should explain the error");
+        ok &= expect(ret.returnvalue().empty(), "failed response should not contain output");
         std::string errorMsg;
         ok &= expect(module.errorCodeToMsg(ret, errorMsg) == 0, "invalid packed parameters should map error text");
-        ok &= expect(errorMsg == ret.returnvalue(), "invalid packed parameter error text should come from returnvalue");
+        ok &= expect(!errorMsg.empty(), "invalid packed parameter error text should come from the code");
     }
 
     return ok ? 0 : 1;

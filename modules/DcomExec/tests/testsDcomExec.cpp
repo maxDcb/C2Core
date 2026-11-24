@@ -50,11 +50,10 @@ int main()
         DcomExec module;
         C2Message ret;
         ret.set_errorCode(4);
-        ret.set_returnvalue("dcom failed");
         std::string error;
 
         ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-        ok &= expect(error.find("dcom failed") != std::string::npos, "errorCodeToMsg should expose process error text");
+        ok &= expect(!error.empty(), "errorCodeToMsg should render a code-only error");
     }
 
     return ok ? 0 : 1;

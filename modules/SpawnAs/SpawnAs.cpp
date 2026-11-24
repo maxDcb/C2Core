@@ -415,6 +415,10 @@ int SpawnAs::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     std::string cmd = c2Message.cmd();
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue("");
     const std::string payload = c2Message.data();
 
     std::vector<std::string> splitedList;
@@ -422,11 +426,16 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
     delimitator += '\0';
     splitList(cmd, delimitator, splitedList);
 
-    if (splitedList.size() < 3)
+    if (splitedList.size() != 3 || splitedList[1].empty())
     {
-        c2RetMessage.set_returnvalue("Invalid command parameters received.\n");
         c2RetMessage.set_errorCode(ERROR_INVALID_PARAMETERS);
-        return -1;
+        return 0;
+    }
+
+    if (payload.empty())
+    {
+        c2RetMessage.set_errorCode(ERROR_MISSING_COMMAND);
+        return 0;
     }
 
     std::string domain = splitedList[0];
@@ -439,8 +448,8 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #ifdef __linux__
 
-    result = "Only supported on Windows.\n";
     c2RetMessage.set_errorCode(ERROR_UNSUPPORTED_PLATFORM);
+    return 0;
 
 #elif _WIN32
 
@@ -451,9 +460,8 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     if (commandLineW.empty())
     {
-        c2RetMessage.set_returnvalue("Missing command to execute.\n");
         c2RetMessage.set_errorCode(ERROR_MISSING_COMMAND);
-        return -1;
+        return 0;
     }
 
     std::vector<wchar_t> mutableCommand(commandLineW.begin(), commandLineW.end());
@@ -685,12 +693,10 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     if (!created)
     {
-        result += errorMessage;
         cmd += " ";
         cmd += payload;
-        c2RetMessage.set_instruction(c2RetMessage.instruction());
+        c2RetMessage.set_instruction(c2Message.instruction());
         c2RetMessage.set_cmd(cmd);
-        c2RetMessage.set_returnvalue(result);
         c2RetMessage.set_errorCode(ERROR_PROCESS_CREATION);
         return 0;
     }
@@ -702,10 +708,11 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 
     result += "Success.\n";
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     cmd += " ";
     cmd += payload;
     c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_errorCode(0);
     c2RetMessage.set_returnvalue(result);
     return 0;
 }
@@ -713,9 +720,14 @@ int SpawnAs::process(C2Message &c2Message, C2Message &c2RetMessage)
 int SpawnAs::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
+    switch (c2RetMessage.errorCode())
     {
-        errorMsg = c2RetMessage.returnvalue();
+        case 0: errorMsg.clear(); break;
+        case ERROR_INVALID_PARAMETERS: errorMsg = "Invalid spawnAs parameters."; break;
+        case ERROR_MISSING_COMMAND: errorMsg = "Missing command to execute."; break;
+        case ERROR_UNSUPPORTED_PLATFORM: errorMsg = "spawnAs is only supported on Windows."; break;
+        case ERROR_PROCESS_CREATION: errorMsg = "Process creation failed."; break;
+        default: errorMsg = "Unknown spawnAs error: code " + std::to_string(c2RetMessage.errorCode()); break;
     }
 #endif
     return 0;

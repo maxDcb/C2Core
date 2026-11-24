@@ -99,6 +99,5 @@ int main(int argc, char** argv)
     command.push_back("--");
     command.push_back(commandLine);
 
-    SpawnAs module;
-    return runModuleScenario("testsSpawnAsFunctional", module, command, execute);
+    return runModuleScenarioIsolated<SpawnAs>("testsSpawnAsFunctional", command, execute);
 }

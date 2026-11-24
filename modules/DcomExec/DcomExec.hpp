@@ -33,7 +33,7 @@ private:
         std::string spn;
         std::string username;
         std::string password;
-        bool noPassword;
+        bool noPassword = false;
     };
 
     std::string packParameters(const Parameters& params) const;

@@ -296,3 +296,37 @@ foreach(module IN ITEMS WmiExec CimExec TaskScheduler)
     target_link_libraries(tests${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
     target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
 endforeach()
+
+foreach(module IN ITEMS DcomExec PsExec SpawnAs)
+    add_subdirectory("${module_dir}/${module}" "${module}")
+    if(module STREQUAL "DcomExec")
+        target_link_libraries(${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+        target_link_libraries(tests${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    else()
+        target_link_libraries(${module} c2_base64 nlohmann_json::nlohmann_json)
+        target_link_libraries(tests${module} c2_base64 nlohmann_json::nlohmann_json)
+    endif()
+    target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
+    if(C2CORE_BUILD_FUNCTIONAL_TESTS)
+        if(module STREQUAL "DcomExec")
+            target_link_libraries(tests${module}Functional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+        else()
+            target_link_libraries(tests${module}Functional c2_base64 nlohmann_json::nlohmann_json)
+        endif()
+        target_compile_definitions(tests${module}Functional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
+    endif()
+endforeach()
+
+add_executable(testsLocalWindowsExecContract
+    testsLocalWindowsExecContract.cpp
+    "${module_dir}/DcomExec/DcomExec.cpp"
+    "${module_dir}/PsExec/PsExec.cpp"
+    "${module_dir}/SpawnAs/SpawnAs.cpp"
+)
+target_compile_definitions(testsLocalWindowsExecContract PRIVATE BUILD_TEAMSERVER)
+target_link_libraries(testsLocalWindowsExecContract PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+if(WIN32)
+    target_compile_definitions(testsLocalWindowsExecContract PRIVATE _WIN32_WINNT=0x0601)
+    target_link_libraries(testsLocalWindowsExecContract PRIVATE ole32 oleaut32 advapi32 userenv)
+endif()
+add_test(NAME testsLocalWindowsExecContract COMMAND testsLocalWindowsExecContract)

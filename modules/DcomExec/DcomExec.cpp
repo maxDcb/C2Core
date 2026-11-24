@@ -241,33 +241,7 @@ int DcomExec::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 }
 
 
-int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
-    c2RetMessage.set_cmd(cmd); 
-    
-    Parameters params = unpackParameters(c2Message.cmd());
-    std::string result;
-    int error = 0;
-
-#ifdef _WIN32
-    error = executeRemote(params, result);
-#else
-    result = "Oly supported on Windows.\n";
-#endif
-
-    if(error)
-        c2RetMessage.set_errorCode(error);
-
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
-    return 0;
-}
-
-
-#define ERROR_SUCCESS                   0
+#define DCOM_SUCCESS                   0
 #define ERROR_COINIT_FAILED             1
 #define ERROR_CLSIDFROMSTRING_FAILED    2
 #define ERROR_COCREATEINSTANCE_FAILED   3
@@ -283,73 +257,75 @@ int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 #define ERROR_SET_PROXY_BLANKET_FAILED 13
 
 
+#define ERROR_INVALID_PARAMETERS       14
+#define ERROR_UNSUPPORTED_PLATFORM      15
+
+
+int DcomExec::process(C2Message& c2Message, C2Message& c2RetMessage)
+{
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(c2Message.cmd());
+    c2RetMessage.set_errorCode(DCOM_SUCCESS);
+    c2RetMessage.set_returnvalue("");
+
+    const std::string& packed = c2Message.cmd();
+    std::vector<std::string> fields;
+    size_t start = 0;
+    while (start < packed.size())
+    {
+        const size_t end = packed.find('\0', start);
+        if (end == std::string::npos)
+            break;
+        fields.emplace_back(packed.substr(start, end - start));
+        start = end + 1;
+    }
+    if (start != packed.size() || fields.size() != 9 || fields[0].empty() ||
+        fields[2].empty() || (fields[8] != "0" && fields[8] != "1") ||
+        (!fields[7].empty() && fields[6].empty()) ||
+        (!fields[6].empty() && fields[7].empty() && fields[8] == "0"))
+    {
+        c2RetMessage.set_errorCode(ERROR_INVALID_PARAMETERS);
+        return 0;
+    }
+
+#ifdef _WIN32
+    Parameters params = unpackParameters(packed);
+    std::string result;
+    const int error = executeRemote(params, result);
+    c2RetMessage.set_errorCode(error);
+    if (error == DCOM_SUCCESS)
+        c2RetMessage.set_returnvalue(result);
+#else
+    c2RetMessage.set_errorCode(ERROR_UNSUPPORTED_PLATFORM);
+#endif
+    return 0;
+}
+
+
 int DcomExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     int errorCode = c2RetMessage.errorCode();
     
-    if(errorCode > 0)
+    switch (errorCode)
     {
-        // Handle specific error codes and provide detailed messages
-        switch (errorCode)
-        {
-            case ERROR_COINIT_FAILED:
-                errorMsg = "CoInitializeEx failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_CLSIDFROMSTRING_FAILED:
-                errorMsg = "CLSIDFromString failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_COCREATEINSTANCE_FAILED:
-                errorMsg = "CoCreateInstanceEx failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_GETIDS_ITEM_FAILED:
-                errorMsg = "Failed to get 'Item' ID: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_INVOKE_ITEM_FAILED:
-                errorMsg = "Invoke 'Item' method failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_GETIDS_DOCUMENT_FAILED:
-                errorMsg = "Failed to get 'Document' ID: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_INVOKE_DOCUMENT_FAILED:
-                errorMsg = "Invoke 'Document' method failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_GETIDS_APPLICATION_FAILED:
-                errorMsg = "Failed to get 'Application' ID: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_INVOKE_APPLICATION_FAILED:
-                errorMsg = "Invoke 'Application' method failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_GETIDS_SHELLEXECUTE_FAILED:
-                errorMsg = "Failed to get 'ShellExecute' ID: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_INVOKE_SHELLEXECUTE_FAILED:
-                errorMsg = "Invoke 'ShellExecute' method failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_AUTHIDENTITY_ALLOC_FAILED:
-                errorMsg = "Authentication identity allocation failed: " + c2RetMessage.returnvalue();
-                break;
-
-            case ERROR_SET_PROXY_BLANKET_FAILED:
-                errorMsg = "CoSetProxyBlanket failed: " + c2RetMessage.returnvalue();
-                break;
-
-            default:
-                // For any other error codes
-                errorMsg = "Unknown error occurred: " + c2RetMessage.returnvalue();
-                break;
-        }
+        case DCOM_SUCCESS: errorMsg.clear(); break;
+        case ERROR_COINIT_FAILED: errorMsg = "CoInitializeEx failed."; break;
+        case ERROR_CLSIDFROMSTRING_FAILED: errorMsg = "CLSIDFromString failed."; break;
+        case ERROR_COCREATEINSTANCE_FAILED: errorMsg = "CoCreateInstanceEx failed."; break;
+        case ERROR_GETIDS_ITEM_FAILED: errorMsg = "Failed to get Item ID."; break;
+        case ERROR_INVOKE_ITEM_FAILED: errorMsg = "Invoke Item method failed."; break;
+        case ERROR_GETIDS_DOCUMENT_FAILED: errorMsg = "Failed to get Document ID."; break;
+        case ERROR_INVOKE_DOCUMENT_FAILED: errorMsg = "Invoke Document method failed."; break;
+        case ERROR_GETIDS_APPLICATION_FAILED: errorMsg = "Failed to get Application ID."; break;
+        case ERROR_INVOKE_APPLICATION_FAILED: errorMsg = "Invoke Application method failed."; break;
+        case ERROR_GETIDS_SHELLEXECUTE_FAILED: errorMsg = "Failed to get ShellExecute ID."; break;
+        case ERROR_INVOKE_SHELLEXECUTE_FAILED: errorMsg = "Invoke ShellExecute method failed."; break;
+        case ERROR_AUTHIDENTITY_ALLOC_FAILED: errorMsg = "Authentication identity allocation failed."; break;
+        case ERROR_SET_PROXY_BLANKET_FAILED: errorMsg = "CoSetProxyBlanket failed."; break;
+        case ERROR_INVALID_PARAMETERS: errorMsg = "Invalid DCOM parameters."; break;
+        case ERROR_UNSUPPORTED_PLATFORM: errorMsg = "DCOM execution is only supported on Windows."; break;
+        default: errorMsg = "Unknown DCOM error: code " + std::to_string(errorCode); break;
     }
 #endif
     return 0;
@@ -804,7 +780,7 @@ int DcomExec::executeRemote(const Parameters& params, std::string& result) const
         CoUninitialize();
 
     result = "Success";
-    return ERROR_SUCCESS;
+    return DCOM_SUCCESS;
 }
 
 #endif

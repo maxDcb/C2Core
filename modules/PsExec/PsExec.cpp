@@ -237,6 +237,7 @@ int PsExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 #define ERROR_START_SERVICE 8
 #define ERROR_DEL_SERVICE 9
 #define ERROR_STOP_SERVICE 10
+#define ERROR_UNSUPPORTED_PLATFORM 11
 
 
 #ifdef _WIN32
@@ -372,18 +373,26 @@ namespace
 int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     const std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue("");
     c2RetMessage.set_cmd(cmd);
 
-    std::string result;
-    bool error = 0;
-
-    #ifdef _WIN32
-
     std::vector<std::string> splitedList;
-    std::string delimitator;
-    delimitator+='\0';
-    splitList(cmd, delimitator, splitedList);
+    splitList(cmd, std::string(1, '\0'), splitedList);
+    const std::string data = c2Message.data();
+    const bool withoutCredentials = splitedList.size() == 1 && !splitedList[0].empty();
+    const bool withCredentials = splitedList.size() == 4 &&
+        !splitedList[1].empty() && !splitedList[2].empty() && !splitedList[3].empty();
+    if ((!withoutCredentials && !withCredentials) || data.empty())
+    {
+        c2RetMessage.set_errorCode(ERROR_CONFIG);
+        return 0;
+    }
+
+#ifdef _WIN32
+    std::string result;
+    int error = 0;
     
     bool useToken=false;
     bool usePassword=false;
@@ -415,11 +424,8 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
     else
     {
         c2RetMessage.set_errorCode(ERROR_CONFIG);
-        c2RetMessage.set_returnvalue(result);
         return 0;
     }
-
-    const std::string data = c2Message.data();
 
     std::string execName = randomName(8);
 
@@ -450,7 +456,6 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         {
             result = std::to_string(GetLastError());
             c2RetMessage.set_errorCode(ERROR_AUTH_FAILED);
-            c2RetMessage.set_returnvalue(result);
             return 0;
         }
 
@@ -459,7 +464,7 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         {
             result = std::to_string(GetLastError());
             c2RetMessage.set_errorCode(ERROR_AUTH_FAILED);
-            c2RetMessage.set_returnvalue(result);
+            CloseHandle(hToken);
             return 0;
         }
     }
@@ -477,7 +482,6 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
                 CloseHandle(hToken);
             }
             c2RetMessage.set_errorCode(ret);
-            c2RetMessage.set_returnvalue(result);
             return 0;
         }
 
@@ -500,20 +504,20 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
         CloseHandle(hToken);
     }
 
-    if(error)
-        c2RetMessage.set_errorCode(error);
-    else
+    c2RetMessage.set_errorCode(error);
+    if (error == 0)
     {
         result = "Sucess: SVC ";
         result += serviceName;
     }
 
-    c2RetMessage.set_returnvalue(result);
+    if (error == 0)
+        c2RetMessage.set_returnvalue(result);
     return 0;
 
 #elif __linux__
 
-    result = "Only supported on Windows.\n";
+    c2RetMessage.set_errorCode(ERROR_UNSUPPORTED_PLATFORM);
     return 0;
 
 #endif
@@ -525,7 +529,9 @@ int PsExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     int errorCode = c2RetMessage.errorCode();
-    if (errorCode > 0)
+    if (errorCode == 0)
+        errorMsg.clear();
+    else
     {
         switch (errorCode)
         {
@@ -567,6 +573,10 @@ int PsExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 
             case ERROR_STOP_SERVICE:
                 errorMsg = "Failed to stop the service (control request was denied or the service did not respond).";
+                break;
+
+            case ERROR_UNSUPPORTED_PLATFORM:
+                errorMsg = "PsExec is only supported on Windows.";
                 break;
 
             default:

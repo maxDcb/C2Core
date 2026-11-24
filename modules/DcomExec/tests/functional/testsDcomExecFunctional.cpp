@@ -72,6 +72,5 @@ int main(int argc, char** argv)
         command.push_back("-n");
     }
 
-    DcomExec module;
-    return runModuleScenario("testsDcomExecFunctional", module, command, execute);
+    return runModuleScenarioIsolated<DcomExec>("testsDcomExecFunctional", command, execute);
 }

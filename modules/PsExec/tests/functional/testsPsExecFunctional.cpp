@@ -84,6 +84,5 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-n", target, service});
     }
 
-    PsExec module;
-    return runModuleScenario("testsPsExecFunctional", module, command, execute);
+    return runModuleScenarioIsolated<PsExec>("testsPsExecFunctional", command, execute);
 }
