@@ -1,6 +1,7 @@
 #include "TaskScheduler.hpp"
 
 #include "Common.hpp"
+#include <algorithm>
 
 #include <sstream>
 #include <iomanip>
@@ -204,35 +205,7 @@ int TaskScheduler::init(std::vector<std::string>& splitedCmd, C2Message& c2Messa
     return 0;
 }
 
-int TaskScheduler::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
-    c2RetMessage.set_cmd(cmd); 
-    
-    Parameters params = unpackParameters(c2Message.cmd());
-
-    int error=0;
-    std::string result;
-
-#ifdef _WIN32
-    error = executeTask(params, result);
-#else
-    result = "Only supported on Windows.\n";
-#endif
-    
-    if(error)
-        c2RetMessage.set_errorCode(error);
-
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
-
-    return 0;
-}
-
-
-#define ERROR_CO_INIT 1 
+#define ERROR_CO_INIT 1
 #define ERROR_CO_INIT_SEC 2
 #define ERROR_CO_CREATE_INST 3
 #define ERROR_TS_CONNECT 4
@@ -246,16 +219,62 @@ int TaskScheduler::process(C2Message& c2Message, C2Message& c2RetMessage)
 #define ERROR_REGISTER_TASK 12
 #define ERROR_REGISTER_TASK_START 13
 #define ERROR_REGISTER_TASK_DEL 14
+#define ERROR_CONFIG 15
+#define ERROR_LINUX_UNSUPPORTED 16
 
+int TaskScheduler::process(C2Message& c2Message, C2Message& c2RetMessage)
+{
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(c2Message.cmd());
+    c2RetMessage.set_returnvalue("");
+
+#ifdef _WIN32
+    const std::string& packed = c2Message.cmd();
+    const Parameters params = unpackParameters(packed);
+    if (packed.empty() || packed.back() != '\0' ||
+        std::count(packed.begin(), packed.end(), '\0') != 8 ||
+        params.command.empty())
+    {
+        c2RetMessage.set_errorCode(ERROR_CONFIG);
+        return 0;
+    }
+    std::string result;
+    const int error = executeTask(params, result);
+    c2RetMessage.set_errorCode(error);
+    if (error == 0)
+        c2RetMessage.set_returnvalue(result);
+#else
+    c2RetMessage.set_errorCode(ERROR_LINUX_UNSUPPORTED);
+#endif
+    return 0;
+}
 
 int TaskScheduler::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
-    {
-        errorMsg = c2RetMessage.returnvalue();
-    }
+    static const char* messages[] = {
+        "", "Task Scheduler COM initialization failed.",
+        "Task Scheduler COM security initialization failed.",
+        "Task Scheduler service creation failed.",
+        "Task Scheduler connection failed.",
+        "Task Scheduler folder lookup failed.",
+        "Task Scheduler task creation failed.",
+        "Task Scheduler action setup failed.",
+        "Task Scheduler action creation failed.",
+        "Task Scheduler action interface lookup failed.",
+        "Task Scheduler action path setup failed.",
+        "Task Scheduler action arguments setup failed.",
+        "Task Scheduler task registration failed.",
+        "Task Scheduler task start failed.",
+        "Task Scheduler task cleanup failed.",
+        "Invalid Task Scheduler request.",
+        "Task Scheduler is only supported on Windows."
+    };
+    const int code = c2RetMessage.errorCode();
+    if (code >= 0 && code < static_cast<int>(sizeof(messages) / sizeof(messages[0])))
+        errorMsg = messages[code];
+    else
+        errorMsg = "Task Scheduler failed with an unknown error.";
 #endif
     return 0;
 }

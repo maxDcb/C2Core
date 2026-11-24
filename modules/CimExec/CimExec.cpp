@@ -1,6 +1,7 @@
 #include "CimExec.hpp"
 
 #include "Common.hpp"
+#include <algorithm>
 
 #include <sstream>
 
@@ -180,35 +181,7 @@ int CimExec::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
     return 0;
 }
 
-int CimExec::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
-    c2RetMessage.set_cmd(cmd); 
-    
-    Parameters params = unpackParameters(c2Message.cmd());
-    std::string result;
-    bool error = 0;
-
-#ifdef _WIN32
-    error = invoke(params, result);
-#else
-    (void)params;
-    result = "Only supported on Windows.\n";
-#endif
-
-    if(error)   
-        c2RetMessage.set_errorCode(error);
-
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
-    return 0;
-}
-
-
-// --- Error codes ---
-#define ERROR_SUCCESS                     0
+#define C2_ERROR_SUCCESS                     0
 #define ERROR_MI_APPLICATION_INIT         1
 #define ERROR_MI_DESTINATIONOPTIONS_NEW   2
 #define ERROR_MI_CREDENTIALS_ADD          3
@@ -217,21 +190,61 @@ int CimExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 #define ERROR_MI_INSTANCE_ADDELEMENT      6
 #define ERROR_MI_OPERATION_GETINSTANCE    7
 #define ERROR_MI_OPERATION_FINALRESULT    8
+#define ERROR_CONFIG                      9
+#define ERROR_LINUX_UNSUPPORTED           10
+#define ERROR_REMOTE_CREATE_FAILED        11
 #define ERROR_UNKNOWN                     99
 
-
-int CimExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+int CimExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(c2Message.cmd());
+    c2RetMessage.set_returnvalue("");
+
+#ifdef _WIN32
+    const std::string& packed = c2Message.cmd();
+    const Parameters params = unpackParameters(packed);
+    if (packed.empty() || packed.back() != '\0' ||
+        std::count(packed.begin(), packed.end(), '\0') != 6 ||
+        params.hostname.empty() || params.command.empty())
     {
-        errorMsg = c2RetMessage.returnvalue();
+        c2RetMessage.set_errorCode(ERROR_CONFIG);
+        return 0;
     }
+    std::string result;
+    const int error = invoke(params, result);
+    c2RetMessage.set_errorCode(error);
+    if (error == C2_ERROR_SUCCESS)
+        c2RetMessage.set_returnvalue(result);
+#else
+    c2RetMessage.set_errorCode(ERROR_LINUX_UNSUPPORTED);
 #endif
     return 0;
 }
 
+int CimExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    switch (c2RetMessage.errorCode())
+    {
+    case C2_ERROR_SUCCESS: errorMsg.clear(); break;
+    case ERROR_MI_APPLICATION_INIT: errorMsg = "CIM application initialization failed."; break;
+    case ERROR_MI_DESTINATIONOPTIONS_NEW: errorMsg = "CIM destination setup failed."; break;
+    case ERROR_MI_CREDENTIALS_ADD: errorMsg = "CIM credentials setup failed."; break;
+    case ERROR_MI_SESSION_NEW: errorMsg = "CIM session creation failed."; break;
+    case ERROR_MI_INSTANCE_NEW: errorMsg = "CIM input instance creation failed."; break;
+    case ERROR_MI_INSTANCE_ADDELEMENT: errorMsg = "CIM command setup failed."; break;
+    case ERROR_MI_OPERATION_GETINSTANCE: errorMsg = "CIM result retrieval failed."; break;
+    case ERROR_MI_OPERATION_FINALRESULT: errorMsg = "CIM operation failed."; break;
+    case ERROR_CONFIG: errorMsg = "Invalid CIM request."; break;
+    case ERROR_LINUX_UNSUPPORTED: errorMsg = "CIM execution is only supported on Windows."; break;
+    case ERROR_REMOTE_CREATE_FAILED: errorMsg = "CIM remote process creation failed."; break;
+    case ERROR_UNKNOWN: errorMsg = "CIM execution failed."; break;
+    default: errorMsg = "CIM execution failed with an unknown error."; break;
+    }
+#endif
+    return 0;
+}
 
 #ifdef _WIN32
 namespace
@@ -480,7 +493,8 @@ int CimExec::invoke(const Parameters& params, std::string& result) const
 
     std::ostringstream response;
     bool haveData = false;
-    MI_Result getResult;
+    bool haveReturnValue = false;
+    MI_Uint32 remoteReturnValue = 0;
 
     do
     {
@@ -504,6 +518,8 @@ int CimExec::invoke(const Parameters& params, std::string& result) const
                 type == MI_UINT32)
             {
                 response << "Ret: " << value.uint32 << '\n';
+                remoteReturnValue = value.uint32;
+                haveReturnValue = true;
                 haveData = true;
             }
 
@@ -527,14 +543,18 @@ int CimExec::invoke(const Parameters& params, std::string& result) const
     if (!haveData)
         response << "No output.\n";
 
-    result = response.str();
+    const int status = finalResult != MI_RESULT_OK ? ERROR_MI_OPERATION_FINALRESULT :
+        !haveReturnValue ? ERROR_MI_OPERATION_GETINSTANCE :
+        remoteReturnValue != 0 ? ERROR_REMOTE_CREATE_FAILED : C2_ERROR_SUCCESS;
+    if (status == C2_ERROR_SUCCESS)
+        result = response.str();
 
     MI_Operation_Close(&operation);
     MI_Instance_Delete(inParams);
     MI_Session_Close(&session, nullptr, nullptr);
     MI_Application_Close(&app);
 
-    return ERROR_SUCCESS;
+    return status;
 }
 
 #endif

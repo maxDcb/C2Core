@@ -1,5 +1,7 @@
 #pragma once
 
+#include "local/MessageTestHelpers.hpp"
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -141,4 +143,39 @@ int runModuleScenario(const char* testName, Module& module, std::vector<std::str
     std::cout << result.returnvalue() << '\n';
     return 0;
 }
+
+template <typename Module>
+int runModuleScenarioIsolated(const char* testName, std::vector<std::string> command, bool execute)
+{
+    Module preparer;
+    C2Message prepared;
+    if (preparer.init(command, prepared) != 0)
+    {
+        std::cerr << testName << " init failed:\n" << prepared.returnvalue() << '\n';
+        return 1;
+    }
+
+    C2Message request = test_helpers::roundTripMessage(prepared);
+    if (!execute)
+    {
+        std::cout << testName << " serialized request OK; execution skipped.\n";
+        return 0;
+    }
+
+    Module executor;
+    C2Message executed;
+    executor.process(request, executed);
+    C2Message response = test_helpers::roundTripMessage(executed);
+    Module receiver;
+    std::string error;
+    receiver.errorCodeToMsg(response, error);
+    if (response.errorCode() != 0 || !error.empty())
+    {
+        std::cerr << testName << " process failed (code " << response.errorCode() << "): " << error << '\n';
+        return 1;
+    }
+    std::cout << response.returnvalue() << '\n';
+    return 0;
+}
+
 }

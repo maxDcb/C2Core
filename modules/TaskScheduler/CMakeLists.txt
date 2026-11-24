@@ -10,6 +10,7 @@ $<TARGET_FILE:TaskScheduler> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsTaskScheduler tests/testsTaskScheduler.cpp TaskScheduler.cpp)
+    target_link_libraries(testsTaskScheduler PRIVATE c2_base64)
     if (WIN32)
         target_compile_definitions(testsTaskScheduler PRIVATE _WIN32_WINNT=0x0601)
         target_link_libraries(testsTaskScheduler PRIVATE Taskschd)
@@ -22,6 +23,8 @@ endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_executable(testsTaskSchedulerFunctional tests/functional/testsTaskSchedulerFunctional.cpp TaskScheduler.cpp)
+    target_link_libraries(testsTaskSchedulerFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(testsTaskSchedulerFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
     target_include_directories(testsTaskSchedulerFunctional PRIVATE ../tests)
     if (WIN32)
         target_compile_definitions(testsTaskSchedulerFunctional PRIVATE _WIN32_WINNT=0x0601)

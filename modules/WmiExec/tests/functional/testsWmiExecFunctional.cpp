@@ -78,6 +78,5 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-n", target, commandLine});
     }
 
-    WmiExec module;
-    return runModuleScenario("testsWmiExecFunctional", module, command, execute);
+    return runModuleScenarioIsolated<WmiExec>("testsWmiExecFunctional", command, execute);
 }

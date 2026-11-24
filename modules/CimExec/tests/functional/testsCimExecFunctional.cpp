@@ -58,6 +58,5 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-u", user, "-p", password});
     }
 
-    CimExec module;
-    return runModuleScenario("testsCimExecFunctional", module, command, execute);
+    return runModuleScenarioIsolated<CimExec>("testsCimExecFunctional", command, execute);
 }

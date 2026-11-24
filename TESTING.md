@@ -77,7 +77,9 @@ The `Download` manifest calls the artifact name optional, while `Download::init(
 
 `testsWinRM` is also built by the standalone harness. It serializes a request before processing a malformed packed endpoint on a separate executor, then serializes the response and verifies an explicit failure code with empty output. All defined errors are rendered from code-only messages on a receiving instance. The Windows branch rejects the malformed request before opening a network connection; the Linux branch returns an unsupported code. The opt-in `testsWinRMFunctional` additionally serializes a real request and response, requires status `0`, and can assert an expected output substring with `--expect` or `C2_FUNC_WINRM_EXPECT`. Set `C2_FUNC_WINRM_EXECUTE=1` together with `C2_FUNC_WINRM_TARGET`, `C2_FUNC_WINRM_COMMAND`, and `C2_FUNC_WINRM_EXPECT` to run it through CTest in a controlled Windows lab. Supply `C2_FUNC_WINRM_AUTH=userpass`, `C2_FUNC_WINRM_USER`, and `C2_FUNC_WINRM_PASSWORD` for an explicit credential test; no credentials are embedded in source or CI.
 
-The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CimExec`, `CoffLoader`, `DcomExec`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MiniDump`, `Powershell`, `PsExec`, `PwSh`, `SpawnAs`, `TaskScheduler`, and `WmiExec`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
+`testsWmiExec`, `testsCimExec`, and `testsTaskScheduler` now exercise serialized malformed requests on separate instances. Windows rejects them before COM or remote connections; Linux returns a defined unsupported code. Failed responses contain no output, and all defined error codes render from code-only messages. The opt-in functional drivers for these three modules also round-trip requests and responses between separate instances. On Windows, WMI and CIM check the remote process creation status, so a missing executable is a failed response with empty output. Live remote execution remains environment dependent.
+
+The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CoffLoader`, `DcomExec`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MiniDump`, `Powershell`, `PsExec`, `PwSh`, and `SpawnAs`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
 
 From the C2Core root, use a C++17 toolchain, CMake 3.20 or newer, an installed `nlohmann_json` CMake package, and the `cpp-base64` sources from the parent project's `thirdParty/base64` directory.
 
@@ -87,7 +89,7 @@ cmake --build build/local-module-tests --config Release
 ctest --test-dir build/local-module-tests -C Release --output-on-failure
 ```
 
-Use `-Dnlohmann_json_DIR=<package-config-directory>` if CMake cannot locate the installed package. Choose the target architecture at configure time with the generator or toolchain, and use a separate build directory for each architecture.
+Use `-Dnlohmann_json_DIR=<package-config-directory>` if CMake cannot locate the installed package. The WMI fixture also needs `donut.h` from the parent project; set `-DC2_DONUT_INCLUDE_DIR=<donut-include-directory>` if it is not at the default parent path. Choose the target architecture at configure time with the generator or toolchain, and use a separate build directory for each architecture.
 
 ## CMake Flags
 

@@ -62,6 +62,5 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-u", user, "-p", password});
     }
 
-    TaskScheduler module;
-    return runModuleScenario("testsTaskSchedulerFunctional", module, command, execute);
+    return runModuleScenarioIsolated<TaskScheduler>("testsTaskSchedulerFunctional", command, execute);
 }

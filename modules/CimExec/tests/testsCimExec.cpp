@@ -1,5 +1,6 @@
 #include "../CimExec.hpp"
 #include "../../tests/TestHelpers.hpp"
+#include "../../tests/local/MessageTestHelpers.hpp"
 
 #include <iostream>
 #include <memory>
@@ -44,14 +45,38 @@ int main()
     }
 
     {
-        CimExec module;
-        C2Message ret;
-        ret.set_errorCode(4);
-        ret.set_returnvalue("session failed");
-        std::string error;
+        CimExec preparer;
+        CimExec executor;
+        CimExec receiver;
+        std::vector<std::string> cmd = {"cimExec", "-h", "localhost", "-c", "cmd.exe"};
+        C2Message prepared;
+        ok &= expect(preparer.init(cmd, prepared) == 0, "valid request can be prepared");
+        C2Message request = roundTripMessage(prepared);
+        request.set_cmd(std::string("bad\0", 4));
+        C2Message executed;
+        executor.process(request, executed);
+        const C2Message received = roundTripMessage(executed);
+#ifdef _WIN32
+        ok &= expect(received.errorCode() == 9, "malformed request reports configuration error");
+#else
+        ok &= expect(received.errorCode() == 10, "Linux reports Windows-only execution");
+#endif
+        ok &= expect(received.returnvalue().empty(), "failed response carries no output");
+        ok &= expect(received.instruction() == "cimExec", "response preserves instruction");
 
-        ok &= expect(module.errorCodeToMsg(ret, error) == 0, "errorCodeToMsg should return success");
-        ok &= expect(error == "session failed", "errorCodeToMsg should expose process error text");
+        for (int code : {1,2,3,4,5,6,7,8,9,10,11,99})
+        {
+            C2Message codeOnly;
+            codeOnly.set_errorCode(code);
+            std::string error;
+            receiver.errorCodeToMsg(roundTripMessage(codeOnly), error);
+            ok &= expect(!error.empty(), "received error code has a stable message");
+        }
+        C2Message success;
+        success.set_errorCode(0);
+        std::string stale = "previous error";
+        receiver.errorCodeToMsg(roundTripMessage(success), stale);
+        ok &= expect(stale.empty(), "success clears an earlier error message");
     }
 
     return ok ? 0 : 1;
