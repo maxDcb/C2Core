@@ -71,6 +71,29 @@ int main()
         ok &= expect(retrieved.instruction() == "CMD", "queued task should be retrievable");
     }
     {
+        const std::string beaconHash(32, 'B');
+        ListenerTestProxy childListener;
+        childListener.addSession(makeSession("lhash", beaconHash));
+        MultiBundleC2Message response;
+        auto* bundle = response.add_bundlec2messages();
+        bundle->set_beaconhash(beaconHash);
+        bundle->set_listenerhash("lhash");
+        bundle->set_lastProofOfLife("0");
+        auto* socks = bundle->add_c2messages();
+        socks->set_instruction(Socks5Cmd);
+        socks->set_cmd(InitCmd);
+        socks->set_data("ready");
+        C2Message duplicate = *socks;
+        bundle->add_c2messages()->CopyFrom(duplicate);
+        std::string output;
+        childListener.process(childListener.encode(response), output);
+        const C2Message relayed = childListener.getTaskResult(beaconHash, "lhash");
+        ok &= expect(relayed.instruction() == Socks5Cmd && relayed.data() == "ready",
+            "non-primary listener should relay child SOCKS responses");
+        ok &= expect(childListener.getTaskResult(beaconHash, "lhash").instruction() == Socks5Cmd,
+            "identical child SOCKS responses should not be deduplicated");
+    }
+    {
         ListenerTestProxy l;
         l.addSession(makeSession("route-a", "shared-beacon"));
         l.addSession(makeSession("route-b", "shared-beacon"));

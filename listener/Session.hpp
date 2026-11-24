@@ -248,17 +248,21 @@ public:
         if (!taskResult.SerializeToString(&serialized))
             return -1;
         const std::string fingerprint = taskResult.uuid() + "\n" + serialized;
-        if (m_resultFingerprints.find(fingerprint) != m_resultFingerprints.end())
+        const bool deduplicate = taskResult.instruction() != Socks5Cmd;
+        if (deduplicate && m_resultFingerprints.find(fingerprint) != m_resultFingerprints.end())
             return static_cast<int>(m_messageToRead.size());
         if (m_messageToRead.size() >= MaxPendingMessages)
             return -1;
         m_messageToRead.push_back(taskResult);
-        m_resultFingerprints.insert(fingerprint);
-        m_resultFingerprintOrder.push_back(fingerprint);
-        if (m_resultFingerprintOrder.size() > MaxPendingMessages)
+        if (deduplicate)
         {
-            m_resultFingerprints.erase(m_resultFingerprintOrder.front());
-            m_resultFingerprintOrder.pop_front();
+            m_resultFingerprints.insert(fingerprint);
+            m_resultFingerprintOrder.push_back(fingerprint);
+            if (m_resultFingerprintOrder.size() > MaxPendingMessages)
+            {
+                m_resultFingerprints.erase(m_resultFingerprintOrder.front());
+                m_resultFingerprintOrder.pop_front();
+            }
         }
         return static_cast<int>(m_messageToRead.size());
     }

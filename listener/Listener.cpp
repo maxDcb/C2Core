@@ -738,7 +738,7 @@ bool Listener::handleMessages(const std::string& input, std::string& output,
 
 		if (c2Message.instruction() != ListenerPollCmd &&
 		    c2Message.instruction() != HttpExchangeCmd &&
-		    c2Message.instruction() != Socks5Cmd)
+		    (c2Message.instruction() != Socks5Cmd || !m_isPrimary))
                 if (!addTaskResult(c2Message, beaconHash, listenerhash))
                     throw std::runtime_error("session result queue is full");
 
