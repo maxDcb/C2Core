@@ -106,15 +106,15 @@ if(WIN32)
 endif()
 add_test(NAME testsLocalSystemModuleContract COMMAND testsLocalSystemModuleContract)
 
-add_subdirectory("${module_dir}/Screenshot" ScreenShot)
+add_subdirectory("${module_dir}/ScreenShot" ScreenShot)
 target_link_libraries(ScreenShot c2_base64 nlohmann_json::nlohmann_json)
 target_link_libraries(testsScreenShot c2_base64 nlohmann_json::nlohmann_json)
 target_compile_definitions(testsScreenShot PRIVATE C2CORE_BUILD_TESTS)
 
 add_executable(testsLocalScreenShotContract
     testsLocalScreenShotContract.cpp
-    "${module_dir}/Screenshot/ScreenShot.cpp"
-    "${module_dir}/Screenshot/ScreenShooter.cpp"
+    "${module_dir}/ScreenShot/ScreenShot.cpp"
+    "${module_dir}/ScreenShot/ScreenShooter.cpp"
 )
 target_compile_definitions(testsLocalScreenShotContract PRIVATE
     BUILD_TEAMSERVER C2CORE_BUILD_TESTS C2CORE_SCREENSHOT_TEST_PAYLOAD
@@ -268,3 +268,18 @@ if(WIN32)
     target_link_libraries(testsLocalRegistryModuleContract PRIVATE Advapi32)
 endif()
 add_test(NAME testsLocalRegistryModuleContract COMMAND testsLocalRegistryModuleContract)
+
+add_subdirectory("${module_dir}/WinRM" WinRM)
+target_link_libraries(WinRM PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsWinRM PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsWinRM PRIVATE C2CORE_BUILD_TESTS)
+if(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    target_link_libraries(testsWinRMFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+endif()
+
+foreach(module IN ITEMS MakeToken Rev2self StealToken)
+    add_subdirectory("${module_dir}/${module}" "${module}")
+    target_link_libraries(${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_link_libraries(tests${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
+endforeach()

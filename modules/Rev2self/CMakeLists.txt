@@ -7,7 +7,7 @@ $<TARGET_FILE:Rev2self> "${C2_RUNTIME_MODULE_OUTPUT_DIR}/$<TARGET_FILE_NAME:Rev2
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsRev2self tests/testsRev2self.cpp Rev2self.cpp)
-    target_link_libraries(testsRev2self )
+    target_link_libraries(testsRev2self PRIVATE c2_base64)
     add_custom_command(TARGET testsRev2self POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
     $<TARGET_FILE:testsRev2self> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsRev2self>")
 

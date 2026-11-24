@@ -1,5 +1,6 @@
 #include "../MakeToken.hpp"
 #include "../../tests/TestHelpers.hpp"
+#include "../../tests/local/MessageTestHelpers.hpp"
 
 #include <iostream>
 #include <vector>
@@ -38,12 +39,31 @@ int main()
     }
 
     {
-        MakeToken module;
-        C2Message message;
-        C2Message ret;
-        message.set_cmd("broken");
-        module.process(message, ret);
-        ok &= expect(ret.errorCode() == 1, "invalid packed credential should set an error");
+        MakeToken executor;
+        MakeToken receiver;
+        C2Message prepared;
+        prepared.set_instruction("makeToken");
+        prepared.set_cmd("broken");
+        C2Message request = roundTripMessage(prepared);
+        C2Message executed;
+        executor.process(request, executed);
+        const C2Message received = roundTripMessage(executed);
+        ok &= expect(received.errorCode() == 1, "invalid packed credential sets an error");
+        ok &= expect(received.returnvalue().empty(), "failed token request has no output");
+        ok &= expect(received.instruction() == "makeToken", "response preserves instruction");
+        for (int code = 1; code <= 4; ++code)
+        {
+            C2Message codeOnly;
+            codeOnly.set_errorCode(code);
+            std::string error;
+            receiver.errorCodeToMsg(roundTripMessage(codeOnly), error);
+            ok &= expect(!error.empty(), "received token error code has a stable message");
+        }
+        C2Message success;
+        success.set_errorCode(0);
+        std::string stale = "previous error";
+        receiver.errorCodeToMsg(roundTripMessage(success), stale);
+        ok &= expect(stale.empty(), "success clears an earlier error message");
     }
 
     return ok ? 0 : 1;

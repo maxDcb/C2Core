@@ -1,4 +1,4 @@
-#include "../../Screenshot/ScreenShot.hpp"
+#include "../../ScreenShot/ScreenShot.hpp"
 #include "../TestHelpers.hpp"
 #include "MessageTestHelpers.hpp"
 

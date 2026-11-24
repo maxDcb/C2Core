@@ -73,7 +73,11 @@ The `Download` manifest calls the artifact name optional, while `Download::init(
 
 `testsLocalRdpModuleContract` and `testsLocalRegistryModuleContract` add the Windows-only `EnumerateRdpSessions` and `Registry` modules. Both compile and export their constructors on Linux, where processing returns a defined unsupported code. On Windows, the tests use local read-only queries. Their errors are translated from code-only responses. Tests that modify remote sessions or registry keys remain outside the local harness.
 
-The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CimExec`, `CoffLoader`, `DcomExec`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MakeToken`, `MiniDump`, `Powershell`, `PsExec`, `PwSh`, `Rev2self`, `SpawnAs`, `StealToken`, `TaskScheduler`, `WinRM`, and `WmiExec`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
+`testsMakeToken`, `testsRev2self`, and `testsStealToken` now exercise serialized requests and responses, explicit status codes, empty failed output, and code-only error translation. The token tests use malformed input, so CI never attempts a logon or target-process impersonation. The revert test runs only in its own test process.
+
+`testsWinRM` is also built by the standalone harness. It serializes a request before processing a malformed packed endpoint on a separate executor, then serializes the response and verifies an explicit failure code with empty output. All defined errors are rendered from code-only messages on a receiving instance. The Windows branch rejects the malformed request before opening a network connection; the Linux branch returns an unsupported code. The opt-in `testsWinRMFunctional` additionally serializes a real request and response, requires status `0`, and can assert an expected output substring with `--expect` or `C2_FUNC_WINRM_EXPECT`. Set `C2_FUNC_WINRM_EXECUTE=1` together with `C2_FUNC_WINRM_TARGET`, `C2_FUNC_WINRM_COMMAND`, and `C2_FUNC_WINRM_EXPECT` to run it through CTest in a controlled Windows lab. Supply `C2_FUNC_WINRM_AUTH=userpass`, `C2_FUNC_WINRM_USER`, and `C2_FUNC_WINRM_PASSWORD` for an explicit credential test; no credentials are embedded in source or CI.
+
+The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CimExec`, `CoffLoader`, `DcomExec`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MiniDump`, `Powershell`, `PsExec`, `PwSh`, `SpawnAs`, `TaskScheduler`, and `WmiExec`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
 
 From the C2Core root, use a C++17 toolchain, CMake 3.20 or newer, an installed `nlohmann_json` CMake package, and the `cpp-base64` sources from the parent project's `thirdParty/base64` directory.
 
@@ -148,7 +152,7 @@ Without `--execute`, a functional test validates only:
 - `init()`
 - `C2Message` packing
 
-With `--execute`, the helper treats the run as failed only when `result.errorCode() > 0`.
+With `--execute`, the generic helper treats the run as failed only when `result.errorCode() > 0`. `testsWinRMFunctional` uses the stricter explicit-status contract and can assert expected output.
 
 This is important because many modules keep the default `errorCode == -1` on success.
 

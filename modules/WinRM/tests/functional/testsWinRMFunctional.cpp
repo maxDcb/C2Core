@@ -1,5 +1,6 @@
 #include "../../WinRM.hpp"
 #include "../../../tests/FunctionalTestHelpers.hpp"
+#include "../../../tests/local/MessageTestHelpers.hpp"
 
 using namespace functional_tests;
 
@@ -11,6 +12,7 @@ int main(int argc, char** argv)
         {"--auth", "C2_FUNC_WINRM_AUTH", "Authentication mode: no-cred, kerberos, or userpass", false, false, "no-cred"},
         {"--user", "C2_FUNC_WINRM_USER", "Username for userpass mode, optionally DOMAIN\\user", false},
         {"--password", "C2_FUNC_WINRM_PASSWORD", "Password for userpass mode", false, true},
+        {"--expect", "C2_FUNC_WINRM_EXPECT", "Expected substring in remote command output", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -20,13 +22,15 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool automation = envValue("C2_FUNC_WINRM_EXECUTE") == "1";
+    const bool execute = hasFlag(argc, argv, "--execute") || automation;
 
     const std::string target = readInput(inputs[0], argc, argv, interactive);
     const std::string commandLine = readInput(inputs[1], argc, argv, interactive);
     const std::string auth = readInput(inputs[2], argc, argv, interactive);
     const std::string user = readInput(inputs[3], argc, argv, interactive);
     const std::string password = readInput(inputs[4], argc, argv, interactive);
+    const std::string expected = readInput(inputs[5], argc, argv, interactive);
 
     std::vector<Input> missing;
     if (target.empty())
@@ -49,6 +53,11 @@ int main(int argc, char** argv)
     {
         return skipMissing("testsWinRMFunctional", missing);
     }
+    if (automation && expected.empty())
+    {
+        std::cerr << "C2_FUNC_WINRM_EXPECT is required for automated execution.\n";
+        return 1;
+    }
 
     std::vector<std::string> command = {"winRm"};
     if (auth == "userpass")
@@ -64,6 +73,37 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-n", target, commandLine});
     }
 
-    WinRM module;
-    return runModuleScenario("testsWinRMFunctional", module, command, execute);
+    WinRM preparer;
+    C2Message prepared;
+    if (preparer.init(command, prepared) != 0)
+    {
+        std::cerr << "testsWinRMFunctional init failed: " << prepared.returnvalue() << '\n';
+        return 1;
+    }
+    C2Message request = test_helpers::roundTripMessage(prepared);
+    if (!execute)
+    {
+        std::cout << "testsWinRMFunctional serialized request OK; execution skipped.\n";
+        return 0;
+    }
+
+    WinRM executor;
+    C2Message executed;
+    executor.process(request, executed);
+    const C2Message response = test_helpers::roundTripMessage(executed);
+    WinRM receiver;
+    std::string error;
+    receiver.errorCodeToMsg(response, error);
+    if (response.errorCode() != 0 || !error.empty())
+    {
+        std::cerr << "testsWinRMFunctional process failed (code " << response.errorCode() << "): " << error << '\n';
+        return 1;
+    }
+    if (!expected.empty() && response.returnvalue().find(expected) == std::string::npos)
+    {
+        std::cerr << "testsWinRMFunctional output did not contain the expected text.\n";
+        return 1;
+    }
+    std::cout << "testsWinRMFunctional execution and serialized response OK.\n";
+    return 0;
 }

@@ -61,6 +61,11 @@ std::string Rev2self::getInfo()
 int Rev2self::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    if (splitedCmd.size() != 1)
+    {
+        c2Message.set_returnvalue(getInfo());
+        return -1;
+    }
     c2Message.set_instruction(splitedCmd[0]);
     c2Message.set_cmd("");
 #endif
@@ -71,30 +76,33 @@ int Rev2self::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int Rev2self::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    std::string out = rev2self();
-
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd("");
-    c2RetMessage.set_returnvalue(out);
-
+    c2RetMessage.set_returnvalue("");
+#ifdef _WIN32
+    if (!RevertToSelf())
+    {
+        c2RetMessage.set_errorCode(1);
+        return 0;
+    }
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue("Reverted to self.\n");
+#else
+    c2RetMessage.set_errorCode(2);
+#endif
     return 0;
 }
 
-
-std::string Rev2self::rev2self()
+int Rev2self::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-    std::string result;
-
-#ifdef __linux__ 
-
-    result += "Rev2self don't work in linux.\n";
-
-#elif _WIN32
-    if(RevertToSelf())
-        result += "Reverted to self.\n";
-    else
-        result += "Fail to revert to self.\n";
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    switch (c2RetMessage.errorCode())
+    {
+    case 0: errorMsg.clear(); break;
+    case 1: errorMsg = "Failed to revert to the original token."; break;
+    case 2: errorMsg = "Rev2self is only supported on Windows."; break;
+    default: errorMsg = "Rev2self failed with an unknown error."; break;
+    }
 #endif
-
-    return result;
+    return 0;
 }

@@ -147,49 +147,50 @@ int WinRM::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 
 int WinRM::process(C2Message& c2Message, C2Message& c2RetMessage)
 {
-    std::string cmd = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction()); 
-    c2RetMessage.set_cmd(cmd); 
-
-    int error=0;
-    std::string result;
-
-#ifdef _WIN32
-    error = runCommand(c2Message, result);
-#else
-    result = "Only supported on Windows.\n";
-#endif
-
-    if(error)
-        c2RetMessage.set_errorCode(error);
-
     c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_returnvalue("");
+
+#ifdef _WIN32
+    std::string result;
+    const int error = runCommand(c2Message, result);
+    c2RetMessage.set_errorCode(error);
+    if (error == 0)
+        c2RetMessage.set_returnvalue(result);
+#else
+    c2RetMessage.set_errorCode(7);
+#endif
     return 0;
 }
 
 
-#define ERROR_CONFIG 1 
+#define ERROR_CONFIG 1
 #define ERROR_WSMAN_INIT 2
 #define ERROR_WSMAN_CREATE_SESSION 3
 #define ERROR_WSMAN_CREATE_EVENT 4
 #define ERROR_WSMAN_CREATE_SHELL 5
 #define ERROR_WSMAN_RUN_SHELL_COMMAND 6
+#define ERROR_WINDOWS_ONLY 7
+#define ERROR_WSMAN_RECEIVE_OUTPUT 8
+#define ERROR_REMOTE_EXIT 9
 
 
 int WinRM::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode>0)
+    switch (c2RetMessage.errorCode())
     {
-        if(errorCode==ERROR_CONFIG)
-            errorMsg = "Failed with input data.";
-        else if(errorCode==ERROR_WSMAN_CREATE_EVENT)
-            errorMsg = "Failed to create synchronization event for WinRM output.";
-        else
-            errorMsg = c2RetMessage.returnvalue();
+    case 0: errorMsg.clear(); break;
+    case ERROR_CONFIG: errorMsg = "Failed with input data."; break;
+    case ERROR_WSMAN_INIT: errorMsg = "Failed to initialize WinRM."; break;
+    case ERROR_WSMAN_CREATE_SESSION: errorMsg = "Failed to create WinRM session."; break;
+    case ERROR_WSMAN_CREATE_EVENT: errorMsg = "Failed to create synchronization event for WinRM output."; break;
+    case ERROR_WSMAN_CREATE_SHELL: errorMsg = "Failed to create WinRM shell."; break;
+    case ERROR_WSMAN_RUN_SHELL_COMMAND: errorMsg = "Failed to run WinRM command."; break;
+    case ERROR_WINDOWS_ONLY: errorMsg = "WinRM is only supported on Windows."; break;
+    case ERROR_WSMAN_RECEIVE_OUTPUT: errorMsg = "Failed to receive WinRM command output."; break;
+    case ERROR_REMOTE_EXIT: errorMsg = "Remote WinRM command exited with a nonzero status."; break;
+    default: errorMsg = "WinRM failed with an unknown error."; break;
     }
 #endif
     return 0;
@@ -493,7 +494,7 @@ int WinRM::runCommand(const C2Message& c2Message, std::string& result) const
     std::wstring passwordWide;
     if (usePassword)
     {
-        usernameWide = widen(username);
+        usernameWide = widen(user);
         passwordWide = widen(password);
         credentials.authenticationMechanism = WSMAN_FLAG_AUTH_NEGOTIATE;
         credentials.userAccount.username = usernameWide.c_str();
@@ -678,7 +679,11 @@ int WinRM::runCommand(const C2Message& c2Message, std::string& result) const
     WSManCloseSession(session, 0);
     WSManDeinitialize(apiHandle, 0);
 
-    result =  response;
+    result = response;
+    if (receiveContext.errorCode != ERROR_SUCCESS)
+        return ERROR_WSMAN_RECEIVE_OUTPUT;
+    if (receiveContext.exitCode != 0)
+        return ERROR_REMOTE_EXIT;
     return 0;
 }
 #endif

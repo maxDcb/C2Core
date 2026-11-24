@@ -20,8 +20,6 @@ public:
         return OS_WINDOWS;
     }
 
-private:
-    std::string makeToken(const std::string& username, const std::string& domain, const std::string& password);
 };
 
 

