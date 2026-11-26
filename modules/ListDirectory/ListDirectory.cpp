@@ -89,17 +89,21 @@ int ListDirectory::init(std::vector<std::string> &splitedCmd, C2Message &c2Messa
 int ListDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     string path = c2Message.cmd();
-    std::string outCmd = listDirectory(path);
+    std::string outCmd;
+    const bool listed = listDirectory(path, outCmd);
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(path);
-    if (outCmd.find("Error:") == 0)
+    if (!listed)
     {
         c2RetMessage.set_errorCode(ERROR_LIST_DIRECTORY);
+        c2RetMessage.set_returnvalue({});
     }
     else
+    {
         c2RetMessage.set_errorCode(0);
-    c2RetMessage.set_returnvalue(outCmd);
+        c2RetMessage.set_returnvalue(outCmd);
+    }
 
     return 0;
 }
@@ -146,9 +150,9 @@ std::string perms(filesystem::perms p)
     return permission;
 }
 
-std::string ListDirectory::listDirectory(const std::string& path)
+bool ListDirectory::listDirectory(const std::string& path, std::string& result)
 {
-    std::string result;
+    result.clear();
 
     try
     {
@@ -159,19 +163,13 @@ std::string ListDirectory::listDirectory(const std::string& path)
         std::error_code e;
         if (!std::filesystem::is_directory(actualPath, e))
         {
-            result += "Error: ";
-            result += e ? e.message() : "path is not a directory";
-            result += "\n";
-            return result;
+            return false;
         }
 
         const filesystem::directory_iterator entries(actualPath, e);
         if (e)
         {
-            result += "Error: ";
-            result += e.message();
-            result += "\n";
-            return result;
+            return false;
         }
 
         result += actualPath;
@@ -226,12 +224,11 @@ std::string ListDirectory::listDirectory(const std::string& path)
             result += "\n";
         }
     }
-    catch (const std::exception &exc)
+    catch (const std::exception &)
     {
-        result += "Error: ";
-        result += exc.what();
-        result += "\n";
+        result.clear();
+        return false;
     }
 
-    return result;
+    return true;
 }

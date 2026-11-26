@@ -1,12 +1,16 @@
 cmake_minimum_required(VERSION 3.20)
-project(C2CoreLocalModuleTests LANGUAGES CXX)
+project(C2CoreLocalModuleTests LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+if(WIN32)
+    add_compile_definitions(NOMINMAX)
+endif()
 
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Libssh2 CONFIG REQUIRED)
 set(C2_BASE64_SOURCE_DIR "" CACHE PATH "Directory containing cpp-base64 sources")
 if(NOT EXISTS "${C2_BASE64_SOURCE_DIR}/base64.cpp" OR NOT EXISTS "${C2_BASE64_SOURCE_DIR}/base64.h")
     message(FATAL_ERROR "Set C2_BASE64_SOURCE_DIR to the directory containing base64.cpp and base64.h.")
@@ -24,6 +28,39 @@ file(MAKE_DIRECTORY "${C2_RUNTIME_MODULE_OUTPUT_DIR}" "${C2_TEST_BIN_OUTPUT_DIR}
 
 set(module_dir "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 include_directories("${module_dir}/ModuleCmd")
+
+# The module CMake files use the same target name as the parent projects.
+if(NOT TARGET Libssh2::libssh2 AND TARGET libssh2::libssh2)
+    add_library(Libssh2::libssh2 INTERFACE IMPORTED)
+    target_link_libraries(Libssh2::libssh2 INTERFACE libssh2::libssh2)
+endif()
+
+function(c2core_disable_safeseh_for_x86 target)
+    if(MSVC AND WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+        target_link_options(${target} PRIVATE /SAFESEH:NO)
+    endif()
+endfunction()
+
+if(WIN32)
+    set(C2_THIRD_PARTY_SOURCE_DIR "" CACHE PATH "Parent thirdParty source directory")
+    set(C2_DONUT_LIBRARY "" CACHE FILEPATH "Prebuilt Donut static library")
+    if(NOT EXISTS "${C2_THIRD_PARTY_SOURCE_DIR}/coffLoader/CMakeLists.txt")
+        message(FATAL_ERROR "Set C2_THIRD_PARTY_SOURCE_DIR to the parent thirdParty directory.")
+    endif()
+    if(NOT EXISTS "${C2_DONUT_LIBRARY}")
+        message(FATAL_ERROR "Set C2_DONUT_LIBRARY to a Donut library built for this architecture.")
+    endif()
+    include_directories(
+        "${C2_THIRD_PARTY_SOURCE_DIR}"
+        "${C2_THIRD_PARTY_SOURCE_DIR}/coffLoader/coffLoader"
+        "${C2_THIRD_PARTY_SOURCE_DIR}/MemoryModule")
+    add_subdirectory("${C2_THIRD_PARTY_SOURCE_DIR}/coffLoader" coffLoader)
+    add_library(Donut STATIC IMPORTED)
+    set_target_properties(Donut PROPERTIES IMPORTED_LOCATION "${C2_DONUT_LIBRARY}")
+elseif(NOT TARGET Donut)
+    # These Windows-only modules contain no Donut calls in their Linux stubs.
+    add_library(Donut INTERFACE)
+endif()
 
 foreach(module IN ITEMS Cat Tree)
     add_subdirectory("${module_dir}/${module}" "${module}")
@@ -330,3 +367,39 @@ if(WIN32)
     target_link_libraries(testsLocalWindowsExecContract PRIVATE ole32 oleaut32 advapi32 userenv)
 endif()
 add_test(NAME testsLocalWindowsExecContract COMMAND testsLocalWindowsExecContract)
+
+add_subdirectory("${module_dir}/SshExec" SshExec)
+target_link_libraries(SshExec PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_link_libraries(testsSshExec PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+target_compile_definitions(testsSshExec PRIVATE C2CORE_BUILD_TESTS)
+
+set(C2CORE_WINDOWS_ONLY_MODULES
+    "AssemblyExec,Chisel,CoffLoader,DotnetExec,Evasion,Inject,KerberosUseTicket,KeyLogger,MiniDump,Powershell,PwSh"
+    CACHE STRING "Comma-separated Windows-only modules to include in the local harness")
+string(REPLACE "," ";" windows_only_modules "${C2CORE_WINDOWS_ONLY_MODULES}")
+foreach(module IN LISTS windows_only_modules)
+    add_subdirectory("${module_dir}/${module}" "${module}")
+    if(module STREQUAL "CoffLoader")
+        set(module_target Coff)
+    else()
+        set(module_target ${module})
+    endif()
+    if(module STREQUAL "CoffLoader" OR module STREQUAL "MiniDump")
+        target_link_libraries(${module_target} c2_base64 nlohmann_json::nlohmann_json)
+        target_link_libraries(tests${module} c2_base64 nlohmann_json::nlohmann_json)
+    else()
+        target_link_libraries(${module_target} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+        target_link_libraries(tests${module} PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    endif()
+    target_compile_definitions(tests${module} PRIVATE C2CORE_BUILD_TESTS)
+    string(TOUPPER "${module}" module_upper)
+    list(APPEND windows_only_targets ${module_target})
+    list(APPEND windows_only_paths "${module_upper}_MODULE_PATH=\"$<TARGET_FILE:${module_target}>\"")
+endforeach()
+
+add_executable(testsLocalWindowsOnlyModuleContract testsLocalWindowsOnlyModuleContract.cpp)
+target_compile_definitions(testsLocalWindowsOnlyModuleContract PRIVATE ${windows_only_paths})
+target_link_libraries(testsLocalWindowsOnlyModuleContract PRIVATE
+    c2_base64 nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+add_dependencies(testsLocalWindowsOnlyModuleContract ${windows_only_targets})
+add_test(NAME testsLocalWindowsOnlyModuleContract COMMAND testsLocalWindowsOnlyModuleContract)

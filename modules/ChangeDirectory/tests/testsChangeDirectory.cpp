@@ -52,7 +52,7 @@ bool testChangeDirectory()
         changeDirectory->process(c2Message, c2RetMessage);
 
         std::cout << "changed to: " << c2RetMessage.returnvalue() << std::endl;
-        if (c2RetMessage.returnvalue() != temp.string()) {
+        if (c2RetMessage.errorCode() != 0 || c2RetMessage.returnvalue() != temp.string()) {
             std::cout << "ret mismatch" << std::endl;
             return false;
         }
@@ -75,7 +75,7 @@ bool testChangeDirectory()
         changeDirectory->process(c2Message, c2RetMessage);
 
         std::cout << "invalid result: " << c2RetMessage.returnvalue() << std::endl;
-        if (c2RetMessage.returnvalue() != temp.string()) {
+        if (c2RetMessage.errorCode() == 0 || !c2RetMessage.returnvalue().empty()) {
             std::cout << "invalid ret mismatch" << std::endl;
             return false;
         }

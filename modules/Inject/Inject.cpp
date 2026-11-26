@@ -369,6 +369,11 @@ std::string static inline spawnInject(const std::string& payload, const std::str
 
 int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.data().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     const std::string shellcode = c2Message.data();
     int pid = c2Message.pid();
 
@@ -409,6 +414,9 @@ int Inject::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Inject::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
+    if (c2RetMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM ||
+        c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
+        return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (c2RetMessage.errorCode() > 0)
     {

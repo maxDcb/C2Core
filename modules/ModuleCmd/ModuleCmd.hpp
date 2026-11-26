@@ -34,6 +34,31 @@ enum OSCompatibility {
     OS_ALL     = OS_LINUX | OS_MAC | OS_WINDOWS
 };
 
+// Shlwapi.h defines OS_WINDOWS as 0; preserve the module compatibility bit
+// before that Windows header is included by some modules.
+inline constexpr int C2CORE_OS_WINDOWS = OS_WINDOWS;
+
+inline constexpr int C2CORE_ERROR_UNSUPPORTED_PLATFORM = 100;
+inline constexpr int C2CORE_ERROR_INVALID_REQUEST = 101;
+
+inline int c2coreUnsupportedPlatform(const C2Message& request, C2Message& response)
+{
+    response.set_instruction(request.instruction());
+    response.set_cmd(request.cmd());
+    response.set_errorCode(C2CORE_ERROR_UNSUPPORTED_PLATFORM);
+    response.set_returnvalue({});
+    return 0;
+}
+
+inline int c2coreInvalidRequest(const C2Message& request, C2Message& response)
+{
+    response.set_instruction(request.instruction());
+    response.set_cmd(request.cmd());
+    response.set_errorCode(C2CORE_ERROR_INVALID_REQUEST);
+    response.set_returnvalue({});
+    return 0;
+}
+
 
 //
 // ModuleCmd
@@ -130,7 +155,16 @@ public:
     // Callers must not use the integer return as the transported status.
     virtual int process(C2Message& c2Message, C2Message& c2RetMessage) = 0;
     virtual int followUp(const C2Message &c2RetMessage) {return 0;};
-    virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg) {return 0;};
+    virtual int errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
+    {
+        if (c2RetMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM)
+            errorMsg = "Module requires Windows.";
+        else if (c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
+            errorMsg = "Invalid module request.";
+        else if (c2RetMessage.errorCode() == 0)
+            errorMsg.clear();
+        return 0;
+    };
     virtual int recurringExec (C2Message& c2RetMessage) {return 0;};
     virtual int osCompatibility () {return OS_NONE;};
 

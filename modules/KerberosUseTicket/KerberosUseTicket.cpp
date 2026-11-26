@@ -111,6 +111,11 @@ int KerberosUseTicket::init(std::vector<std::string> &splitedCmd, C2Message &c2M
 
 int KerberosUseTicket::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.data().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     const std::string cmd = c2Message.cmd();
     const std::string buffer = c2Message.data();
 

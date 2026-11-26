@@ -65,7 +65,8 @@ bool testCat()
             "Cat prepares the instruction and file path");
         executor.process(request, ret);
         const C2Message response = roundTripMessage(ret);
-        ok &= expect(response.errorCode() == 0, "Cat reports success in the response");
+        ok &= expect(response.instruction() == request.instruction() && response.errorCode() == 0,
+            "Cat preserves the instruction and reports success in the response");
         ok &= expect(response.returnvalue() == contents, "Cat returns the exact file bytes");
         Cat receiver;
         std::string error;
@@ -100,7 +101,8 @@ bool testCat()
         executor.process(request, ret);
 
         const C2Message response = roundTripMessage(ret);
-        ok &= expect(response.errorCode() == 1, "Cat reports error code 1 for an unreadable file");
+        ok &= expect(response.instruction() == request.instruction() && response.errorCode() == 1,
+            "Cat preserves the instruction and reports error code 1 for an unreadable file");
         ok &= expect(response.returnvalue().empty(), "Cat keeps file contents empty on error");
         Cat receiver;
         std::string error;

@@ -34,7 +34,8 @@ endif()
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_executable(testsPsExecFunctional tests/functional/testsPsExecFunctional.cpp PsExec.cpp)
     target_include_directories(testsPsExecFunctional PRIVATE ../tests)
-    target_link_libraries(testsPsExecFunctional )
+    target_compile_definitions(testsPsExecFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
+    target_link_libraries(testsPsExecFunctional c2_base64 nlohmann_json::nlohmann_json)
 
     add_custom_command(TARGET testsPsExecFunctional POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:testsPsExecFunctional> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsPsExecFunctional>")

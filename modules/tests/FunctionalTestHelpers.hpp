@@ -3,8 +3,13 @@
 #include "local/MessageTestHelpers.hpp"
 
 #include <cstdlib>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace functional_tests
@@ -49,6 +54,50 @@ inline std::string envValue(const char* name)
 {
     const char* value = std::getenv(name);
     return value == nullptr ? std::string() : std::string(value);
+}
+
+inline bool shouldExecute(int argc, char** argv, const char* env)
+{
+    return hasFlag(argc, argv, "--execute") || envValue(env) == "1";
+}
+
+struct FileSnapshot
+{
+    bool exists = false;
+    std::filesystem::file_time_type modified{};
+};
+
+inline FileSnapshot snapshotFile(const std::string& path)
+{
+    std::error_code error;
+    FileSnapshot snapshot;
+    snapshot.exists = std::filesystem::exists(path, error);
+    if (snapshot.exists && !error)
+        snapshot.modified = std::filesystem::last_write_time(path, error);
+    return snapshot;
+}
+
+inline bool waitForFileContent(const std::string& path, const std::string& expected,
+                               const FileSnapshot& before, std::chrono::seconds timeout = std::chrono::seconds(15))
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    do
+    {
+        std::error_code error;
+        if (std::filesystem::exists(path, error) && !error)
+        {
+            const auto modified = std::filesystem::last_write_time(path, error);
+            if (!error && (!before.exists || modified != before.modified))
+            {
+                std::ifstream file(path, std::ios::binary);
+                const std::string content(std::istreambuf_iterator<char>(file), {});
+                if (file.is_open() && content.find(expected) != std::string::npos)
+                    return true;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } while (std::chrono::steady_clock::now() < deadline);
+    return false;
 }
 
 inline std::string readInput(const Input& input, int argc, char** argv, bool interactive)
@@ -145,7 +194,8 @@ int runModuleScenario(const char* testName, Module& module, std::vector<std::str
 }
 
 template <typename Module>
-int runModuleScenarioIsolated(const char* testName, std::vector<std::string> command, bool execute)
+int runModuleScenarioIsolated(const char* testName, std::vector<std::string> command, bool execute,
+                              const std::string& expectedOutput = {})
 {
     Module preparer;
     C2Message prepared;
@@ -156,6 +206,11 @@ int runModuleScenarioIsolated(const char* testName, std::vector<std::string> com
     }
 
     C2Message request = test_helpers::roundTripMessage(prepared);
+    if (command.empty() || request.instruction() != command.front())
+    {
+        std::cerr << testName << " did not prepare the expected instruction.\n";
+        return 1;
+    }
     if (!execute)
     {
         std::cout << testName << " serialized request OK; execution skipped.\n";
@@ -172,6 +227,11 @@ int runModuleScenarioIsolated(const char* testName, std::vector<std::string> com
     if (response.errorCode() != 0 || !error.empty())
     {
         std::cerr << testName << " process failed (code " << response.errorCode() << "): " << error << '\n';
+        return 1;
+    }
+    if (!expectedOutput.empty() && response.returnvalue().find(expectedOutput) == std::string::npos)
+    {
+        std::cerr << testName << " output did not contain the expected text.\n";
         return 1;
     }
     std::cout << response.returnvalue() << '\n';

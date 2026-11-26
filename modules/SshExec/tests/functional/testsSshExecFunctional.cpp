@@ -11,6 +11,7 @@ int main(int argc, char** argv)
         {"--user", "C2_FUNC_SSH_USER", "SSH username", true},
         {"--password", "C2_FUNC_SSH_PASSWORD", "SSH password", true, true},
         {"--command", "C2_FUNC_SSH_COMMAND", "Remote command to execute", true},
+        {"--expect", "C2_FUNC_SSH_EXPECT", "Expected substring in the remote output", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -20,13 +21,14 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_SSH_EXECUTE");
 
     const std::string host = readInput(inputs[0], argc, argv, interactive);
     const std::string port = readInput(inputs[1], argc, argv, interactive);
     const std::string user = readInput(inputs[2], argc, argv, interactive);
     const std::string password = readInput(inputs[3], argc, argv, interactive);
     const std::string commandLine = readInput(inputs[4], argc, argv, interactive);
+    const std::string expected = readInput(inputs[5], argc, argv, interactive);
 
     std::vector<Input> missing;
     if (host.empty())
@@ -45,6 +47,8 @@ int main(int argc, char** argv)
     {
         missing.push_back(inputs[4]);
     }
+    if (execute && expected.empty())
+        missing.push_back(inputs[5]);
     if (!missing.empty())
     {
         return skipMissing("testsSshExecFunctional", missing);
@@ -59,6 +63,5 @@ int main(int argc, char** argv)
         "--", commandLine
     };
 
-    SshExec module;
-    return runModuleScenario("testsSshExecFunctional", module, command, execute);
+    return runModuleScenarioIsolated<SshExec>("testsSshExecFunctional", command, execute, expected);
 }

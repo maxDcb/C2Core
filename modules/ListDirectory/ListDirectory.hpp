@@ -21,7 +21,7 @@ public:
     }
 
 private:
-    std::string listDirectory(const std::string& path);
+    bool listDirectory(const std::string& path, std::string& result);
 
 };
 

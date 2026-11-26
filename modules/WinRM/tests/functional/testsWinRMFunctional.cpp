@@ -22,8 +22,7 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool automation = envValue("C2_FUNC_WINRM_EXECUTE") == "1";
-    const bool execute = hasFlag(argc, argv, "--execute") || automation;
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_WINRM_EXECUTE");
 
     const std::string target = readInput(inputs[0], argc, argv, interactive);
     const std::string commandLine = readInput(inputs[1], argc, argv, interactive);
@@ -53,9 +52,9 @@ int main(int argc, char** argv)
     {
         return skipMissing("testsWinRMFunctional", missing);
     }
-    if (automation && expected.empty())
+    if (execute && expected.empty())
     {
-        std::cerr << "C2_FUNC_WINRM_EXPECT is required for automated execution.\n";
+        std::cerr << "C2_FUNC_WINRM_EXPECT or --expect is required for executed validation.\n";
         return 1;
     }
 

@@ -40,7 +40,8 @@ int main()
     C2Message mkResult;
     mkExecutor.process(mkRequest, mkResult);
     C2Message mkResponse = roundTripMessage(mkResult);
-    ok &= expect(mkResponse.errorCode() == 0 && fs::is_directory(created)
+    ok &= expect(mkResponse.instruction() == mkRequest.instruction()
+        && mkResponse.errorCode() == 0 && fs::is_directory(created)
         && mkResponse.returnvalue() == "Directory created.", "mkDir reports creation in its response");
     mkExecutor.process(mkRequest, mkResult);
     mkResponse = roundTripMessage(mkResult);
@@ -56,7 +57,9 @@ int main()
     mkResponse = roundTripMessage(mkResult);
     std::string error;
     mkReceiver.errorCodeToMsg(mkResponse, error);
-    ok &= expect(mkResponse.errorCode() == 1 && error == "Failed: Could not create directory",
+    ok &= expect(mkResponse.instruction() == mkRequest.instruction()
+        && mkResponse.errorCode() == 1 && mkResponse.returnvalue().empty()
+        && error == "Failed: Could not create directory",
         "mkDir translates the received failure code");
 
     ListDirectory lsPreparer;
@@ -69,7 +72,7 @@ int main()
     C2Message lsResult;
     lsExecutor.process(lsRequest, lsResult);
     C2Message lsResponse = roundTripMessage(lsResult);
-    ok &= expect(lsResponse.errorCode() == 0
+    ok &= expect(lsResponse.instruction() == lsRequest.instruction() && lsResponse.errorCode() == 0
         && lsResponse.returnvalue().find(file.string()) != std::string::npos,
         "ls lists a file and reports success");
     lsArgs = {"ls", (root / "missing").string()};
@@ -79,7 +82,9 @@ int main()
     lsResponse = roundTripMessage(lsResult);
     error.clear();
     lsReceiver.errorCodeToMsg(lsResponse, error);
-    ok &= expect(lsResponse.errorCode() == 1 && error.find("Failed: Could not list directory") == 0,
+    ok &= expect(lsResponse.instruction() == lsRequest.instruction()
+        && lsResponse.errorCode() == 1 && lsResponse.returnvalue().empty()
+        && error == "Failed: Could not list directory",
         "ls translates the received failure code");
     C2Message codeOnly;
     codeOnly.set_errorCode(1);
@@ -91,7 +96,8 @@ int main()
     lsRequest = roundTripMessage(lsPrepared);
     lsExecutor.process(lsRequest, lsResult);
     lsResponse = roundTripMessage(lsResult);
-    ok &= expect(lsResponse.errorCode() == 1, "ls rejects a file supplied as a directory");
+    ok &= expect(lsResponse.errorCode() == 1 && lsResponse.returnvalue().empty(),
+        "ls rejects a file supplied as a directory with empty output");
 
     ChangeDirectory cdPreparer;
     ChangeDirectory cdExecutor;
@@ -107,7 +113,8 @@ int main()
     C2Message cdResult;
     cdExecutor.process(cdRequest, cdResult);
     C2Message cdResponse = roundTripMessage(cdResult);
-    ok &= expect(cdResponse.errorCode() == 0 && fs::current_path() == created,
+    ok &= expect(cdResponse.instruction() == cdRequest.instruction()
+        && cdResponse.errorCode() == 0 && fs::current_path() == created,
         "cd changes the executor's working directory");
 
     PrintWorkingDirectory pwdPreparer;
@@ -123,7 +130,8 @@ int main()
     C2Message pwdResult;
     pwdExecutor.process(pwdRequest, pwdResult);
     const C2Message pwdResponse = roundTripMessage(pwdResult);
-    ok &= expect(pwdResponse.errorCode() == 0 && pwdResponse.returnvalue() == created.string(),
+    ok &= expect(pwdResponse.instruction() == pwdRequest.instruction()
+        && pwdResponse.errorCode() == 0 && pwdResponse.returnvalue() == created.string(),
         "pwd observes the executor's current directory");
     PrintWorkingDirectory pwdReceiver;
     codeOnly.set_errorCode(1);
@@ -139,7 +147,9 @@ int main()
     cdResponse = roundTripMessage(cdResult);
     error.clear();
     cdReceiver.errorCodeToMsg(cdResponse, error);
-    ok &= expect(cdResponse.errorCode() == 1 && fs::current_path() == created
+    ok &= expect(cdResponse.instruction() == cdRequest.instruction()
+        && cdResponse.errorCode() == 1 && cdResponse.returnvalue().empty()
+        && fs::current_path() == created
         && error == "Failed: Could not change directory", "cd reports failure and preserves the working directory");
 
     fs::current_path(original);

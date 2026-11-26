@@ -197,7 +197,7 @@ std::string Netstat::getInfo()
 
 int Netstat::init(std::vector<std::string>& splitedCmd, C2Message& c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (splitedCmd.size() != 1 || splitedCmd[0] != std::string(moduleName))
     {
         c2Message.set_returnvalue("Usage: netstat");
@@ -221,7 +221,7 @@ int Netstat::process(C2Message& c2Message, C2Message& c2RetMessage)
 
 int Netstat::errorCodeToMsg(const C2Message& response, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (response.errorCode() == 1)
         errorMsg = "Failed to enumerate network connections.";
 #else

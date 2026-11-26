@@ -176,6 +176,11 @@ int Evasion::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 
 int Evasion::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.cmd().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     std::string result;
     const std::string cmd = c2Message.cmd();
     int errorCode = 0;
@@ -278,6 +283,9 @@ int Evasion::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Evasion::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
+    if (c2RetMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM ||
+        c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
+        return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (c2RetMessage.errorCode() > 0)
     {

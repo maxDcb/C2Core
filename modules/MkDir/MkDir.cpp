@@ -82,7 +82,7 @@ int MkDir::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 int MkDir::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
     std::string path = c2Message.cmd();
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(path);
     std::error_code ec;
     bool created = fs::create_directories(path, ec);

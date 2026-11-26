@@ -19,11 +19,11 @@ Tests for a processing failure should verify a serialized response with a nonzer
 
 ## Standalone local module harness
 
-The standalone harness builds the `Cat` and `Tree` shared libraries and runs their local contract tests under CTest on Linux and Windows. The tests use temporary files and directories and serialize and deserialize both the request and the response. Separate module instances prepare the request, execute it, and interpret the response.
+The standalone harness builds all 46 module shared libraries and their standard tests under CTest. The contract fixtures serialize requests and responses between separate module instances. Coverage depth varies by module; loading a library and rejecting a malformed request does not validate its environment-dependent operation.
 
 For these tests, `init()` returns `0` for a prepared request and `-1` for invalid arguments. `Cat` requires `inputfile`. `Tree` reads the execution directory when `cmd` is empty. Files and directories can be created after `init()` has already prepared the request.
 
-The tests assert `C2Message::errorCode()` and `returnvalue()` after `process()`. Both modules write `0` on success and `1` when the requested file or root directory cannot be read. `errorCodeToMsg()` supplies a stable message for code `1`. A successful response produces no error text. `Tree` currently includes a filesystem diagnostic in failed responses; this is legacy behavior to migrate before using it as an example of the error contract.
+The tests assert `C2Message::errorCode()` and `returnvalue()` after `process()`. Both modules write `0` on success and `1` when the requested file or root directory cannot be read. `errorCodeToMsg()` supplies a stable message for code `1`. A successful response produces no error text, and failed responses leave `returnvalue()` empty.
 
 Cat and Tree use the default `followUp()` and `recurringExec()` hooks. The tests pass a deserialized response to `followUp()` and verify that `recurringExec()` reports no result.
 
@@ -81,17 +81,22 @@ The `Download` manifest calls the artifact name optional, while `Download::init(
 
 The DCOM, PsExec, and SpawnAs tests now validate malformed requests without remote side effects. The local contract test serializes responses between separate instances, checks empty failure output, and renders every defined error from its code. The opt-in functional drivers also use separate instances.
 
-The remaining modules are not yet in this standalone contract harness. `SshExec` needs the parent-provided `Libssh2::libssh2` target or an equivalent local package. The Windows-only modules still awaiting contract fixtures are `AssemblyExec`, `Chisel`, `CoffLoader`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MiniDump`, `Powershell`, and `PwSh`. Their platform-specific side effects and dependency requirements need controlled fixtures or isolated parent builds before they can be included in the same campaign.
+`SshExec` is included using the `Libssh2` CMake package. Its standard test round-trips a malformed request and response and translates errors on a separate receiver.
 
-From the C2Core root, use a C++17 toolchain, CMake 3.20 or newer, an installed `nlohmann_json` CMake package, and the `cpp-base64` sources from the parent project's `thirdParty/base64` directory.
+`testsLocalWindowsOnlyModuleContract` covers `AssemblyExec`, `Chisel`, `CoffLoader`, `DotnetExec`, `Evasion`, `Inject`, `KerberosUseTicket`, `KeyLogger`, `MiniDump`, `Powershell`, and `PwSh`. It loads each shared library and checks the exported constructor and platform declaration. On Linux it verifies a serialized unsupported-platform response. On Windows it verifies a serialized invalid-request response without triggering the module's side effects. Module-specific standard tests cover their parsing and local branches. Real execution, injection, credential, or remote side effects still need isolated functional fixtures.
+
+From the C2Core root, use a C++17 toolchain, CMake 3.24 or newer, the `nlohmann_json` and `Libssh2` CMake packages, and the `cpp-base64` and Donut sources from the parent project's `thirdParty` directory.
 
 ```sh
-cmake -S modules/tests/local -B build/local-module-tests -DC2_BASE64_SOURCE_DIR=../C2Implant/thirdParty/base64 -DCMAKE_BUILD_TYPE=Release
+cmake -S modules/tests/local -B build/local-module-tests \
+  -DC2_BASE64_SOURCE_DIR=../C2Implant/thirdParty/base64 \
+  -DC2_DONUT_INCLUDE_DIR=../C2Implant/thirdParty/donut/include \
+  -DCMAKE_PREFIX_PATH=/path/to/conan/generators -DCMAKE_BUILD_TYPE=Release
 cmake --build build/local-module-tests --config Release
 ctest --test-dir build/local-module-tests -C Release --output-on-failure
 ```
 
-Use `-Dnlohmann_json_DIR=<package-config-directory>` if CMake cannot locate the installed package. The WMI fixture also needs `donut.h` from the parent project; set `-DC2_DONUT_INCLUDE_DIR=<donut-include-directory>` if it is not at the default parent path. Choose the target architecture at configure time with the generator or toolchain, and use a separate build directory for each architecture.
+On Windows, also pass `-DC2_THIRD_PARTY_SOURCE_DIR=<parent-thirdParty-directory>` and `-DC2_DONUT_LIBRARY=<prebuilt-donut.lib>` for the selected architecture. `C2CORE_WINDOWS_ONLY_MODULES` accepts a comma-separated subset when a lab cannot build a particular module. Choose the target architecture at configure time with the generator or toolchain, and use a separate build directory for each architecture.
 
 ## CMake Flags
 
@@ -164,6 +169,7 @@ This is important because many modules keep the default `errorCode == -1` on suc
 
 Current module-level functional tests:
 
+- `testsNetstatFunctional`
 - `testsAssemblyExecFunctional`
 - `testsCimExecFunctional`
 - `testsDcomExecFunctional`
@@ -185,6 +191,16 @@ Current transport-level functional tests:
 - beacon functional tests
 
 Use `ctest -L functional` to discover them from a configured build tree.
+
+### Observable checks for the seven extended functional drivers
+
+`testsNetstatFunctional` runs without lab configuration on Linux and Windows. It opens a loopback TCP listener, round-trips a module request and response, and requires the listener's actual address and port in the module output.
+
+`testsEnumerateRdpSessionsFunctional` checks the session table headers and a result row (or the explicit empty-list message). Set `C2_FUNC_RDP_EXECUTE=1` to execute it through CTest on Windows. `C2_FUNC_RDP_EXPECT_USER` adds a specific user assertion. On Linux, executed validation is skipped.
+
+`testsSshExecFunctional` and `testsWinRMFunctional` require an expected output substring when execution is enabled (`C2_FUNC_SSH_EXPECT` and `C2_FUNC_WINRM_EXPECT`). Use `C2_FUNC_SSH_EXECUTE=1` or `C2_FUNC_WINRM_EXECUTE=1` to execute through CTest. Both validate the response after serialization on a separate receiver.
+
+`testsPsExecFunctional`, `testsSpawnAsFunctional`, and `testsTaskSchedulerFunctional` require a file created or updated by the action, then poll it for expected content. Set their respective `C2_FUNC_PSEXEC_EXECUTE`, `C2_FUNC_SPAWNAS_EXECUTE`, or `C2_FUNC_TASK_EXECUTE` to `1` and provide `C2_FUNC_*_VERIFY_FILE` and `C2_FUNC_*_EXPECT`. The file path may be a local path or a UNC share accessible to the test process. The command or service must write that file. The bundled PsExec `TestService` writes `Hello` to `C:\Temp\svc_test.txt` by default. The verifier requires a fresh file modification, so a stale marker cannot pass. These drivers remain opt-in because they create processes, tasks, or services.
 
 ## Windows Build Commands
 

@@ -106,7 +106,12 @@ int main()
         ok &= expect(module.process(message, retMessage) == 0, "script command without payload should process");
         ok &= expect(retMessage.instruction() == "powershell", "script command without payload should preserve instruction");
         ok &= expect(retMessage.cmd() == message.cmd(), "script command without payload should preserve command");
+#ifdef _WIN32
         ok &= expectContains(retMessage.returnvalue(), "Missing PowerShell script payload", "script command without payload should explain failure");
+#else
+        ok &= expect(retMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM
+            && retMessage.returnvalue().empty(), "Linux rejects PowerShell execution with a code-only response");
+#endif
     }
 
 #if defined(__linux__) && defined(C2CORE_BUILD_TESTS)
@@ -121,8 +126,8 @@ int main()
         ok &= expect(module.process(message, retMessage) == 0, "script payload should process");
         ok &= expect(retMessage.instruction() == "powershell", "script payload should preserve instruction");
         ok &= expect(retMessage.cmd() == message.cmd(), "script payload should preserve display command");
-        ok &= expectContains(retMessage.returnvalue(), "script-process-ok", "script payload should be the executed command");
-        ok &= expect(retMessage.returnvalue().find("-s testScript.ps1") == std::string::npos, "script payload should not execute the -s display command");
+        ok &= expect(retMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM
+            && retMessage.returnvalue().empty(), "Linux rejects a PowerShell payload with a code-only response");
     }
 #endif
 

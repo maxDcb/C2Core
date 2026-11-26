@@ -20,7 +20,7 @@ add_custom_command(TARGET SshExec POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
 
 if(C2CORE_BUILD_TESTS)
     add_executable(testsSshExec tests/testsSshExec.cpp SshExec.cpp)
-    target_link_libraries(testsSshExec PRIVATE Libssh2::libssh2)
+    target_link_libraries(testsSshExec PRIVATE Libssh2::libssh2 c2_base64)
     if (WIN32)
         target_link_libraries(testsSshExec PRIVATE 
             ws2_32
@@ -36,7 +36,8 @@ endif()
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_executable(testsSshExecFunctional tests/functional/testsSshExecFunctional.cpp SshExec.cpp)
     target_include_directories(testsSshExecFunctional PRIVATE ../tests)
-    target_link_libraries(testsSshExecFunctional PRIVATE Libssh2::libssh2)
+    target_compile_definitions(testsSshExecFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
+    target_link_libraries(testsSshExecFunctional PRIVATE Libssh2::libssh2 c2_base64 nlohmann_json::nlohmann_json)
     if (WIN32)
         target_link_libraries(testsSshExecFunctional PRIVATE
             ws2_32

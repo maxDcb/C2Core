@@ -369,22 +369,27 @@ int SshExec::process(C2Message& c2Message, C2Message& c2RetMessage)
     std::string result;
     int error = executeSshCommand(params, result);
 
-    if (error != 0)
-    {
-        c2RetMessage.set_errorCode(error);
-    }
-
-    c2RetMessage.set_returnvalue(result);
+    c2RetMessage.set_errorCode(error);
+    c2RetMessage.set_returnvalue(error == 0 ? result : std::string{});
     return 0;
 }
 
 int SshExec::errorCodeToMsg(const C2Message& c2RetMessage, std::string& errorMsg)
 {
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    int errorCode = c2RetMessage.errorCode();
-    if (errorCode > 0)
+    switch (c2RetMessage.errorCode())
     {
-        errorMsg = c2RetMessage.returnvalue();
+    case 0: errorMsg.clear(); break;
+    case ErrorLibssh2Init: errorMsg = "Failed to initialize libssh2."; break;
+    case ErrorSocketInit: errorMsg = "Failed to initialize the network socket."; break;
+    case ErrorResolve: errorMsg = "Failed to resolve the SSH host."; break;
+    case ErrorConnect: errorMsg = "Failed to connect to the SSH host."; break;
+    case ErrorSessionInit: errorMsg = "Failed to create the SSH session."; break;
+    case ErrorHandshake: errorMsg = "SSH handshake failed."; break;
+    case ErrorAuthentication: errorMsg = "SSH authentication failed."; break;
+    case ErrorChannelOpen: errorMsg = "Failed to open the SSH channel."; break;
+    case ErrorExecute: errorMsg = "Failed to execute the SSH command."; break;
+    default: errorMsg = "SSH execution failed."; break;
     }
 #endif
     return 0;

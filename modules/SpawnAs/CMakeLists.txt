@@ -26,6 +26,8 @@ endif()
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
 add_executable(testsSpawnAsFunctional tests/functional/testsSpawnAsFunctional.cpp SpawnAs.cpp)
 target_include_directories(testsSpawnAsFunctional PRIVATE ../tests)
+target_compile_definitions(testsSpawnAsFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
+target_link_libraries(testsSpawnAsFunctional c2_base64 nlohmann_json::nlohmann_json)
 
 if(WIN32)
     target_link_libraries(testsSpawnAsFunctional advapi32 userenv)

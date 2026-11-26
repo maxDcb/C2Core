@@ -83,7 +83,7 @@ namespace
 
 int Cat::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.inputfile());
     c2RetMessage.set_inputfile(c2Message.inputfile());
 

@@ -302,7 +302,6 @@ namespace
 
     int createServiceWithSCM(const std::string& scmServer, const std::string&  serviceName, const std::string& servicePath, std::string& result)
     {
-        SERVICE_STATUS ss;
         // GENERIC_WRITE = STANDARD_RIGHTS_WRITE | SC_MANAGER_CREATE_SERVICE | SC_MANAGER_MODIFY_BOOT_CONFIG
         SC_HANDLE hSCM = OpenSCManagerA(scmServer.c_str(), NULL, SC_MANAGER_ALL_ACCESS);
         if (hSCM == NULL) 
@@ -322,15 +321,8 @@ namespace
         if (hService == NULL) 
         {
             result += std::to_string(GetLastError());
+            CloseServiceHandle(hSCM);
             return ERROR_CREATE_SERVICE;
-        }
-
-        hService = OpenServiceA(hSCM,serviceName.c_str(), GENERIC_ALL);
-        if (hService == NULL)
-        {
-            result += std::to_string(GetLastError());
-            DeleteService(hService);
-            return ERROR_OPEN_SERVICE;
         }
         
         // fail if the exe is not a svc but a regular exe, but should launch it anyway
@@ -338,9 +330,9 @@ namespace
         if(!sucess)
         {
             result += std::to_string(GetLastError());
-            SERVICE_STATUS status;
-            sucess = ControlService(hService, SERVICE_CONTROL_STOP, &status);
             DeleteService(hService);
+            CloseServiceHandle(hService);
+            CloseServiceHandle(hSCM);
             return ERROR_START_SERVICE;
         }
 
@@ -352,13 +344,41 @@ namespace
         {
             result += std::to_string(GetLastError());
             DeleteService(hService);
+            CloseServiceHandle(hService);
+            CloseServiceHandle(hSCM);
+            return ERROR_STOP_SERVICE;
+        }
+
+        SERVICE_STATUS_PROCESS current{};
+        DWORD bytesNeeded = 0;
+        bool stopped = false;
+        for (int attempt = 0; attempt < 100; ++attempt)
+        {
+            if (!QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO,
+                    reinterpret_cast<LPBYTE>(&current), sizeof(current), &bytesNeeded))
+                break;
+            if (current.dwCurrentState == SERVICE_STOPPED)
+            {
+                stopped = true;
+                break;
+            }
+            Sleep(100);
+        }
+        if (!stopped)
+        {
+            DeleteService(hService);
+            CloseServiceHandle(hService);
+            CloseServiceHandle(hSCM);
             return ERROR_STOP_SERVICE;
         }
 
         sucess = DeleteService(hService);
+        const DWORD deleteError = sucess ? ERROR_SUCCESS : GetLastError();
+        CloseServiceHandle(hService);
+        CloseServiceHandle(hSCM);
         if(!sucess)
         {
-            result += std::to_string(GetLastError());
+            result += std::to_string(deleteError);
             return ERROR_DEL_SERVICE;
         }
 
@@ -485,7 +505,16 @@ int PsExec::process(C2Message &c2Message, C2Message &c2RetMessage)
             return 0;
         }
 
-        success = DeleteFile(dstPath.c_str());
+        for (int attempt = 0; attempt < 50; ++attempt)
+        {
+            success = DeleteFile(dstPath.c_str());
+            if (success)
+                break;
+            const DWORD failure = GetLastError();
+            if (failure != ERROR_SHARING_VIOLATION && failure != ERROR_ACCESS_DENIED)
+                break;
+            Sleep(100);
+        }
         if (!success) 
         {
             error = ERROR_DELETE;

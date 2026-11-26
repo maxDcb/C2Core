@@ -22,7 +22,7 @@ endif()
 
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_executable(testsWinRMFunctional tests/functional/testsWinRMFunctional.cpp WinRM.cpp)
-    target_link_libraries(testsWinRMFunctional PRIVATE c2_base64)
+    target_link_libraries(testsWinRMFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
     target_include_directories(testsWinRMFunctional PRIVATE ../tests)
     target_compile_definitions(testsWinRMFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
     if(WIN32)

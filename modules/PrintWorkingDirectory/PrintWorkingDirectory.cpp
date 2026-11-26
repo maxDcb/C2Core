@@ -77,9 +77,9 @@ int PrintWorkingDirectory::process(C2Message &c2Message, C2Message &c2RetMessage
     std::string outCmd;
     const bool read = printWorkingDirectory(outCmd);
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd("");
-    c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_returnvalue(read ? outCmd : std::string{});
     c2RetMessage.set_errorCode(read ? 0 : 1);
 
     return 0;

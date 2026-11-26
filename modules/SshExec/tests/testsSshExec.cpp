@@ -1,4 +1,5 @@
 #include "../SshExec.hpp"
+#include "../../tests/local/MessageTestHelpers.hpp"
 
 #include <iostream>
 #include <string>
@@ -109,21 +110,35 @@ namespace
 
     bool testProcessRejectsInvalidPackedParameters()
     {
-        SshExec module;
+        SshExec executor;
+        SshExec receiver;
         C2Message message;
         C2Message ret;
 
         message.set_instruction("sshExec");
         message.set_cmd("");
 
-        bool ok = expect(module.process(message, ret) == 0, "process should return after local parameter validation");
-        ok &= expect(ret.instruction() == "sshExec", "process should preserve instruction");
-        ok &= expect(ret.errorCode() == SshExec::ErrorExecute, "invalid packed parameters should set ErrorExecute");
-        ok &= expect(ret.returnvalue() == "Invalid parameters.", "invalid packed parameters should not reach SSH networking");
+        C2Message request = test_helpers::roundTripMessage(message);
+        bool ok = expect(executor.process(request, ret) == 0, "process should return after local parameter validation");
+        const C2Message response = test_helpers::roundTripMessage(ret);
+        ok &= expect(response.instruction() == "sshExec", "process should preserve instruction");
+        ok &= expect(response.errorCode() == SshExec::ErrorExecute, "invalid packed parameters should set ErrorExecute");
+        ok &= expect(response.returnvalue().empty(), "invalid packed parameters leave failed output empty");
 
+        C2Message codeOnly;
+        codeOnly.set_errorCode(response.errorCode());
         std::string errorMsg;
-        ok &= expect(module.errorCodeToMsg(ret, errorMsg) == 0, "errorCodeToMsg should return success");
-        ok &= expect(errorMsg == "Invalid parameters.", "errorCodeToMsg should expose process error text");
+        ok &= expect(receiver.errorCodeToMsg(test_helpers::roundTripMessage(codeOnly), errorMsg) == 0,
+            "errorCodeToMsg should read a received code");
+        ok &= expect(errorMsg == "Failed to execute the SSH command.",
+            "errorCodeToMsg should render a stable message from the code alone");
+        for (int code = 1; code <= SshExec::ErrorExecute; ++code)
+        {
+            codeOnly.set_errorCode(code);
+            errorMsg.clear();
+            receiver.errorCodeToMsg(test_helpers::roundTripMessage(codeOnly), errorMsg);
+            ok &= expect(!errorMsg.empty(), "each SSH error code should render a message");
+        }
         return ok;
     }
 }

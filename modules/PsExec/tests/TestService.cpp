@@ -65,7 +65,7 @@ void ExecuteCommand()
 
 void WINAPI ServiceMain(DWORD argc, LPWSTR *argv)
 {
-    g_StatusHandle = RegisterServiceCtrlHandlerW(L"TestService", ServiceCtrlHandler);
+    g_StatusHandle = RegisterServiceCtrlHandlerW(argc > 0 ? argv[0] : L"TestService", ServiceCtrlHandler);
     if (!g_StatusHandle)
         return;
 
@@ -110,7 +110,7 @@ int wmain(int argc, wchar_t* argv[])
 
     SERVICE_TABLE_ENTRYW ServiceTable[] =
     {
-        { (LPWSTR)L"TestService", (LPSERVICE_MAIN_FUNCTIONW)ServiceMain },
+        { const_cast<LPWSTR>(L""), (LPSERVICE_MAIN_FUNCTIONW)ServiceMain },
         { nullptr, nullptr }
     };
 

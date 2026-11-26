@@ -103,14 +103,14 @@ bool testTree()
         executor.process(request, ret);
 
         const C2Message response = roundTripMessage(ret);
-        ok &= expect(response.errorCode() == 1, "Tree reports error code 1 for an unreadable directory");
-        ok &= expect(response.returnvalue().find("Error:") == 0, "Tree preserves the filesystem diagnostic");
+        ok &= expect(response.instruction() == request.instruction() && response.errorCode() == 1,
+            "Tree preserves the instruction and reports error code 1 for an unreadable directory");
+        ok &= expect(response.returnvalue().empty(), "Tree leaves failed output empty");
         Tree receiver;
         const std::string summary = "Failed: Couldn't list directory";
         std::string error;
         receiver.errorCodeToMsg(response, error);
-        ok &= expect(error == summary + "\n" + response.returnvalue(),
-            "Tree translates the received error code and includes the diagnostic");
+        ok &= expect(error == summary, "Tree translates the received error code");
 
         C2Message codeOnly;
         codeOnly.set_errorCode(response.errorCode());

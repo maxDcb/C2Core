@@ -21,6 +21,8 @@ int main(int argc, char** argv)
         {"--logon-type", "C2_FUNC_SPAWNAS_LOGON_TYPE", "Logon type (2 or 9)", false, false, "2"},
         {"--profile", "C2_FUNC_SPAWNAS_PROFILE", "Profile mode: with-profile or no-profile", false, false, "with-profile"},
         {"--show-window", "C2_FUNC_SPAWNAS_SHOW_WINDOW", "Show the spawned window (1/0)", false, false, "0"},
+        {"--verify-file", "C2_FUNC_SPAWNAS_VERIFY_FILE", "File written by the spawned command", false},
+        {"--expect", "C2_FUNC_SPAWNAS_EXPECT", "Expected text in the new file", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -30,7 +32,7 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_SPAWNAS_EXECUTE");
 
 #ifndef _WIN32
     if (execute)
@@ -47,6 +49,8 @@ int main(int argc, char** argv)
     const std::string logonType = readInput(inputs[4], argc, argv, interactive);
     const std::string profileMode = readInput(inputs[5], argc, argv, interactive);
     const std::string showWindow = readInput(inputs[6], argc, argv, interactive);
+    const std::string verifyFile = readInput(inputs[7], argc, argv, interactive);
+    const std::string expected = readInput(inputs[8], argc, argv, interactive);
 
     std::vector<Input> missing;
     if (user.empty())
@@ -61,6 +65,10 @@ int main(int argc, char** argv)
     {
         missing.push_back(inputs[2]);
     }
+    if (execute && verifyFile.empty())
+        missing.push_back(inputs[7]);
+    if (execute && expected.empty())
+        missing.push_back(inputs[8]);
     if (!missing.empty())
     {
         return skipMissing("testsSpawnAsFunctional", missing);
@@ -99,5 +107,14 @@ int main(int argc, char** argv)
     command.push_back("--");
     command.push_back(commandLine);
 
-    return runModuleScenarioIsolated<SpawnAs>("testsSpawnAsFunctional", command, execute);
+    const FileSnapshot before = execute ? snapshotFile(verifyFile) : FileSnapshot{};
+    const int result = runModuleScenarioIsolated<SpawnAs>("testsSpawnAsFunctional", command, execute);
+    if (result != 0 || !execute)
+        return result;
+    if (!waitForFileContent(verifyFile, expected, before))
+    {
+        std::cerr << "SpawnAs did not create a fresh file with expected content.\n";
+        return 1;
+    }
+    return 0;
 }

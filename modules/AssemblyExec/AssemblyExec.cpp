@@ -259,6 +259,11 @@ int AssemblyExec::initConfig(const nlohmann::json &config)
 
 int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 {
+#ifndef _WIN32
+    return c2coreUnsupportedPlatform(c2Message, c2RetMessage);
+#endif
+    if (c2Message.data().empty())
+        return c2coreInvalidRequest(c2Message, c2RetMessage);
     std::string mode = c2Message.args();
     if(!mode.empty())
     {
@@ -322,6 +327,9 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int AssemblyExec::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
 {
+    if (c2RetMessage.errorCode() == C2CORE_ERROR_UNSUPPORTED_PLATFORM ||
+        c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
+        return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (c2RetMessage.errorCode() > 0)
     {
