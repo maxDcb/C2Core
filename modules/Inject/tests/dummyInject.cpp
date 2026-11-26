@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <thread>
 
 int main(int argc, char** argv)
@@ -9,6 +10,17 @@ int main(int argc, char** argv)
     {
         std::this_thread::sleep_for(std::chrono::seconds(30));
         return 0;
+    }
+
+    for (int i = 1; i + 1 < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "--marker") == 0)
+        {
+            std::ofstream marker(argv[i + 1], std::ios::binary);
+            marker << "inject-dummy";
+            if (!marker)
+                return 1;
+        }
     }
 
     std::cout << "inject-dummy";

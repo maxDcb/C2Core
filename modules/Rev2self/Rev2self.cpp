@@ -60,7 +60,7 @@ std::string Rev2self::getInfo()
 
 int Rev2self::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (splitedCmd.size() != 1)
     {
         c2Message.set_returnvalue(getInfo());
@@ -95,7 +95,7 @@ int Rev2self::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int Rev2self::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     switch (c2RetMessage.errorCode())
     {
     case 0: errorMsg.clear(); break;

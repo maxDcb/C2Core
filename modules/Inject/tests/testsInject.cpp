@@ -313,10 +313,10 @@ int main()
 
             ok &= expect(module.process(message, retMessage) == 0, "process should return normally for an invalid pid");
             ok &= expect(retMessage.errorCode() > 0, "invalid pid should set an error code");
-            ok &= expect(retMessage.returnvalue() == "OpenProcess failed.", "invalid pid should report OpenProcess failure");
+            ok &= expect(retMessage.returnvalue().empty(), "invalid pid should not transport output");
             std::string errorMsg;
             ok &= expect(module.errorCodeToMsg(retMessage, errorMsg) == 0, "invalid pid should map error text");
-            ok &= expect(errorMsg == retMessage.returnvalue(), "invalid pid error text should come from returnvalue");
+            ok &= expect(errorMsg == "Failed to open the injection target process.", "invalid pid error text should come from its code");
         }
 
         {
@@ -333,10 +333,10 @@ int main()
 
             ok &= expect(module.process(message, retMessage) == 0, "spawn injection failure path should return normally");
             ok &= expect(retMessage.errorCode() > 0, "invalid spawn target should set an error code");
-            ok &= expect(retMessage.returnvalue() == "CreateProcess failed.", "invalid spawn target should report CreateProcess failure");
+            ok &= expect(retMessage.returnvalue().empty(), "invalid spawn target should not transport output");
             std::string errorMsg;
             ok &= expect(module.errorCodeToMsg(retMessage, errorMsg) == 0, "invalid spawn target should map error text");
-            ok &= expect(errorMsg == retMessage.returnvalue(), "invalid spawn target error text should come from returnvalue");
+            ok &= expect(errorMsg == "Failed to create the injection target process.", "invalid spawn target error text should come from its code");
         }
 
         {

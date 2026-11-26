@@ -182,6 +182,7 @@ Current module-level functional tests:
 - `testsInjectFunctional`
 - `testsPsExecFunctional`
 - `testsPwShFunctional`
+- `testsRev2selfFunctional`
 - `testsSpawnAsFunctional`
 - `testsStealTokenFunctional`
 - `testsSshExecFunctional`
@@ -215,6 +216,10 @@ Use `ctest -L functional` to discover them from a configured build tree.
 `testsMakeTokenFunctional` uses supplied lab credentials and verifies that the thread has an impersonation token; `testsStealTokenFunctional` duplicates only the test process's own token and checks the same effect. Both restore the original thread identity. Set `C2_FUNC_MAKETOKEN_EXECUTE=1` with `C2_FUNC_MAKETOKEN_USER` and `C2_FUNC_MAKETOKEN_PASSWORD`, or set `C2_FUNC_STEALTOKEN_EXECUTE=1` for the self-token case. These tests verify impersonation, not whether `LOGON32_LOGON_NEW_CREDENTIALS` has authenticated the supplied password against a remote service.
 
 `testsChiselFunctional` exercises `chisel stop` against a child process created by the test and requires that the process has exited. Set `C2_FUNC_CHISEL_EXECUTE=1` to execute. Chisel's shellcode start path is not covered by this scenario.
+
+`testsRev2selfFunctional` first impersonates its own process token through `StealToken`, runs a serialized `rev2self` request, then verifies that the thread has no impersonation token. Set `C2_FUNC_REV2SELF_EXECUTE=1` to run it on Windows.
+
+`testsInjectFunctional` now runs the bundled dummy executable as Donut shellcode inside a test-owned sleeping process. The payload writes a fresh marker file, which the driver requires before it passes. Set `C2_FUNC_INJECT_EXECUTE=1` or pass `--execute`; the default fixture needs no additional inputs on Windows. Custom payloads require `C2_FUNC_INJECT_VERIFY_FILE` and `C2_FUNC_INJECT_EXPECT`, and must create that file themselves. The separate spawn/APC path remains outside this scenario.
 
 `testsCoffLoaderFunctional` builds a minimal BOF fixture and requires its `C2CORE_COFF_OK` output. Set `C2_FUNC_COFF_EXECUTE=1` to run it. The test builds on Windows, but live execution on the lab VM remains unverified: Microsoft Defender was active on 2026-11-26 and quarantined the linked test executable. The Linux harness builds the driver and skips execution.
 

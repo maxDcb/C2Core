@@ -7,6 +7,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 using namespace functional_tests;
 
 namespace
@@ -83,6 +87,8 @@ int main(int argc, char** argv)
         {"--args", "C2_FUNC_INJECT_ARGS", "Arguments passed to the payload", false},
         {"--spawn-process", "C2_FUNC_INJECT_PROCESS", "Process path to spawn when pid is negative", false, false, defaultSpawnProcess()},
         {"--syscall", "C2_FUNC_INJECT_SYSCALL", "Enable syscall path (1/0)", false, false, "0"},
+        {"--verify-file", "C2_FUNC_INJECT_VERIFY_FILE", "File written by the injected payload", false},
+        {"--expect", "C2_FUNC_INJECT_EXPECT", "Expected content in the new file", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -92,7 +98,7 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_INJECT_EXECUTE");
 
 #ifndef _WIN32
     if (execute)
@@ -106,9 +112,25 @@ int main(int argc, char** argv)
     const std::string kind = normalizeKind(readInput(inputs[1], argc, argv, interactive));
     const std::string pid = readInput(inputs[2], argc, argv, interactive);
     const std::string method = readInput(inputs[3], argc, argv, interactive);
-    const std::string arguments = readInput(inputs[4], argc, argv, interactive);
+    std::string arguments = readInput(inputs[4], argc, argv, interactive);
     const std::string processToSpawn = readInput(inputs[5], argc, argv, interactive);
     const std::string useSyscall = readInput(inputs[6], argc, argv, interactive);
+    std::string verifyFile = readInput(inputs[7], argc, argv, interactive);
+    std::string expected = readInput(inputs[8], argc, argv, interactive);
+    bool removeMarker = false;
+    if (execute && kind == "exe" && payload == defaultPayloadPath())
+    {
+        if (verifyFile.empty())
+        {
+            verifyFile = (std::filesystem::temp_directory_path() /
+                ("c2core-inject-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".txt")).string();
+            removeMarker = true;
+        }
+        if (arguments.empty())
+            arguments = "--marker \"" + verifyFile + "\"";
+        if (expected.empty())
+            expected = "inject-dummy";
+    }
 
     std::vector<Input> missing;
     if (payload.empty())
@@ -119,6 +141,10 @@ int main(int argc, char** argv)
     {
         missing.push_back(inputs[3]);
     }
+    if (execute && verifyFile.empty())
+        missing.push_back(inputs[7]);
+    if (execute && expected.empty())
+        missing.push_back(inputs[8]);
     if (!missing.empty())
     {
         return skipMissing("testsInjectFunctional", missing);
@@ -206,12 +232,54 @@ int main(int argc, char** argv)
         module.initConfig(config);
     }
 
+#ifdef _WIN32
+    PROCESS_INFORMATION owned{};
+    if (pid == "-1" && kind == "exe" && payload == defaultPayloadPath() &&
+        processToSpawn == defaultSpawnProcess())
+    {
+        STARTUPINFOA startup{};
+        startup.cb = sizeof(startup);
+        std::string targetCommand = "\"" + defaultSpawnProcess() + "\" --sleep";
+        if (!CreateProcessA(nullptr, targetCommand.data(), nullptr, nullptr, FALSE,
+                            CREATE_NO_WINDOW, nullptr, nullptr, &startup, &owned))
+        {
+            std::cerr << "Could not create the test-owned injection target.\n";
+            if (!generatedPath.empty()) std::filesystem::remove(generatedPath);
+            return 1;
+        }
+        CloseHandle(owned.hThread);
+        message.set_pid(static_cast<int>(owned.dwProcessId));
+    }
+#endif
+
+    const FileSnapshot before = snapshotFile(verifyFile);
+    C2Message request = test_helpers::roundTripMessage(message);
     C2Message result;
-    module.process(message, result);
-    std::cout << result.returnvalue() << '\n';
+    module.process(request, result);
+    const C2Message response = test_helpers::roundTripMessage(result);
+    Inject receiver;
+    std::string error;
+    receiver.errorCodeToMsg(response, error);
+    const bool passed = response.instruction() == "inject" &&
+        response.errorCode() == 0 && error.empty() &&
+        response.returnvalue().find("Process injected") != std::string::npos &&
+        waitForFileContent(verifyFile, expected, before);
+    if (!passed)
+        std::cerr << "Injected payload did not create a fresh marker: " << error << '\n';
+    else
+        std::cout << response.returnvalue() << '\n';
+    if (removeMarker)
+        std::filesystem::remove(verifyFile);
+#ifdef _WIN32
+    if (owned.hProcess != nullptr)
+    {
+        TerminateProcess(owned.hProcess, 0);
+        CloseHandle(owned.hProcess);
+    }
+#endif
     if (!generatedPath.empty())
     {
         std::filesystem::remove(generatedPath);
     }
-    return 0;
+    return passed ? 0 : 1;
 }
