@@ -221,7 +221,7 @@ Use `ctest -L functional` to discover them from a configured build tree.
 
 `testsInjectFunctional` now runs the bundled dummy executable as Donut shellcode inside a test-owned sleeping process. The payload writes a fresh marker file, which the driver requires before it passes. Set `C2_FUNC_INJECT_EXECUTE=1` or pass `--execute`; the default fixture needs no additional inputs on Windows. Custom payloads require `C2_FUNC_INJECT_VERIFY_FILE` and `C2_FUNC_INJECT_EXPECT`, and must create that file themselves. The separate spawn/APC path remains outside this scenario.
 
-`testsCoffLoaderFunctional` builds a minimal BOF fixture and requires its `C2CORE_COFF_OK` output. Set `C2_FUNC_COFF_EXECUTE=1` to run it. The test builds on Windows, but live execution on the lab VM remains unverified: Microsoft Defender was active on 2026-11-26 and quarantined the linked test executable. The Linux harness builds the driver and skips execution.
+`testsCoffLoaderFunctional` builds a minimal BOF fixture and requires its `C2CORE_COFF_OK` output after a serialized request and response. Set `C2_FUNC_COFF_EXECUTE=1` to run it. Live execution passed on the Windows lab VM on 2026-11-26 with real-time antivirus protection disabled. The fixture is compiled with `/GS-` on MSVC because the BOF loader does not resolve MSVC's security-cookie imports. The Linux harness builds the driver and skips execution.
 
 `KerberosUseTicket` still requires a valid lab ticket and a Kerberos target to prove import and use. `MiniDump` currently targets `lsass.exe` directly, so a benign process fixture cannot exercise its successful dump path. Neither module has a successful business-validation test yet.
 
