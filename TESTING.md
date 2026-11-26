@@ -172,14 +172,18 @@ Current module-level functional tests:
 - `testsNetstatFunctional`
 - `testsAssemblyExecFunctional`
 - `testsCimExecFunctional`
+- `testsChiselFunctional`
+- `testsCoffLoaderFunctional`
 - `testsDcomExecFunctional`
 - `testsDotnetExecFunctional`
 - `testsEvasionFunctional`
+- `testsMakeTokenFunctional`
 - `testsEnumerateRdpSessionsFunctional`
 - `testsInjectFunctional`
 - `testsPsExecFunctional`
 - `testsPwShFunctional`
 - `testsSpawnAsFunctional`
+- `testsStealTokenFunctional`
 - `testsSshExecFunctional`
 - `testsTaskSchedulerFunctional`
 - `testsWinRMFunctional`
@@ -201,6 +205,20 @@ Use `ctest -L functional` to discover them from a configured build tree.
 `testsSshExecFunctional` and `testsWinRMFunctional` require an expected output substring when execution is enabled (`C2_FUNC_SSH_EXPECT` and `C2_FUNC_WINRM_EXPECT`). Use `C2_FUNC_SSH_EXECUTE=1` or `C2_FUNC_WINRM_EXECUTE=1` to execute through CTest. Both validate the response after serialization on a separate receiver.
 
 `testsPsExecFunctional`, `testsSpawnAsFunctional`, and `testsTaskSchedulerFunctional` require a file created or updated by the action, then poll it for expected content. Set their respective `C2_FUNC_PSEXEC_EXECUTE`, `C2_FUNC_SPAWNAS_EXECUTE`, or `C2_FUNC_TASK_EXECUTE` to `1` and provide `C2_FUNC_*_VERIFY_FILE` and `C2_FUNC_*_EXPECT`. The file path may be a local path or a UNC share accessible to the test process. The command or service must write that file. The bundled PsExec `TestService` writes `Hello` to `C:\Temp\svc_test.txt` by default. The verifier requires a fresh file modification, so a stale marker cannot pass. These drivers remain opt-in because they create processes, tasks, or services.
+
+### Additional Windows business scenarios
+
+`testsWmiExecFunctional`, `testsCimExecFunctional`, and `testsDcomExecFunctional` now require a fresh file containing expected text when execution is enabled. Set the corresponding `C2_FUNC_WMI_EXECUTE`, `C2_FUNC_CIM_EXECUTE`, or `C2_FUNC_DCOM_EXECUTE` to `1`; provide `C2_FUNC_*_VERIFY_FILE` and `C2_FUNC_*_EXPECT`. The remote command must write that file. Localhost execution with the Windows lab VM passed for all three modules. Their tests verify the serialized response and the file side effect.
+
+`testsAssemblyExecFunctional` runs the bundled dummy executable through Donut and requires its captured `assemblyexec-dummy` output by default. Set `C2_FUNC_ASSEMBLYEXEC_EXECUTE=1` or pass `--execute`; the Windows lab passed in `thread` mode. A custom payload requires `--expect` or `C2_FUNC_ASSEMBLYEXEC_EXPECT`. `testsEvasionFunctional` checks `kernel32.dll`, `ntdll.dll`, and `kernelbase.dll` in the `CheckHooks` output after a serialized round trip. Other actions require an explicit expected output. Both modules now put status `0` on success and return an empty output with a stable code-derived error on failure.
+
+`testsMakeTokenFunctional` uses supplied lab credentials and verifies that the thread has an impersonation token; `testsStealTokenFunctional` duplicates only the test process's own token and checks the same effect. Both restore the original thread identity. Set `C2_FUNC_MAKETOKEN_EXECUTE=1` with `C2_FUNC_MAKETOKEN_USER` and `C2_FUNC_MAKETOKEN_PASSWORD`, or set `C2_FUNC_STEALTOKEN_EXECUTE=1` for the self-token case. These tests verify impersonation, not whether `LOGON32_LOGON_NEW_CREDENTIALS` has authenticated the supplied password against a remote service.
+
+`testsChiselFunctional` exercises `chisel stop` against a child process created by the test and requires that the process has exited. Set `C2_FUNC_CHISEL_EXECUTE=1` to execute. Chisel's shellcode start path is not covered by this scenario.
+
+`testsCoffLoaderFunctional` builds a minimal BOF fixture and requires its `C2CORE_COFF_OK` output. Set `C2_FUNC_COFF_EXECUTE=1` to run it. The test builds on Windows, but live execution on the lab VM remains unverified: Microsoft Defender was active on 2026-11-26 and quarantined the linked test executable. The Linux harness builds the driver and skips execution.
+
+`KerberosUseTicket` still requires a valid lab ticket and a Kerberos target to prove import and use. `MiniDump` currently targets `lsass.exe` directly, so a benign process fixture cannot exercise its successful dump path. Neither module has a successful business-validation test yet.
 
 ## Windows Build Commands
 

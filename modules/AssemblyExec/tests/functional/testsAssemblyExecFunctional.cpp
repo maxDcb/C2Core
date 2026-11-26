@@ -68,6 +68,7 @@ int main(int argc, char** argv)
         {"--args", "C2_FUNC_ASSEMBLYEXEC_ARGS", "Arguments passed to the assembly entrypoint", false},
         {"--process", "C2_FUNC_ASSEMBLYEXEC_PROCESS", "Optional process to spawn for process mode", false},
         {"--spoofed-parent", "C2_FUNC_ASSEMBLYEXEC_SPOOFED_PARENT", "Optional spoofed parent process path", false},
+        {"--expect", "C2_FUNC_ASSEMBLYEXEC_EXPECT", "Text that the payload must write to captured output", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -77,7 +78,7 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_ASSEMBLYEXEC_EXECUTE");
 
 #ifndef _WIN32
     if (execute)
@@ -94,6 +95,9 @@ int main(int argc, char** argv)
     const std::string arguments = readInput(inputs[4], argc, argv, interactive);
     const std::string processToSpawn = readInput(inputs[5], argc, argv, interactive);
     const std::string spoofedParent = readInput(inputs[6], argc, argv, interactive);
+    std::string expected = readInput(inputs[7], argc, argv, interactive);
+    if (expected.empty() && kind == "exe" && payload == defaultPayloadPath())
+        expected = "assemblyexec-dummy";
 
     std::vector<Input> missing;
     if (payload.empty())
@@ -104,6 +108,8 @@ int main(int argc, char** argv)
     {
         missing.push_back(inputs[3]);
     }
+    if (execute && expected.empty())
+        missing.push_back(inputs[7]);
     if (!missing.empty())
     {
         return skipMissing("testsAssemblyExecFunctional", missing);
@@ -194,12 +200,23 @@ int main(int argc, char** argv)
         module.initConfig(config);
     }
 
+    C2Message request = test_helpers::roundTripMessage(message);
     C2Message result;
-    module.process(message, result);
-    std::cout << result.returnvalue() << '\n';
+    module.process(request, result);
+    const C2Message response = test_helpers::roundTripMessage(result);
+    AssemblyExec receiver;
+    std::string error;
+    receiver.errorCodeToMsg(response, error);
+    const bool passed = response.instruction() == "assemblyExec" &&
+        response.errorCode() == 0 && error.empty() &&
+        response.returnvalue().find(expected) != std::string::npos;
+    if (!passed)
+        std::cerr << "AssemblyExec did not return the expected payload output: " << error << '\n';
+    else
+        std::cout << response.returnvalue() << '\n';
     if (!generatedPath.empty())
     {
         std::filesystem::remove(generatedPath);
     }
-    return 0;
+    return passed ? 0 : 1;
 }

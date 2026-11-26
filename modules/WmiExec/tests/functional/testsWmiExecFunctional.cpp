@@ -12,6 +12,8 @@ int main(int argc, char** argv)
         {"--user", "C2_FUNC_WMI_USER", "Username for userpass mode, optionally DOMAIN\\user", false},
         {"--password", "C2_FUNC_WMI_PASSWORD", "Password for userpass mode", false, true},
         {"--dc", "C2_FUNC_WMI_DC", "Domain controller hint for kerberos mode, optionally DOMAIN\\dc", false},
+        {"--verify-file", "C2_FUNC_WMI_VERIFY_FILE", "Local or UNC path written by the remote command", false},
+        {"--expect", "C2_FUNC_WMI_EXPECT", "Expected content of the new file", false},
     };
 
     if (hasFlag(argc, argv, "--help"))
@@ -21,7 +23,7 @@ int main(int argc, char** argv)
     }
 
     const bool interactive = hasFlag(argc, argv, "--interactive");
-    const bool execute = hasFlag(argc, argv, "--execute");
+    const bool execute = shouldExecute(argc, argv, "C2_FUNC_WMI_EXECUTE");
 
 #ifndef _WIN32
     if (execute)
@@ -37,6 +39,8 @@ int main(int argc, char** argv)
     const std::string user = readInput(inputs[3], argc, argv, interactive);
     const std::string password = readInput(inputs[4], argc, argv, interactive);
     const std::string dc = readInput(inputs[5], argc, argv, interactive);
+    const std::string verifyFile = readInput(inputs[6], argc, argv, interactive);
+    const std::string expected = readInput(inputs[7], argc, argv, interactive);
 
     std::vector<Input> missing;
     if (target.empty())
@@ -59,6 +63,10 @@ int main(int argc, char** argv)
     {
         missing.push_back(inputs[5]);
     }
+    if (execute && verifyFile.empty())
+        missing.push_back(inputs[6]);
+    if (execute && expected.empty())
+        missing.push_back(inputs[7]);
     if (!missing.empty())
     {
         return skipMissing("testsWmiExecFunctional", missing);
@@ -78,5 +86,14 @@ int main(int argc, char** argv)
         command.insert(command.end(), {"-n", target, commandLine});
     }
 
-    return runModuleScenarioIsolated<WmiExec>("testsWmiExecFunctional", command, execute);
+    const FileSnapshot before = execute ? snapshotFile(verifyFile) : FileSnapshot{};
+    const int result = runModuleScenarioIsolated<WmiExec>("testsWmiExecFunctional", command, execute);
+    if (result != 0 || !execute)
+        return result;
+    if (!waitForFileContent(verifyFile, expected, before))
+    {
+        std::cerr << "WMI did not create a fresh file with expected content.\n";
+        return 1;
+    }
+    return 0;
 }

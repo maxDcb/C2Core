@@ -39,11 +39,11 @@ int main()
         CoffLoader module;
         C2Message ret;
         ret.set_errorCode(1);
-        ret.set_returnvalue("Failed to run/parse the COFF file\n");
+        ret.set_returnvalue("");
         std::string errorMsg;
 
         ok &= expect(module.errorCodeToMsg(ret, errorMsg) == 0, "COFF execution failure should map error text");
-        ok &= expect(errorMsg == ret.returnvalue(), "COFF execution error text should come from returnvalue");
+        ok &= expect(errorMsg == "COFF execution failed.", "COFF execution error text should come from its code");
     }
 
     return ok ? 0 : 1;

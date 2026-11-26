@@ -13,3 +13,14 @@ if(C2CORE_BUILD_TESTS)
 
     add_test(NAME testsMakeToken COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMakeToken>")
 endif()
+
+if(C2CORE_BUILD_FUNCTIONAL_TESTS)
+    add_executable(testsMakeTokenFunctional tests/functional/testsMakeTokenFunctional.cpp MakeToken.cpp)
+    target_include_directories(testsMakeTokenFunctional PRIVATE ../tests)
+    target_link_libraries(testsMakeTokenFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(testsMakeTokenFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
+    add_custom_command(TARGET testsMakeTokenFunctional POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE:testsMakeTokenFunctional> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMakeTokenFunctional>")
+    add_test(NAME testsMakeTokenFunctional COMMAND "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsMakeTokenFunctional>")
+    set_tests_properties(testsMakeTokenFunctional PROPERTIES LABELS "functional;maketoken;windows-local" SKIP_RETURN_CODE 77)
+endif()

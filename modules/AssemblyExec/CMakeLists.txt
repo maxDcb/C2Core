@@ -142,6 +142,8 @@ if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     endif()
 
     target_include_directories(testsAssemblyExecFunctional PRIVATE ../tests)
+    target_link_libraries(testsAssemblyExecFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(testsAssemblyExecFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_custom_command(TARGET testsAssemblyExecFunctional POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:testsAssemblyExecFunctional> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsAssemblyExecFunctional>")
 

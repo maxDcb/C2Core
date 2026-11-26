@@ -308,18 +308,17 @@ int AssemblyExec::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_cmd(c2Message.cmd());
 #ifdef _WIN32
     if (executionStatus != 0)
     {
-        if (result.empty())
-        {
-            result = "Error: Process failed to start.\n";
-        }
         c2RetMessage.set_errorCode(ERROR_PROCESS_CREATION);
+        c2RetMessage.set_returnvalue("");
+        return 0;
     }
 #endif
+    c2RetMessage.set_errorCode(0);
     c2RetMessage.set_returnvalue(result);
     
     return 0;
@@ -331,10 +330,10 @@ int AssemblyExec::errorCodeToMsg(const C2Message &c2RetMessage, std::string &err
         c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
         return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
-    {
-        errorMsg = c2RetMessage.returnvalue();
-    }
+    if (c2RetMessage.errorCode() == ERROR_PROCESS_CREATION)
+        errorMsg = "Assembly execution failed to start.";
+    else if (c2RetMessage.errorCode() == 0)
+        errorMsg.clear();
 #endif
     return 0;
 }

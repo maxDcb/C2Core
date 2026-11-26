@@ -17,7 +17,8 @@ endif()
 if(C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_executable(testsEvasionFunctional tests/functional/testsEvasionFunctional.cpp Evasion.cpp)
     target_include_directories(testsEvasionFunctional PRIVATE ../tests)
-    target_link_libraries(testsEvasionFunctional )
+    target_link_libraries(testsEvasionFunctional PRIVATE c2_base64 nlohmann_json::nlohmann_json)
+    target_compile_definitions(testsEvasionFunctional PRIVATE C2CORE_BUILD_FUNCTIONAL_TESTS)
     add_custom_command(TARGET testsEvasionFunctional POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:testsEvasionFunctional> "${C2_TEST_BIN_OUTPUT_DIR}/$<TARGET_FILE_NAME:testsEvasionFunctional>")
 

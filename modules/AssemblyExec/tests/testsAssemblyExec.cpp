@@ -273,10 +273,10 @@ int main()
 
             ok &= expect(module.process(message, retMessage) == 0, "missing process target should return through C2Message");
             ok &= expect(retMessage.errorCode() > 0, "missing process target should set an error code");
-            ok &= expect(retMessage.returnvalue().find("Error: Process failed to start") != std::string::npos, "missing process target should explain the failure");
+            ok &= expect(retMessage.returnvalue().empty(), "failed process creation should not transport output");
             std::string errorMsg;
             ok &= expect(module.errorCodeToMsg(retMessage, errorMsg) == 0, "missing process target should map error text");
-            ok &= expect(errorMsg == retMessage.returnvalue(), "missing process target error text should come from returnvalue");
+            ok &= expect(errorMsg == "Assembly execution failed to start.", "missing process target error text should come from its code");
         }
     }
 

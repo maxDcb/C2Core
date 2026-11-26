@@ -70,7 +70,7 @@ std::string MakeToken::getInfo()
 
 int MakeToken::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if(splitedCmd.size()==3)
     {
         // format DOMAIN\Username Password
@@ -154,7 +154,7 @@ int MakeToken::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 int MakeToken::errorCodeToMsg(const C2Message &c2RetMessage, std::string& errorMsg)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS)
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     switch (c2RetMessage.errorCode())
     {
     case 0: errorMsg.clear(); break;

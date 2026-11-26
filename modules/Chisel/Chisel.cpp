@@ -86,7 +86,7 @@ int Chisel::initPreparedShellcode(const ModulePreparedShellcodeTask& task, C2Mes
 
 int Chisel::init(std::vector<std::string> &splitedCmd, C2Message &c2Message)
 {
-#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) 
+#if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
     if (splitedCmd.size() == 2)
     {
         if(splitedCmd[1]=="status")
@@ -171,20 +171,25 @@ int Chisel::process(C2Message &c2Message, C2Message &c2RetMessage)
         if(hProc == NULL)
         {
             c2RetMessage.set_errorCode(ERROR_OPEN_PROCESS);
-            result = "OpenProcess failed.";
         }
         else
         {
-            TerminateProcess(hProc,9);
+            const BOOL terminated = TerminateProcess(hProc,9);
             CloseHandle(hProc);
-            result="Chisel stoped.\n";
+            if (terminated)
+            {
+                c2RetMessage.set_errorCode(0);
+                result="Chisel stoped.\n";
+            }
+            else
+                c2RetMessage.set_errorCode(ERROR_OPEN_PROCESS);
         }
 
-        c2RetMessage.set_instruction(c2RetMessage.instruction());
+        c2RetMessage.set_instruction(c2Message.instruction());
         c2RetMessage.set_pid(pid);
         c2RetMessage.set_cmd("stop");
 
-        c2RetMessage.set_returnvalue(result);
+        c2RetMessage.set_returnvalue(c2RetMessage.errorCode() == 0 ? result : "");
         return 0;
     }
 
@@ -219,10 +224,12 @@ int Chisel::process(C2Message &c2Message, C2Message &c2RetMessage)
 
 #endif
 
-    c2RetMessage.set_instruction(c2RetMessage.instruction());
+    c2RetMessage.set_instruction(c2Message.instruction());
     c2RetMessage.set_pid(pid);
     c2RetMessage.set_cmd(c2Message.cmd());
-    c2RetMessage.set_returnvalue(result);
+    if (c2RetMessage.errorCode() != ERROR_CREATE_PROCESS)
+        c2RetMessage.set_errorCode(0);
+    c2RetMessage.set_returnvalue(c2RetMessage.errorCode() == 0 ? result : "");
 
     return 0;
 }
@@ -233,16 +240,20 @@ int Chisel::errorCodeToMsg(const C2Message &c2RetMessage, std::string &errorMsg)
         c2RetMessage.errorCode() == C2CORE_ERROR_INVALID_REQUEST)
         return ModuleCmd::errorCodeToMsg(c2RetMessage, errorMsg);
 #if defined(BUILD_TEAMSERVER) || defined(C2CORE_BUILD_TESTS) || defined(C2CORE_BUILD_FUNCTIONAL_TESTS)
-    if (c2RetMessage.errorCode() > 0)
-    {
-        errorMsg = c2RetMessage.returnvalue();
-    }
+    if (c2RetMessage.errorCode() == ERROR_OPEN_PROCESS)
+        errorMsg = "Failed to stop the target process.";
+    else if (c2RetMessage.errorCode() == ERROR_CREATE_PROCESS)
+        errorMsg = "Failed to create the Chisel process.";
+    else if (c2RetMessage.errorCode() == 0)
+        errorMsg.clear();
 #endif
     return 0;
 }
 
 int Chisel::followUp(const C2Message &c2RetMessage)
 {
+    if (c2RetMessage.errorCode() != 0)
+        return 0;
     int pid = c2RetMessage.pid();
     if(pid!=-1)
     {    

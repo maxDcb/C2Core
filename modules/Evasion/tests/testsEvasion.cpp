@@ -43,11 +43,11 @@ int main()
         Evasion module;
         C2Message ret;
         ret.set_errorCode(1);
-        ret.set_returnvalue("Error opening remote process and thread.");
+        ret.set_returnvalue("");
         std::string errorMsg;
 
         ok &= expect(module.errorCodeToMsg(ret, errorMsg) == 0, "evasion execution failure should map error text");
-        ok &= expect(errorMsg == ret.returnvalue(), "evasion execution error text should come from returnvalue");
+        ok &= expect(errorMsg == "Evasion action failed.", "evasion execution error should be derived from its code");
     }
 
     return ok ? 0 : 1;
